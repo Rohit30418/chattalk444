@@ -16,9 +16,9 @@ function AvatarModel({ mouthLevel }) {
   // State Refs
   const currentState = useRef("idle");
   const currentIdle = useRef("Idle1");
-
+// .glb?pose=T
   // 1. Load Model & Animations
-  const { scene, nodes } = useGLTF("https://models.readyplayer.me/68abde339f7cfdc4d2c7e702.glb?pose=T");
+  const { scene, nodes } = useGLTF("/aicheractar.glb?pose=T");
   const idle1 = useGLTF("/Idle.glb");
   const idle2 = useGLTF("/Idle2.glb");
   const idle3 = useGLTF("/Idle3.glb");

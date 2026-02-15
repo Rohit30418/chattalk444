@@ -1,42 +1,49 @@
-
 const initialState = {
     userData: "",
-    loginStatus:false,
-    toggleModal:false,
-    toggleFriendSide:false,
-    toggleChatSidebar:false,
-    togglePopup:false,
-    groupMsg:{},
-    tooglePrescreenRoom:true,
-  };
+    loginStatus: false,
+    toggleModal: false,
+    toggleFriendSide: false,
+    toggleChatSidebar: false,
+    togglePopup: false,
+    groupMsg: {},
+    tooglePrescreenRoom: true,
+    mediaPrefs: { 
+        audio: false, 
+        video: false 
+    }
+};
   
-  export const Reducer = (state = initialState, action) => {
+export const Reducer = (state = initialState, action) => {
     switch (action.type) {
-      case "userData":
-        return { ...state, userData:action.payload };
+        case "userData":
+            return { ...state, userData: action.payload };
+
         case "Loginstatus":
-        return {...state,loginStatus:action.payload};
+            return { ...state, loginStatus: action.payload };
         
         case "toggleModal":
-        return{...state,toggleModal:action.payload};
+            return { ...state, toggleModal: action.payload };
 
         case "toggleFriendSidebar":
-        return{...state,toggleFriendSide:action.payload};
+            return { ...state, toggleFriendSide: action.payload };
 
         case "toggleChatSidebar":
-          return{...state,toggleChatSidebar:action.payload};
+            return { ...state, toggleChatSidebar: action.payload };
 
         case "togglePopup":
-          return{...state,groupMsg:action.payload};
+            return { ...state, groupMsg: action.payload }; // (Note: keeping your original logic here)
 
-          case "groupMsg":
-          return{...state,groupMsg:action.payload};
+        case "groupMsg":
+            return { ...state, groupMsg: action.payload };
 
-          case "tooglePrescreenRoom":
-          return{ ...state,tooglePrescreenRoom:action.payload}
+        case "tooglePrescreenRoom":
+            return { ...state, tooglePrescreenRoom: action.payload };
 
-      default:
-        return state; // Return the current state for unrecognized actions
+        // 🔥 NEW: Handle the action
+        case "setMediaPrefs":
+            return { ...state, mediaPrefs: action.payload };
+
+        default:
+            return state;
     }
-  };
-  
+};

@@ -1,25 +1,29 @@
 import { db } from '../services/firebase';
-import { useParams } from 'react-router';
-import { collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { useParams } from 'react-router-dom';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
-const useDeleteUnseenCount = () => {
+const useMarkAsRead = () => {
   const { id } = useParams();
 
-  const deletemsg = async (uId) => {
-    try {
-      const roomRef = collection(db, "rooms", id, "participants", uId, "unseenmsg");
-      const querySnapshot = await getDocs(roomRef);
+  const markAsRead = async (uId) => {
+    if (!id || !uId) return;
 
-      for (const docSnap of querySnapshot.docs) {
-        await deleteDoc(docSnap.ref);
-      }
+    try {
+      // Reference to the USER inside the ROOM
+      const participantRef = doc(db, 'rooms', id, 'participants', uId);
+
+      // We just update the timestamp. 
+      // Any message AFTER this time is considered "Unread".
+      await updateDoc(participantRef, {
+        lastReadTimestamp: serverTimestamp()
+      });
 
     } catch (error) {
-      console.error("Error deleting unseen messages:", error);
+      console.error("Error marking messages as read:", error);
     }
   };
 
-  return deletemsg;
+  return markAsRead;
 };
 
-export default useDeleteUnseenCount;
+export default useMarkAsRead;

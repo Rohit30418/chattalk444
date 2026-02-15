@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { collection, addDoc, getDoc } from "firebase/firestore";
 import { db } from '../services/firebase';
 
@@ -17,8 +16,6 @@ const useAddMessage = () => {
             // Add the message to the groupMessage collection
             const docRef = await addDoc(groupMessageRef, messageData);
             const docSnapshot = await getDoc(docRef);
-            console.log("Message added successfully!");
-            // Return the data of the newly added message
            return  docSnapshot.data();
 
            

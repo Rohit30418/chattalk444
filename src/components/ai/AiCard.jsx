@@ -1,113 +1,94 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
-const AiCard = ({ pageName, title, description, avatar }) => {
+// Using the specific 3D avatar image from your design reference
+// Replace with your local path if needed, e.g., "/assets/3d-avatar.png"
+const AVATAR_URL = "https://static.vecteezy.com/system/resources/previews/034/599/439/non_2x/ai-generated-3d-cute-cartoon-woman-character-in-blue-suit-on-transparent-background-png.png"; 
+
+const AiCard = ({ pageName, title, description }) => {
   const navigate = useNavigate();
 
   const handleTalkNow = async () => {
     const { value: password } = await Swal.fire({
-      title: "Authentication Required",
-      text: "Enter access code to chat with AI",
-      input: "password",
-      inputPlaceholder: "Enter PIN (1178)",
+      title: 'Authentication Required',
+      text: 'Enter access code to chat with AI',
+      input: 'password',
+      inputPlaceholder: 'Enter PIN (1178)',
       showCancelButton: true,
-      confirmButtonText: "Unlock",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#4f46e5", // Indigo-600
-      cancelButtonColor: "#ef4444",
-      background: "#fff", // Will be overridden by customClass in CSS if global styles exist, but we use classes below
-      customClass: {
-        popup: 'dark:bg-slate-800  rounded-2xl',
-        input: 'dark:bg-slate-900  dark:border-slate-700',
-        confirmButton: 'rounded-xl px-6',
-        cancelButton: 'rounded-xl px-6'
-      },
-      inputAttributes: {
-        autocapitalize: "off",
-        autocorrect: "off",
-      },
+      confirmButtonText: 'Unlock',
+      confirmButtonColor: 'var(--color-primary, #4f46e5)',
+      cancelButtonColor: '#ef4444',
+      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#fff',
+      color: document.documentElement.classList.contains('dark') ? '#fff' : '#000',
+      customClass: { popup: 'rounded-2xl' }
     });
 
-    if (password === "1178") {
-      Swal.fire({
-        icon: "success",
-        title: "Access Granted",
-        showConfirmButton: false,
-        timer: 1000,
-        customClass: {
-          popup: 'dark:bg-slate-800 dark:text-white rounded-2xl'
-        }
-      });
-      navigate("/aiBot");
+    if (password === '1178') {
+      navigate('/aiBot');
     } else if (password) {
       Swal.fire({
-        icon: "error",
-        title: "Access Denied",
-        text: "Incorrect password entered.",
-        customClass: {
-           popup: 'dark:bg-slate-800 dark:text-white rounded-2xl'
-        }
+        icon: 'error',
+        title: 'Access Denied',
+        text: 'Incorrect password entered.',
+        timer: 1500,
+        showConfirmButton: false,
+        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#fff',
+        color: document.documentElement.classList.contains('dark') ? '#fff' : '#000',
+        customClass: { popup: 'rounded-2xl' }
       });
     }
   };
 
   return (
-    <div className="h-full">
-      <div
-        className="relative group h-[300px] flex flex-col items-center justify-between bg-white dark:bg-slate-900 rounded-3xl border border-indigo-100 dark:border-indigo-900/50 p-6 shadow-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/10"
-      >
-        {/* Decorative Background Gradients */}
-        {/* <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div> */}
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all duration-500"></div>
-        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-500"></div>
-
-        {/* Top Section: Badge */}
-        <div className="w-full flex justify-between items-start z-10">
-          <span
-            className="inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 
-            px-3 py-1 rounded-lg text-xs font-bold border border-indigo-100 dark:border-indigo-800 tracking-wide uppercase"
-          >
-            <i className="fa-solid fa-robot text-sm"></i> {pageName}
-          </span>
-          {/* Lock Icon */}
-          <span className="text-gray-300 dark:text-gray-600 group-hover:text-indigo-400 transition-colors">
-            <i className="fa-solid fa-lock"></i>
-          </span>
-        </div>
-
-        {/* Middle Section: Avatar & Info */}
-        <div className="flex flex-col items-center z-10 w-full">
-          {/* Avatar with Glow */}
-          <div className="relative mb-4">
-            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-            <img
-              src={avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=Luna"}
-              alt="AI Character"
-              className="relative w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-800 shadow-md transform group-hover:rotate-3 transition-transform duration-300 bg-indigo-50"
-            />
+    // The card container should span 2 columns in the parent grid (handled in HomeBody)
+    <div className="relative h-full min-h-[280px] group overflow-hidden rounded-[2rem] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+      
+      {/* --- Background & Gradients --- */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-[#0B0C15] to-slate-900 dark:from-indigo-950 dark:via-[#0f111a] dark:to-[#0B0C15] transition-colors duration-300"></div>
+      <div className="absolute inset-0 opacity-30 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/40 via-transparent to-transparent blur-2xl group-hover:opacity-50 transition-opacity duration-500"></div>
+      <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-primary/10 rounded-full blur-[80px] group-hover:bg-primary/20 transition-colors duration-500"></div>
+      
+      {/* --- Content Wrapper --- */}
+      <div className="relative z-10 h-full flex flex-col justify-between">
+        
+        {/* Header & Text */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5 px-3 py-1 rounded-full bg-white/10 dark:bg-slate-800/50 border border-white/20 dark:border-slate-700/50 backdrop-blur-md">
+              <i className="fa-solid fa-robot text-primary text-sm"></i>
+              <span className="text-xs font-bold text-white uppercase tracking-wider">{pageName || "AI Voice Room"}</span>
+            </div>
+            <i className="fa-solid fa-lock text-slate-500 dark:text-slate-600 text-lg group-hover:text-primary transition-colors"></i>
           </div>
 
-          {/* Text */}
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-            {title}
+          <h3 className="text-2xl md:text-3xl font-black text-white mb-2 tracking-tight">
+            {title || "Luna — AI Friend"}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center line-clamp-2 px-2">
-            {description}
+          <p className="text-slate-300 dark:text-slate-400 text-sm md:text-base font-medium max-w-[60%] leading-relaxed">
+            {description || "Practice speaking without pressure. Luna is here to listen 24/7."}
           </p>
         </div>
 
-        {/* Bottom Section: Button */}
-        <div className="w-full mt-2 z-10">
+        {/* Button */}
+        <div>
           <button
             onClick={handleTalkNow}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transform transition-all duration-200 active:scale-95 flex items-center justify-center gap-2"
+            className="px-8 py-3.5 bg-white text-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 group/btn"
           >
-            <span>Talk Now</span>
-            <i className="fa-solid fa-microphone-lines animate-pulse"></i>
+            Talk Now 
+            <i className="fa-solid fa-microphone-lines animate-pulse group-hover/btn:rotate-12 transition-transform"></i>
           </button>
         </div>
       </div>
+
+      {/* --- 3D Avatar Image --- */}
+      {/* Positioned absolutely to the right, outside the flex flow */}
+      <img
+        src={AVATAR_URL}
+        alt="AI Character"
+        className="absolute bottom-0 right-0 w-2/5 max-w-[220px] md:max-w-[280px] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)] group-hover:scale-105 group-hover:-rotate-2 transition-all duration-500 z-20"
+      />
     </div>
   );
 };

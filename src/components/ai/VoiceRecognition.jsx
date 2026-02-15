@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AiTextToSpeech from "../ai/AiTextToSpeech";
-// We don't need the external analyzeAudio file anymore, we do it inline for better control
+import AiTextToSpeech from "./AiTextToSpeech";
 import Swal from "sweetalert2";
+import SpeechHud from "./SpeechHud"; 
 
 const STATE = {
   IDLE: "idle",
@@ -23,19 +23,13 @@ export default function VoiceRecognition({ onMouthLevel }) {
   const stateRef = useRef(STATE.IDLE);
   const micStreamRef = useRef(null);
   const aiAudioRef = useRef(null);
-
-  // Audio Context for Lip Sync
   const audioContextRef = useRef(null);
-
   const navigate = useNavigate();
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
-  // ======================
-  // STOP MICROPHONE STREAM
-  // ======================
   const stopBrowserMic = () => {
     try {
       micStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -43,61 +37,35 @@ export default function VoiceRecognition({ onMouthLevel }) {
     } catch {}
   };
 
-  // ======================
-  // INIT SPEECH RECOGNITION
-  // ======================
   useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("Speech recognition not supported in this browser.");
-      return;
-    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
     recognition.onresult = (event) => {
       if (stateRef.current !== STATE.LISTENING) return;
-
       let interim = "";
       let final = "";
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) final += event.results[i][0].transcript;
         else interim += event.results[i][0].transcript;
       }
-
       const text = final + interim;
       if (!text.trim()) return;
-
       setTranscript(text);
-
       if (silenceTimer.current) clearTimeout(silenceTimer.current);
-
-      // silence detection
-      silenceTimer.current = setTimeout(() => {
-        handleUserSilence(text);
-      }, 1100);
+      silenceTimer.current = setTimeout(() => handleUserSilence(text), 1100);
     };
 
-    recognition.onerror = () => {};
-
-    // CLEANUP on unmount
     return () => {
       try { recognition.stop(); } catch {}
       stopBrowserMic();
-      
-      // Cleanup Audio Context
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      
+      if (audioContextRef.current) audioContextRef.current.close();
       if (aiAudioRef.current) {
         aiAudioRef.current.pause();
         aiAudioRef.current = null;
@@ -105,110 +73,68 @@ export default function VoiceRecognition({ onMouthLevel }) {
     };
   }, []);
 
-  // ======================
-  // HANDLE USER SILENCE → AI RESPONSE
-  // ======================
   const handleUserSilence = async (text) => {
     if (!text.trim()) return;
-
     try { recognitionRef.current?.stop(); } catch {}
-
     setState(STATE.THINKING);
-
     const response = await AiTextToSpeech(text);
     if (!response) {
       startListening();
       return;
     }
-
     setBotText(response.text);
-
-    // Mic OFF while AI speaks
     setIsAiSpeaking(true);
     stopBrowserMic();
     setState(STATE.SPEAKING);
-
-    // --- FIX: Audio Analysis Logic ---
     await playAudioWithAnalysis(response.audioUrl);
-
     aiAudioRef.current = null;
     setIsAiSpeaking(false);
-    onMouthLevel(0); // Reset mouth when done
-
-    // After short delay, restart human listening
+    onMouthLevel(0);
     setTimeout(() => startListening(), 700);
   };
 
-  // ======================
-  // NEW: Play Audio + Analyze for Mouth
-  // ======================
   const playAudioWithAnalysis = async (url) => {
     return new Promise(async (resolve) => {
       const audio = new Audio(url);
-      audio.crossOrigin = "anonymous"; // Important for some browsers
+      audio.crossOrigin = "anonymous"; 
       aiAudioRef.current = audio;
-
-      // Create AudioContext if it doesn't exist
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
-      
-      // Resume context (browsers sometimes suspend it)
       if (ctx.state === "suspended") await ctx.resume();
-
-      // Create Source and Analyzer
-      // Note: createMediaElementSource can crash if reused on same element, 
-      // but 'audio' is a new instance here, so it is safe.
       const source = ctx.createMediaElementSource(audio);
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
-
       source.connect(analyser);
-      analyser.connect(ctx.destination); // Connect to speakers
-
+      analyser.connect(ctx.destination); 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      // Animation Loop
       const updateMouth = () => {
         if (!audio.paused && !audio.ended) {
           analyser.getByteFrequencyData(dataArray);
-          
-          // Calculate volume average
           const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-          
-          // Normalize (0-255 -> 0.0-1.0)
-          // Divide by 50 to make it more sensitive for the 3D model
           const level = Math.min(1.0, avg / 50);
-          
           onMouthLevel(level);
           requestAnimationFrame(updateMouth);
         }
       };
-
       audio.onended = () => {
         onMouthLevel(0);
-        resolve(); // Audio finished
+        resolve(); 
       };
-
       try {
         await audio.play();
         updateMouth();
       } catch (err) {
-        console.error("Audio playback failed", err);
-        resolve(); // Resolve anyway to not block the app
+        resolve();
       }
     });
   };
 
-  // ======================
-  // START LISTENING
-  // ======================
   const startListening = async () => {
     setTranscript("");
     setBotText("");
     setState(STATE.LISTENING);
-
     try {
       micStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       recognitionRef.current?.start();
@@ -217,12 +143,8 @@ export default function VoiceRecognition({ onMouthLevel }) {
     }
   };
 
-  // ======================
-  // TOGGLE MIC
-  // ======================
   const toggleMic = () => {
     if (isAiSpeaking) return;
-
     if (stateRef.current === STATE.LISTENING) {
       try { recognitionRef.current?.stop(); } catch {}
       stopBrowserMic();
@@ -232,113 +154,103 @@ export default function VoiceRecognition({ onMouthLevel }) {
     }
   };
 
-  // ======================
-  // QUIT CALL
-  // ======================
   const handleQuitCall = () => {
     Swal.fire({
-      title: "End Call?",
-      text: "Are you sure you want to quit the AI voice call?",
-      icon: "warning",
+      title: "End Session?",
+      text: "Ready to stop practicing for now?",
+      icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, End Call",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6366f1",
+      confirmButtonText: "Yes, Exit",
+      background: "#0f172a",
+      color: "#f8fafc"
     }).then((result) => {
       if (result.isConfirmed) {
         try { recognitionRef.current?.stop(); } catch {}
-        window.speechSynthesis?.cancel();
         stopBrowserMic();
-
-        if (aiAudioRef.current) {
-          aiAudioRef.current.pause();
-          aiAudioRef.current = null;
-        }
-        
-        if (audioContextRef.current) {
-           audioContextRef.current.close();
-        }
-
         onMouthLevel?.(0);
         navigate("/", { replace: true });
       }
     });
   };
 
-  const getOrbStyle = () => {
+  const getOrbColor = () => {
     switch (state) {
-      case STATE.LISTENING:
-        return "bg-green-500 shadow-[0_0_30px_rgba(34,197,94,0.6)] animate-pulse";
-      case STATE.THINKING:
-        return "bg-yellow-400 animate-bounce";
-      case STATE.SPEAKING:
-        return "bg-blue-500 shadow-[0_0_40px_rgba(59,130,246,0.8)] scale-110";
-      case STATE.PAUSED:
-        return "bg-red-500/50 border-red-500";
-      default:
-        return "bg-gray-500";
+      case STATE.LISTENING: return "from-emerald-400 to-cyan-400";
+      case STATE.THINKING: return "from-amber-400 to-orange-500";
+      case STATE.SPEAKING: return "from-indigo-500 to-purple-600";
+      case STATE.PAUSED: return "from-rose-500 to-red-600";
+      default: return "from-slate-400 to-slate-600";
     }
   };
 
   return (
-    <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 w-full max-w-md z-50">
+    <>
+      {/* 🚀 ANALYTICS HUD OVERLAY */}
+   
 
-      <div className="text-center min-h-[50px] px-4 w-full flex flex-col items-center justify-end mb-2">
-        {state === STATE.LISTENING && transcript && (
-          <p className="text-white text-lg font-medium bg-black/60 px-4 py-2 rounded-xl">
-            "{transcript}"
-          </p>
-        )}
-
-        {state === STATE.SPEAKING && botText && (
-          <p className="text-blue-200 text-lg font-medium bg-black/60 px-4 py-2 rounded-xl">
-            {botText}
-          </p>
-        )}
-
-        {state === STATE.PAUSED && (
-          <span className="text-red-300 text-xs font-bold uppercase bg-red-900/80 px-3 py-1 rounded-full">
-            Mic Muted
-          </span>
-        )}
-      </div>
-
-      <div className="flex items-center gap-4 bg-gray-900/80 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl">
-        <button
-          onClick={toggleMic}
-          disabled={isAiSpeaking}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
-            state === STATE.LISTENING
-              ? "bg-white text-black"
-              : "bg-gray-700 text-gray-400"
-          } ${isAiSpeaking ? "opacity-50 cursor-not-allowed" : ""}`}
-        >
-          {state === STATE.LISTENING ? (
-            <i className="fas fa-microphone"></i>
-          ) : (
-            <i className="fas fa-microphone-slash"></i>
+      {/* 📱 BOTTOM UI INTERFACE */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center gap-6 w-full max-w-lg z-50 px-6">
+           <SpeechHud isSpeaking={state === STATE.LISTENING} transcript={transcript} />
+        {/* TRANSCRIPT CAPTIONS */}
+        <div className="text-center min-h-[60px] w-full flex flex-col items-center justify-end">
+          {(transcript || botText) && (
+            <div className="bg-black/40 backdrop-blur-md border border-white/10 px-6 py-3 rounded-2xl shadow-2xl animate-fade-in-up">
+              <p className={`text-lg font-medium tracking-tight ${state === STATE.SPEAKING ? 'text-indigo-200' : 'text-white'}`}>
+                {state === STATE.SPEAKING ? botText : `"${transcript}"`}
+              </p>
+            </div>
           )}
-        </button>
-
-        <div
-          className={`w-16 h-16 rounded-full border-4 border-white/20 flex items-center justify-center text-white text-[10px] uppercase ${getOrbStyle()}`}
-        >
-          {state === STATE.THINKING
-            ? "Thinking"
-            : state === STATE.SPEAKING
-            ? "Speaking"
-            : state === STATE.PAUSED
-            ? "Muted"
-            : "Listening"}
+          {state === STATE.PAUSED && (
+            <span className="text-rose-400 text-xs font-black uppercase tracking-widest bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20">
+              Microphone Muted
+            </span>
+          )}
         </div>
 
-        <button
-          onClick={handleQuitCall}
-          className="w-12 h-12 rounded-full bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500 hover:text-white"
-        >
-          <i className="fas fa-phone-slash"></i>
-        </button>
+        {/* FUTURISTIC CONTROL BAR */}
+        <div className="flex items-center gap-6 bg-white/5 backdrop-blur-2xl p-4 rounded-[2.5rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] group hover:border-white/20 transition-all">
+          
+          {/* MIC TOGGLE */}
+          <button
+            onClick={toggleMic}
+            disabled={isAiSpeaking}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+              state === STATE.LISTENING
+                ? "bg-white text-slate-900 shadow-[0_0_20px_rgba(255,255,255,0.4)]"
+                : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+            } ${isAiSpeaking ? "opacity-30 cursor-not-allowed" : "hover:scale-110 active:scale-95"}`}
+          >
+            <i className={`text-xl fa-solid ${state === STATE.LISTENING ? "fa-microphone" : "fa-microphone-slash"}`}></i>
+          </button>
+
+          {/* STATUS ORB */}
+          <div className="relative">
+            <div className={`absolute inset-0 rounded-full blur-md opacity-50 bg-gradient-to-tr ${getOrbColor()} transition-all duration-500 ${state !== STATE.PAUSED && 'animate-pulse'}`}></div>
+            <div className={`relative w-20 h-20 rounded-full border-2 border-white/20 flex flex-col items-center justify-center text-white transition-all duration-500 bg-gradient-to-tr ${getOrbColor()} shadow-inner`}>
+                <span className="text-[10px] font-black uppercase tracking-tighter leading-none mb-1">
+                  {state}
+                </span>
+                {state === STATE.LISTENING && (
+                  <div className="flex gap-0.5 mt-1">
+                    <div className="w-0.5 h-2 bg-white/60 rounded-full animate-bounce"></div>
+                    <div className="w-0.5 h-3 bg-white rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                    <div className="w-0.5 h-2 bg-white/60 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                  </div>
+                )}
+            </div>
+          </div>
+
+          {/* EXIT BUTTON */}
+          <button
+            onClick={handleQuitCall}
+            className="w-14 h-14 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center shadow-lg"
+          >
+            <i className="text-xl fa-solid fa-phone-slash"></i>
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

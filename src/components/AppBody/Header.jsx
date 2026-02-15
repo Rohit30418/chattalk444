@@ -3,15 +3,19 @@ import { useSelector, useDispatch } from 'react-redux';
 import { getAuth } from 'firebase/auth';
 import { firebaseApp } from '../../services/firebase';
 import { loginToggle } from '../../redux/action';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom'; // Added NavLink
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import Loading from '../common/Loading';
 import Swal from "sweetalert2";
+import SpinWheelModal from './SpinWheelModal';
 
 const Header = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  
+  const [showOffer, setShowOffer] = useState(false);
+  const [showBanner, setShowBanner] = useState(true);
+  const [timeLeft, setTimeLeft] = useState({ h: 2, m: 59, s: 28 });
+
   // Theme State
   const [theme, setTheme] = useState(
     localStorage.getItem("theme") ? localStorage.getItem("theme") : "light"
@@ -23,16 +27,57 @@ const Header = () => {
   const auth = getAuth(firebaseApp);
   const signInWithGoogle = useGoogleLogin();
 
-  // 1. Handle Scroll Detection
+  // --- 1. AUTO-SHOW SPINNER LOGIC (Every 2 Hours) ---
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
+    const checkSpinnerTime = () => {
+      const lastShown = localStorage.getItem('last_spin_time');
+      const now = Date.now();
+      const TWO_HOURS = 2 * 60 * 60 * 1000; 
+
+      if (!lastShown || (now - parseInt(lastShown) > TWO_HOURS)) {
+        const timer = setTimeout(() => {
+          setShowOffer(true);
+          localStorage.setItem('last_spin_time', now.toString());
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
     };
+
+    checkSpinnerTime();
+  }, []);
+
+  // Scroll Detection
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 2. Handle Theme Toggle & Persistence
+  // Timer Logic for Banner
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        let { h, m, s } = prev;
+        if (s > 0) s--;
+        else {
+          s = 59;
+          if (m > 0) m--;
+          else {
+            if (h > 0) {
+              h--;
+              m = 59;
+            } else {
+              h = 2; m = 59; s = 59;
+            }
+          }
+        }
+        return { h, m, s };
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Theme Handling
   useEffect(() => {
     const htmlElement = document.documentElement;
     if (theme === "dark") {
@@ -48,157 +93,181 @@ const Header = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
-  // 3. Handle Sign Out
   const showModal = () => {
     Swal.fire({
-      title: "Are you sure?",
+      title: "Sign out?",
+      text: "See you next time!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes",
-      customClass: {
-        popup: 'dark:bg-gray-800 dark:text-white' // SweetAlert Dark Mode support
-      }
+      confirmButtonColor: 'var(--color-primary, #4f46e5)',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: "Yes, Sign Out",
+      background: theme === 'dark' ? '#1e293b' : '#fff',
+      color: theme === 'dark' ? '#fff' : '#000',
     }).then((result) => {
-      if (result.isConfirmed) {
-        signOut();
-      }
+      if (result.isConfirmed) signOut();
     });
   };
 
   function signOut() {
     auth.signOut().then(() => {
       dispatch(loginToggle(false));
-    }).catch((error) => {
-      console.error('Error signing out:', error);
+      setShowDetails(false);
     });
   }
 
-  // 4. Online Users Simulation
+  // Online Users Sim
   const [onlineUsers, setOnlineUsers] = useState(1243);
   useEffect(() => {
     const interval = setInterval(() => {
-      const change = Math.floor(Math.random() * 7) - 3;
-      setOnlineUsers(prev => prev + change);
+      setOnlineUsers(prev => prev + (Math.floor(Math.random() * 7) - 3));
     }, 4000);
     return () => clearInterval(interval);
   }, []);
 
+  // Helper for Nav Links
+  const navLinkClass = "text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors";
+
   return (
-    <header
-      className={`
-        fixed top-0 border-b-2 border-slate-200 dark:border-slate-700 left-0 w-full z-50 transition-all duration-300 px-4
-        ${scrolled 
-          ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-gray-800 py-3" 
-          : "bg-transparent py-5"
-        }
-      `}
-    >
-      <div className='max-w-7xl  mx-auto flex justify-between items-center w-full'>
+    <>
+      {/* --- UNIFIED FIXED WRAPPER --- */}
+      <div className="fixed top-0 left-0 w-full z-50 flex flex-col transition-all duration-300">
         
-        {/* Logo */}
-        <Link to="/">
-          <h2 className="text-gray-900 dark:text-white text-3xl font-extrabold tracking-tight flex items-center gap-2 transition-colors">
-            Vaani
-            <i className="fa fa-comments text-primary animate-pulse"></i>
-          </h2>
-        </Link>
-
-        {/* Right Section */}
-        <div className='flex items-center gap-4'>
-
-          {/* Theme Toggle Button */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-yellow-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all shadow-sm"
-            aria-label="Toggle Dark Mode"
-          >
-            {theme === "dark" ? (
-              // Sun Icon
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-              </svg>
-            ) : (
-              // Moon Icon
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-600">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-              </svg>
-            )}
-          </button>
-
-          {/* Online Users Badge */}
-          <div className="hidden md:flex items-center gap-2 text-green-700 dark:text-green-400 font-bold bg-white dark:bg-slate-800 px-3 py-1 rounded-full shadow-sm text-sm border border-gray-100 dark:border-slate-700 transition-colors">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-            {onlineUsers.toLocaleString()} <span className="hidden lg:inline">online</span>
-          </div>
-
-          {/* Auth Logic */}
-          {loginStatus ? (
-            userdata ? (
-              <div className="flex items-center gap-4">
-                <div
-                  className="relative z-50"
-                  onMouseEnter={() => setShowDetails(true)}
-                  onMouseLeave={() => setShowDetails(false)}
-                >
-                  {/* <Link to={`/MyProfile/${userdata.uid}`} className='relative block'> */}
-                    <div className='relative block'>
-                    <img
-                      src={userdata.photoURL}
-                      referrerPolicy="no-referrer"
-                      className="w-10 h-10 rounded-full ring-2 ring-purple-500 cursor-pointer shadow-md transition-transform hover:scale-105 object-cover"
-                      alt="Profile"
-                    />
-                    <span className='bg-green-500 w-3 h-3 rounded-full absolute top-0 right-0 border-2 border-white dark:border-slate-900'></span>
-                  </div>
-
-                  {/* Dropdown Menu */}
-                  {showDetails && (
-                    <div className="
-                      absolute right-0 top-full mt-2 w-64
-                      bg-white dark:bg-slate-800 
-                      border border-gray-100 dark:border-slate-700
-                      rounded-xl shadow-2xl p-4
-                      animate-fade-in-up
-                    ">
-                      <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100 dark:border-slate-700">
-                         <img src={userdata.photoURL} className="w-10 h-10 rounded-full" alt="" />
-                         <div className="overflow-hidden">
-                           <p className="font-semibold text-gray-800 dark:text-white truncate">
-                             {userdata.displayName}
-                           </p>
-                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                             {userdata.email}
-                           </p>
-                         </div>
-                      </div>
-
-                      <button
-                        onClick={showModal}
-                        className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-medium py-2 rounded-lg transition-colors"
-                      >
-                        <i className="fa fa-sign-out"></i> Sign Out
-                      </button>
-                    </div>
-                  )}
+        {/* Banner */}
+        {showBanner && (
+          <div className="relative z-[60] bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 text-white overflow-hidden shadow-md">
+            <div className="max-w-[1440px] mx-auto px-4 py-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 text-xs sm:text-sm font-bold">
+              <div className="flex items-center gap-4 hidden md:flex">
+                <div className="flex items-center gap-2">
+                  <i className="fa-solid fa-mobile-screen"></i>
+                  <span>Best deals on all plans</span>
+                </div>
+                <div className="h-4 w-px bg-white/30"></div>
+                <div className="flex items-center gap-2">
+                  <i className="fa-solid fa-tag"></i>
+                  <span>90% OFF coupon</span>
                 </div>
               </div>
-            ) : (
-              <Loading />
-            )
-          ) : (
-            <button
-              onClick={signInWithGoogle}
-              className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg shadow-md transition-all hover:-translate-y-0.5"
-            >
-              Sign In
-            </button>
-          )}
-        </div>
-      </div>
-    </header>
+
+              <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-lg">
+                <span className="whitespace-nowrap">Special ends in:</span>
+                <div className="font-mono text-yellow-300 text-base">
+                  {String(timeLeft.h).padStart(2, '0')}:{String(timeLeft.m).padStart(2, '0')}:{String(timeLeft.s).padStart(2, '0')}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowOffer(true)}
+                className="bg-[#ccff00] text-black hover:bg-white hover:scale-105 transition-all px-4 py-1.5 rounded-full font-black uppercase tracking-wide shadow-lg shadow-black/20"
+              >
+                GRAB NOW
+              </button>
+
+              <button 
+                onClick={() => setShowBanner(false)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Main Navbar */}
+        <header
+          className={`
+            w-full transition-all duration-300 ease-in-out px-4 md:px-6
+            ${scrolled 
+              ? "bg-white/90 dark:bg-[#0B0C15]/90 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 py-3 shadow-md" 
+              : "bg-transparent py-4 bg-gradient-to-b from-white/90 to-transparent dark:from-[#0B0C15]/90"
+            }
+          `}
+        >
+          <div className='max-w-[1440px] mx-auto flex justify-between items-center w-full'>
+            
+            {/* LOGO */}
+            <Link to="/">
+              <div className="flex items-center gap-2 group cursor-pointer">
+                <div className="relative">
+                  <i className="fa-solid fa-comments text-2xl text-primary drop-shadow-lg transition-transform group-hover:scale-110"></i>
+                  <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                  </span>
+                </div>
+                <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+                  Vaani
+                </h2>
+              </div>
+            </Link>
+
+            {/* REPLACEMENT: NAVIGATION & LIVE STATS */}
+            <div className="hidden lg:flex items-center justify-center gap-8">
+                {/* Nav Links */}
+                <nav className="flex items-center gap-6 bg-gray-100 dark:bg-white/5 px-6 py-2 rounded-full border border-transparent dark:border-white/10">
+                    <Link to="/" className={navLinkClass}>Home</Link>
+                    <Link to="/rooms" className={navLinkClass}>Rooms</Link>
+                    <Link to="/leaderboard" className={navLinkClass}>Community</Link>
+                    <span className="w-px h-4 bg-gray-300 dark:bg-gray-700"></span>
+                    <Link to="/premium" className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 hover:opacity-80 transition-opacity">
+                        <i className="fa-solid fa-crown mr-1"></i>Premium
+                    </Link>
+                </nav>
+
+                {/* Live Count Pill */}
+                <div className="flex items-center gap-2 bg-green-500/10 dark:bg-green-500/20 px-3 py-1.5 rounded-full border border-green-500/20">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-xs font-semibold text-green-700 dark:text-green-400 tabular-nums">
+                        {onlineUsers.toLocaleString()} online
+                    </span>
+                </div>
+            </div>
+
+            {/* ACTIONS */}
+            <div className='flex items-center gap-3 sm:gap-4'>
+              
+              {/* 777 Widget (Manual Trigger) */}
+              <div onClick={() => setShowOffer(true)} className="hidden sm:flex cursor-pointer hover:scale-105 transition-transform bg-black/5 dark:bg-white/5 p-1.5 rounded-lg border border-black/5 dark:border-white/5">
+                <span className="text-lg">🎰</span>
+              </div>
+
+              {/* Theme Toggle */}
+              <button onClick={toggleTheme} className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">
+                {theme === "dark" ? <i className="fa-solid fa-sun text-xs"></i> : <i className="fa-solid fa-moon text-xs"></i>}
+              </button>
+
+              {/* Auth Buttons */}
+              {loginStatus ? (
+                userdata ? (
+                  <div className="relative z-50 pl-2" onMouseEnter={() => setShowDetails(true)} onMouseLeave={() => setShowDetails(false)}>
+                    <img src={userdata.photoURL} className="w-9 h-9 rounded-full border-2 border-white dark:border-[#0B0C15] cursor-pointer" alt="Profile" referrerPolicy="no-referrer" />
+                    <div 
+                      className={`absolute right-0 pt-2 w-48 transform transition-all duration-200 origin-top-right ${showDetails ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 -translate-y-2 pointer-events-none"}`}
+                    >
+                      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 p-2">
+                        <button className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg">Profile</button>
+                        <button onClick={showModal} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg">Sign Out</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : <Loading />
+              ) : (
+                <button onClick={signInWithGoogle} className="px-5 py-2 rounded-full bg-black dark:bg-white text-white dark:text-black font-bold text-sm hover:scale-105 transition-transform shadow-lg">
+                  Log in
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+      </div> 
+
+      {/* --- RENDER SPINNER MODAL --- */}
+      {showOffer && <SpinWheelModal onClose={() => setShowOffer(false)} />}
+    </>
   );
 };
 
