@@ -50,14 +50,13 @@ const useGoogleLogin = () => {
           photoURL: user.photoURL,
           userid: user.uid,
           onlineStatus: true,
-          lastLogin: serverTimestamp() // Firestore timestamp
+          lastLogin: serverTimestamp()
         },
-        { merge: true } // merge:true updates existing fields instead of overwriting
+        { merge: true } 
       );
 
       toast.success("Logged in successfully!");
     } catch (err) {
-      console.error("Login failed:", err);
       toast.error(`Login failed: ${err.code} - ${err.message}`);
     }
   };

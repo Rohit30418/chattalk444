@@ -19,7 +19,6 @@ const LiveActivityFeed = () => {
   ]);
 
   const listRef = useRef(null);
-
   // --- DYNAMIC SIMULATION EFFECT ---
   useEffect(() => {
     const interval = setInterval(() => {
@@ -29,7 +28,7 @@ const LiveActivityFeed = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const addNewActivity = () => {
+    const addNewActivity = () => {
     const randomName = NAMES[Math.floor(Math.random() * NAMES.length)];
     const randomAction = ACTIONS[Math.floor(Math.random() * ACTIONS.length)];
     const randomRoom = randomAction.text.includes("Lvl") ? "" : ROOMS[Math.floor(Math.random() * ROOMS.length)];
@@ -63,7 +62,6 @@ const LiveActivityFeed = () => {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
         </span>
       </div>
-      
       <div className="relative space-y-8 pl-2" ref={listRef}>
         {/* The Vertical Line (Dashed for style) */}
         <div className="absolute left-[11px] top-3 bottom-3 w-[2px] bg-gray-200 dark:bg-slate-800" />
@@ -72,8 +70,7 @@ const LiveActivityFeed = () => {
           <div 
             key={item.id} 
             className={`relative pl-10 group cursor-default transition-all duration-500 ease-out ${item.isNew ? 'animate-slide-in-right' : ''}`}
-          >
-            
+          >     
             {/* The Timeline Dot (Avatar/Icon) */}
             <div className={`absolute -left-2 top-0 w-7 h-7 rounded-full ${item.action.color} border-4 border-white dark:border-[#151725] z-10 flex items-center justify-center text-[10px] text-white shadow-lg group-hover:scale-110 transition-transform`}>
                {/* Use first letter of name */}

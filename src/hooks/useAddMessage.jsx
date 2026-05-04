@@ -1,26 +1,26 @@
-import { collection, addDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { db } from '../services/firebase';
-
 import { useParams } from 'react-router';
 
 const useAddMessage = () => {
     const { id } = useParams();
 
     const addMessage = async (messageData) => {
-        console.log(messageData);
-        
         try {
-            // Get the reference to the groupMessage collection
             const groupMessageRef = collection(db, `rooms`, id, 'groupMessage');
-
-            // Add the message to the groupMessage collection
+            
+            // 1 Write Operation
             const docRef = await addDoc(groupMessageRef, messageData);
-            const docSnapshot = await getDoc(docRef);
-           return  docSnapshot.data();
-
-           
+            
+            // Return the original data + the new document ID (0 Read Operations!)
+            return {
+                id: docRef.id,
+                ...messageData
+            };
+            
         } catch (error) {
             console.error("Error adding message:", error.message);
+            return null;
         }
     };
 

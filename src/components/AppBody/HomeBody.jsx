@@ -19,12 +19,12 @@ const FAKE_ROOMS = ["English Club", "Gaming Lounge", "Chill Zone", "Tech Talk"];
 const DUMMY_ROOMS = [
   { id: "room_001", joinedAt: 1766078139215, participantsCount: 5, MaximumPeople: "5", Level: "#intermediate", ownerName: "Fatima", ownerUid: "uid_001", Language: "Portuguese", flagCode: "PT", Title: "🦥 Procrastinators Assemble #6", bgColor: "#99BC85" },
   { id: "room_002", joinedAt: 1766078140000, participantsCount: 4, MaximumPeople: "4", Level: "#advanced", ownerName: "Ahmed", ownerUid: "uid_002", Language: "Urdu", flagCode: "PK", Title: "🫠 Socially Awkward Club #5", bgColor: "#FFD6BA" },
-  { id: "room_003", joinedAt: 1766078200000, participantsCount: 2, MaximumPeople: "6", Level: "#beginner", ownerName: "Maria", ownerUid: "uid_003", Language: "Spanish", flagCode: "ES", Title: "🌮 Taco Tuesday Debate", bgColor: "#FEC8D8" },
-  { id: "room_004", joinedAt: 1766078350000, participantsCount: 5, MaximumPeople: "8", Level: "#advanced", ownerName: "Kenji", ownerUid: "uid_004", Language: "Japanese", flagCode: "JP", Title: "⛩️ Anime Spoilers Only", bgColor: "#D4F1F4" },
-  { id: "room_005", joinedAt: 1766078420000, participantsCount: 3, MaximumPeople: "4", Level: "#intermediate", ownerName: "Sophie", ownerUid: "uid_005", Language: "French", flagCode: "FR", Title: "🥐 Croissant Chronicles", bgColor: "#E0BBE4" },
-  { id: "room_006", joinedAt: 1766078550000, participantsCount: 1, MaximumPeople: "3", Level: "#beginner", ownerName: "Hans", ownerUid: "uid_006", Language: "German", flagCode: "DE", Title: "🍺 Beer & Grammar", bgColor: "#FFDFD3" },
-  { id: "room_007", joinedAt: 1766078600000, participantsCount: 6, MaximumPeople: "10", Level: "#intermediate", ownerName: "Min-ji", ownerUid: "uid_007", Language: "Korean", flagCode: "KR", Title: "🎵 K-Pop Stans Unite", bgColor: "#B5EAD7" },
-  { id: "room_008", joinedAt: 1766078700000, participantsCount: 2, MaximumPeople: "5", Level: "#advanced", ownerName: "Sarah", ownerUid: "uid_008", Language: "English", flagCode: "US", Title: "💼 Business Talk (Boring)", bgColor: "#A0E7E5" }
+  { id: "room_003", joinedAt: 1766078200000, participantsCount: 6, MaximumPeople: "6", Level: "#beginner", ownerName: "Maria", ownerUid: "uid_003", Language: "Spanish", flagCode: "ES", Title: "🌮 Taco Tuesday Debate", bgColor: "#FEC8D8" },
+  { id: "room_004", joinedAt: 1766078350000, participantsCount: 8, MaximumPeople: "8", Level: "#advanced", ownerName: "Kenji", ownerUid: "uid_004", Language: "Japanese", flagCode: "JP", Title: "⛩️ Anime Spoilers Only", bgColor: "#D4F1F4" },
+  { id: "room_005", joinedAt: 1766078420000, participantsCount: 4, MaximumPeople: "4", Level: "#intermediate", ownerName: "Sophie", ownerUid: "uid_005", Language: "French", flagCode: "FR", Title: "🥐 Croissant Chronicles", bgColor: "#E0BBE4" },
+  { id: "room_006", joinedAt: 1766078550000, participantsCount: 3, MaximumPeople: "3", Level: "#beginner", ownerName: "Hans", ownerUid: "uid_006", Language: "German", flagCode: "DE", Title: "🍺 Beer & Grammar", bgColor: "#FFDFD3" },
+  { id: "room_007", joinedAt: 1766078600000, participantsCount: 10, MaximumPeople: "10", Level: "#intermediate", ownerName: "Min-ji", ownerUid: "uid_007", Language: "Korean", flagCode: "KR", Title: "🎵 K-Pop Stans Unite", bgColor: "#B5EAD7" },
+  { id: "room_008", joinedAt: 1766078700000, participantsCount: 5, MaximumPeople: "5", Level: "#advanced", ownerName: "Sarah", ownerUid: "uid_008", Language: "English", flagCode: "US", Title: "💼 Business Talk (Boring)", bgColor: "#A0E7E5" }
 ];
 const PAGE_SIZE = 16;
 
@@ -44,7 +44,12 @@ const HomeBody = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [page, setPage] = useState(1);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
-  const [showOffer, setShowOffer] = useState(false); // For Triggering Spinner from Card
+  const [showOffer, setShowOffer] = useState(false); 
+
+  // 🔥 ADDED: Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchText, selectedLanguage]);
 
   // --- PRIVACY NOTICE ---
   useEffect(() => {
@@ -67,7 +72,7 @@ const HomeBody = () => {
       const randomRoom = FAKE_ROOMS[Math.floor(Math.random() * FAKE_ROOMS.length)];
       toast.info(`${randomName} just joined ${randomRoom} 🚀`, { position: "bottom-left", theme: "dark", autoClose: 3000 });
     };
-    const interval = setInterval(() => { if (Math.random() > 0.7) triggerNotification(); }, 5000);
+    const interval = setInterval(() => { if (Math.random() > 0.7) triggerNotification(); }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -77,14 +82,21 @@ const HomeBody = () => {
     return [...realData, ...DUMMY_ROOMS];
   }, [rooms]);
 
+  // 🔥 UPDATED: Normalized language string to prevent duplicates and casing issues
   const languageList = useMemo(() => {
     if (!allRooms.length) return [];
     const count = {};
     allRooms.forEach((r) => {
-      const lang = r?.Language || "Unknown";
+      let lang = r?.Language ? r.Language.trim() : "Unknown";
+      lang = lang.charAt(0).toUpperCase() + lang.slice(1).toLowerCase();
+      
       count[lang] = (count[lang] || 0) + 1;
     });
-    return Object.entries(count).map(([item, count]) => ({ item, count }));
+    
+    // Sorted alphabetically for a better UX
+    return Object.entries(count)
+      .map(([item, count]) => ({ item, count }))
+      .sort((a, b) => a.item.localeCompare(b.item));
   }, [allRooms]);
 
   const filteredRooms = useMemo(() => {
@@ -118,15 +130,26 @@ const HomeBody = () => {
   if (error) return <div className="text-red-500 text-center mt-32 font-bold text-xl">Unable to load rooms. Please refresh.</div>;
 
   return (
-    // 🔥 FIXED: Responsive top padding (pt-36 mobile, pt-44 desktop) for Fixed Header
     <div className="pt-36 md:pt-44 pb-20 min-h-screen bg-gray-50 dark:bg-[#0B0C15] transition-colors duration-300 px-4 md:px-6 lg:px-8 font-sans selection:bg-primary/30 overflow-x-hidden">
       <div className='max-w-[1440px] mx-auto'>
         
+        {/* --- DISCOVERY RIBBON (Horizontal Scroll) --- */}
+        <div className="mb-12">
+           <div className="flex items-center gap-2 mb-5 ml-1 animate-fade-in-up">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              <h2 className="text-xs font-bold text-gray-500 dark:text-slate-500 uppercase tracking-[0.2em]">Trending Now</h2>
+           </div>
+           <FeaturedEvents />
+        </div>
+
         {/* --- HEADER TITLE & FILTERS --- */}
         <div className="flex flex-col xl:flex-row justify-between items-end gap-6 mb-8 md:mb-12">
           <div className="w-full xl:w-auto">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 text-gray-900 dark:text-white">
-               Public Rooms <span className="text-primary">.</span>
+                Public Rooms <span className="text-primary">.</span>
             </h1>
             <p className="text-gray-500 dark:text-slate-400 font-medium text-sm md:text-base">Join 2,400+ people learning together</p>
           </div>
@@ -159,20 +182,7 @@ const HomeBody = () => {
              </div>
           </div>
         </div>
-
-        {/* --- DISCOVERY RIBBON (Horizontal Scroll) --- */}
-        <div className="mb-12">
-           <div className="flex items-center gap-2 mb-5 ml-1 animate-fade-in-up">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              <h2 className="text-xs font-bold text-gray-500 dark:text-slate-500 uppercase tracking-[0.2em]">Trending Now</h2>
-           </div>
-           {/* Horizontal Scroll Component */}
-           <FeaturedEvents />
-        </div>
-
+ 
         {/* --- MAIN GRID LAYOUT --- */}
         <div className="flex flex-col xl:flex-row gap-8 items-start relative">
             
@@ -217,10 +227,9 @@ const HomeBody = () => {
                )}
             </div>
 
-            {/* RIGHT: SIDEBAR (Hidden on mobile/tablet unless xl) */}
+            {/* RIGHT: SIDEBAR */}
             <div className="hidden xl:block w-[27%] space-y-6 sticky top-44">
-               <LiveActivityFeed />
-               
+               <LiveActivityFeed />  
                {/* CTA Card */}
                <div className="group relative bg-gradient-to-br from-primary to-blue-600 rounded-[2.5rem] p-8 text-center shadow-xl overflow-hidden cursor-pointer hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-1">
                   <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
@@ -240,7 +249,7 @@ const HomeBody = () => {
 
         {/* --- FLOATING WIDGETS --- */}
         
-        {/* 1. Mobile FAB (Create Room) - Visible only on Mobile/Tablet */}
+        {/* 1. Mobile FAB (Create Room) */}
         <div className="xl:hidden">
             <button 
                 onClick={handleAddRoomClick} 
@@ -250,7 +259,7 @@ const HomeBody = () => {
             </button>
         </div>
 
-        {/* 2. Anniversary Sale Card (Bottom Left - Desktop Only) */}
+        {/* 2. Anniversary Sale Card */}
         <AnniversaryCard onClick={() => setShowOffer(true)} />
 
         {/* --- MODALS --- */}
@@ -258,7 +267,7 @@ const HomeBody = () => {
         {modalToggle && <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[60]" />}
         {togglePopUp && <div className="fixed top-28 left-1/2 transform -translate-x-1/2 z-[70] animate-bounce"><Popup text="Room created successfully!" color="bg-emerald-600" /></div>}
         
-        {/* Spinner Modal (Triggered by Anniversary Card) */}
+        {/* Spinner Modal */}
         {showOffer && <SpinWheelModal onClose={() => setShowOffer(false)} />}
 
         {/* Privacy Modal */}

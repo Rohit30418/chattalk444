@@ -67,7 +67,7 @@ const RoomMain = ({ uId }) => {
   const chatConnectionsRef = useRef({});
   const { rooms } = getRoomData() || [];
   const joinroom = new Audio(joinRoom);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   useEffect(() => {
     if (uId && id) {
@@ -485,8 +485,8 @@ const RoomMain = ({ uId }) => {
   if (isPageLoading) {
     return (
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#0f172a] text-white">
-         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-500"></div>
-         <h2 className="mt-6 text-xl font-medium animate-pulse text-indigo-200">Entering Studio...</h2>
+         <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-4 border-b-4 border-indigo-500"></div>
+         <h2 className="mt-4 sm:mt-6 text-lg sm:text-xl md:text-2xl font-medium animate-pulse text-indigo-200">Entering Studio...</h2>
       </div>
     );
   }
@@ -496,30 +496,30 @@ const RoomMain = ({ uId }) => {
     <div className="room-container overflow-hidden bg-[#0f172a] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 to-[#0f172a] h-screen w-screen relative transition-colors duration-300 text-white font-sans">
 
       {/* 1. Header Bar (Floating Glass) */}
-      <nav className="absolute top-0 left-0 right-0 h-20 flex items-center justify-between px-6 z-50 pointer-events-none">
+      <nav className="absolute top-0 left-0 right-0 h-16 sm:h-20 flex items-center justify-between px-3 sm:px-6 z-50 pointer-events-none">
         
         {/* Left: Room Title */}
-        <div className="pointer-events-auto flex items-center gap-4 bg-white/5 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-white/10 shadow-lg hover:bg-white/10 transition-all cursor-default">
+        <div className="pointer-events-auto flex items-center gap-2 sm:gap-4 bg-white/5 backdrop-blur-xl px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl sm:rounded-2xl border border-white/10 shadow-lg hover:bg-white/10 transition-all cursor-default">
           <div className="flex flex-col">
-            <h1 className="text-sm font-bold text-gray-100 max-w-[200px] truncate leading-tight">
+            <h1 className="text-xs sm:text-sm md:text-base font-bold text-gray-100 max-w-[120px] sm:max-w-[200px] truncate leading-tight">
               {currentRoomData?.Title || "Meeting Room"}
             </h1>
-            <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">ID: {id?.substring(0,6)}...</span>
+            <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 font-medium tracking-wide uppercase">ID: {id?.substring(0,6)}...</span>
           </div>
           
-          <div className="h-6 w-px bg-white/10 mx-1"></div>
+          <div className="h-5 sm:h-6 w-px bg-white/10 mx-0.5 sm:mx-1"></div>
           
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]"></span>
             </span>
-            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Live</span>
+            <span className="text-[10px] sm:text-xs font-bold text-red-400 uppercase tracking-widest">Live</span>
           </div>
         </div>
 
         {/* Right: Actions */}
-        <div className="pointer-events-auto flex items-center gap-3">
+        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => {
               navigator.clipboard.writeText(window.location.href);
@@ -534,19 +534,19 @@ const RoomMain = ({ uId }) => {
                 color: '#fff'
               });
             }}
-            className="hidden md:flex items-center justify-center w-11 h-11 bg-white/5 backdrop-blur-xl rounded-full border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white hover:scale-105 transition-all shadow-lg"
+            className="flex items-center justify-center w-8 h-8 sm:w-11 sm:h-11 bg-white/5 backdrop-blur-xl rounded-full border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white hover:scale-105 transition-all shadow-lg"
             title="Copy Invite Link"
           >
-            <i className="fa-solid fa-link text-sm"></i>
+            <i className="fa-solid fa-link text-[10px] sm:text-sm"></i>
           </button>
 
-          <div className="hidden md:flex items-center gap-3 bg-white/5 backdrop-blur-xl pl-1.5 pr-4 py-1.5 rounded-full border border-white/10 shadow-lg">
+          <div className="hidden sm:flex items-center gap-2 sm:gap-3 bg-white/5 backdrop-blur-xl pl-1.5 pr-3 sm:pr-4 py-1 sm:py-1.5 rounded-full border border-white/10 shadow-lg">
             <img
               src={currUserData?.photoURL || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
               alt="User"
-              className="w-8 h-8 rounded-full object-cover border-2 border-indigo-500/50"
+              className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-indigo-500/50"
             />
-            <span className="text-sm font-medium text-gray-200 truncate max-w-[100px]">
+            <span className="text-xs sm:text-sm font-medium text-gray-200 truncate max-w-[80px] sm:max-w-[100px]">
               {currUserData?.displayName || "You"}
             </span>
           </div>
@@ -554,24 +554,24 @@ const RoomMain = ({ uId }) => {
       </nav>
 
       {/* 2. Main Content Area */}
-      <div className="w-full h-full pt-20 pb-24 px-4 md:px-6 flex justify-center">
-        <div className="flex w-full h-full gap-4 max-w-[1920px]">
+      <div className="w-full h-full pt-16 sm:pt-20 pb-20 sm:pb-24 px-2 sm:px-4 md:px-6 flex justify-center">
+        <div className="flex w-full h-full gap-2 sm:gap-4 max-w-[1920px]">
            
            {/* VIDEO GRID */}
            <div ref={videoContainerRef} 
-                className={`
-                  videoGrid w-full relative transition-all duration-500 ease-in-out
-                  ${isChatToggleOpen ? "md:w-9/12" : "md:w-full"}
-                  ${remotePeerIds.length === 0 ? "flex justify-center items-center" : "grid gap-4 auto-rows-fr"}
-                  ${remotePeerIds.length === 1 ? "grid-cols-1 md:grid-cols-2" : ""}
-                  ${remotePeerIds.length > 1 ? "grid-cols-2 lg:grid-cols-3" : ""}
-                `}
+               className={`
+                 videoGrid w-full relative transition-all duration-500 ease-in-out
+                 ${isChatToggleOpen ? "md:w-9/12" : "md:w-full"}
+                 ${remotePeerIds.length === 0 ? "flex justify-center items-center" : "grid gap-2 sm:gap-4 auto-rows-fr"}
+                 ${remotePeerIds.length === 1 ? "grid-cols-1 md:grid-cols-2" : ""}
+                 ${remotePeerIds.length > 1 ? "grid-cols-2 lg:grid-cols-3" : ""}
+               `}
             >
               
               {/* --- LOCAL USER CARD --- */}
               <div className={`
-                 relative rounded-3xl overflow-hidden shadow-2xl bg-slate-800 ring-1 ring-white/10 group transition-all duration-300
-                 ${remotePeerIds.length === 2 && !isChatToggleOpen ? "absolute top-4 left-4 w-48 h-32 md:w-64 md:h-40 z-30 shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/20" : "w-full h-full min-h-[250px]"}
+                 relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-slate-800 ring-1 ring-white/10 group transition-all duration-300
+                 ${remotePeerIds.length === 2 && !isChatToggleOpen ? "absolute top-2 left-2 sm:top-4 sm:left-4 w-32 h-24 sm:w-48 sm:h-32 md:w-64 md:h-40 z-30 shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/20" : "w-full h-full min-h-[200px] sm:min-h-[250px]"}
               `}>
                 <video 
                   ref={localVideoRef} 
@@ -584,23 +584,23 @@ const RoomMain = ({ uId }) => {
                 {/* Local Camera Off State */}
                 <div className={`absolute inset-0 bg-[#1e293b] flex flex-col items-center justify-center transition-all duration-300 ${isVideoEnabled ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
                    <div className="relative">
-                      <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
+                      <div className="absolute inset-0 bg-indigo-500/20 blur-lg sm:blur-xl rounded-full"></div>
                       <img 
                         src={currUserData?.photoURL || "https://th.bing.com/th?id=OIP.VWwq2xtthMXiOFa4IuqAwwHaHa&w=250&h=250&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2"} 
                         alt="" 
-                        className="w-24 h-24 rounded-full border-4 border-[#334155] relative z-10 shadow-2xl" 
+                        className="w-16 h-16 sm:w-24 sm:h-24 rounded-full border-2 sm:border-4 border-[#334155] relative z-10 shadow-2xl" 
                       />
                    </div>
-                   <p className="mt-4 text-slate-400 font-medium">Camera is off</p>
+                   <p className="mt-2 sm:mt-4 text-xs sm:text-sm md:text-base text-slate-400 font-medium">Camera off</p>
                 </div>
 
                 {/* Local Overlays (Name & Status) */}
-                <div className="absolute bottom-4 left-4 flex items-center gap-2 z-20">
-                   <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/5">
-                      <span className="text-white text-xs font-semibold tracking-wide">You</span>
+                <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 flex items-center gap-1.5 sm:gap-2 z-20">
+                   <div className="bg-black/40 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-2 border border-white/5">
+                      <span className="text-white text-[10px] sm:text-xs md:text-sm font-semibold tracking-wide">You</span>
                    </div>
-                   <div className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md border border-white/5 ${isAudioEnabled ? "bg-black/40 text-green-400" : "bg-red-500/90 text-white"}`}>
-                      <i className={`fas ${isAudioEnabled ? "fa-microphone" : "fa-microphone-slash"} text-xs`}></i>
+                   <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center backdrop-blur-md border border-white/5 ${isAudioEnabled ? "bg-black/40 text-green-400" : "bg-red-500/90 text-white"}`}>
+                      <i className={`fas ${isAudioEnabled ? "fa-microphone" : "fa-microphone-slash"} text-[10px] sm:text-xs md:text-sm`}></i>
                    </div>
                 </div>
               </div>
@@ -617,16 +617,16 @@ const RoomMain = ({ uId }) => {
                 return (
                   <div
                     key={peerId}
-                    className={`relative rounded-3xl overflow-hidden bg-slate-800 transition-all duration-300 group
+                    className={`relative rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-800 transition-all duration-300 group
                       ${isSpeaking 
-                        ? "ring-2 ring-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)]" 
+                        ? "ring-2 ring-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.3)] sm:shadow-[0_0_30px_rgba(99,102,241,0.3)]" 
                         : "ring-1 ring-white/10 hover:ring-white/30"}
                     `}
                   >
                     {/* Reaction Overlay */}
                     <div className='absolute inset-0 z-40 flex items-center justify-center pointer-events-none'>
                       {reactions[peerId]?.map((r) => (
-                        <div key={r.id} className="animate-bounce-in">
+                        <div key={r.id} className="animate-bounce-in scale-75 sm:scale-100">
                            <LottieEmoji codepoint={r.emoji} width="120px" height="120px" />
                         </div>
                       ))}
@@ -655,34 +655,33 @@ const RoomMain = ({ uId }) => {
                         <img 
                            src={photo} 
                            alt={remotePeer?.name} 
-                           className="w-24 h-24 object-cover rounded-full border-4 border-[#334155] relative z-20 shadow-2xl" 
+                           className="w-16 h-16 sm:w-24 sm:h-24 object-cover rounded-full border-2 sm:border-4 border-[#334155] relative z-20 shadow-2xl" 
                         />
                       </div>
-                      <p className="mt-4 text-slate-400 font-medium text-sm animate-pulse">{isSpeaking ? "Speaking..." : ""}</p>
+                      <p className="mt-2 sm:mt-4 text-slate-400 font-medium text-xs sm:text-sm animate-pulse">{isSpeaking ? "Speaking..." : ""}</p>
                     </div>
 
-                    {/* Settings Dropdown (Hidden by default, simple toggle for now) */}
-                    <div className="absolute top-4 right-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Settings Dropdown */}
+                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => setIsSettingOn(!isSettingOn)}
-                          className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 flex items-center justify-center"
+                          className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 flex items-center justify-center"
                         >
-                          <i className="fa-solid fa-ellipsis-vertical text-xs"></i>
+                          <i className="fa-solid fa-ellipsis-vertical text-[10px] sm:text-xs"></i>
                         </button>
-                         {/* Keeping logic simple as per request - dropdown existing logic */}
-                        <div className={` ${isSettingOn ? "flex" : "hidden"} absolute right-0 top-10 flex-col bg-slate-800 border border-white/10 rounded-xl w-32 shadow-xl overflow-hidden py-1`}>
-                          <Link to={`/MyProfile/${remotePeer?.uid}`} className="text-xs text-gray-300 hover:bg-white/10 px-3 py-2 block">View Profile</Link>
-                          <button className="text-xs text-left text-gray-300 hover:bg-white/10 px-3 py-2 w-full">Mute User</button>
+                        <div className={` ${isSettingOn ? "flex" : "hidden"} absolute right-0 top-8 sm:top-10 flex-col bg-slate-800 border border-white/10 rounded-lg sm:rounded-xl w-28 sm:w-32 shadow-xl overflow-hidden py-1`}>
+                          <Link to={`/MyProfile/${remotePeer?.uid}`} className="text-[10px] sm:text-xs md:text-sm text-gray-300 hover:bg-white/10 px-3 py-2 block">View Profile</Link>
+                          <button className="text-[10px] sm:text-xs md:text-sm text-left text-gray-300 hover:bg-white/10 px-3 py-2 w-full">Mute User</button>
                         </div>
                     </div>
 
                     {/* Remote Info Overlays */}
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-20">
-                      <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/5">
-                        <span className="text-white text-xs font-semibold tracking-wide truncate max-w-[120px]">{remotePeer?.name || "User"}</span>
+                    <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between z-20">
+                      <div className="bg-black/40 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-2 border border-white/5">
+                        <span className="text-white text-[10px] sm:text-xs md:text-sm font-semibold tracking-wide truncate max-w-[80px] sm:max-w-[120px]">{remotePeer?.name || "User"}</span>
                       </div>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md border border-white/5 ${isAudioEnabledRemote ? "bg-black/40 text-white" : "bg-red-500/90 text-white"}`}>
-                        <i className={`fas ${isAudioEnabledRemote ? "fa-microphone" : "fa-microphone-slash"} text-xs`}></i>
+                      <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center backdrop-blur-md border border-white/5 ${isAudioEnabledRemote ? "bg-black/40 text-white" : "bg-red-500/90 text-white"}`}>
+                        <i className={`fas ${isAudioEnabledRemote ? "fa-microphone" : "fa-microphone-slash"} text-[10px] sm:text-xs md:text-sm`}></i>
                       </div>
                     </div>
 
@@ -693,8 +692,8 @@ const RoomMain = ({ uId }) => {
 
            {/* CHAT SIDEBAR (Sliding Drawer) */}
            <div className={`
-              fixed inset-y-0 right-0 z-[60] w-full md:w-[380px] bg-[#0f172a] border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-in-out
-              ${isChatToggleOpen ? 'translate-x-0' : 'translate-x-full'}
+             fixed inset-y-0 right-0 z-[60] w-full md:w-[380px] bg-[#0f172a] border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-in-out
+             ${isChatToggleOpen ? 'translate-x-0' : 'translate-x-full'}
            `}>
              {isChatToggleOpen && <Chat uId={uId} />}
            </div>
@@ -702,15 +701,15 @@ const RoomMain = ({ uId }) => {
         </div>
 
         {/* 3. Bottom Control Dock */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-6 py-3 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl hover:scale-105 transition-transform duration-300">
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-4 px-4 py-2 sm:px-6 sm:py-3 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl hover:scale-105 transition-transform duration-300">
            
            {/* Audio Toggle */}
            <button 
              onClick={toggleAudio}
-             className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all shadow-lg
+             className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-base sm:text-lg md:text-xl transition-all shadow-lg
                ${isAudioEnabled 
                  ? "bg-slate-700 text-white hover:bg-slate-600 ring-1 ring-white/10" 
-                 : "bg-red-500 text-white hover:bg-red-600 ring-4 ring-red-500/20"}
+                 : "bg-red-500 text-white hover:bg-red-600 ring-2 sm:ring-4 ring-red-500/20"}
              `}
              title={isAudioEnabled ? "Mute" : "Unmute"}
            >
@@ -720,10 +719,10 @@ const RoomMain = ({ uId }) => {
            {/* Video Toggle */}
            <button 
              onClick={toggleVideo}
-             className={`w-12 h-12 rounded-full flex items-center justify-center text-lg transition-all shadow-lg
+             className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-base sm:text-lg md:text-xl transition-all shadow-lg
                ${isVideoEnabled 
                  ? "bg-slate-700 text-white hover:bg-slate-600 ring-1 ring-white/10" 
-                 : "bg-red-500 text-white hover:bg-red-600 ring-4 ring-red-500/20"}
+                 : "bg-red-500 text-white hover:bg-red-600 ring-2 sm:ring-4 ring-red-500/20"}
              `}
              title={isVideoEnabled ? "Turn Camera Off" : "Turn Camera On"}
            >
@@ -737,24 +736,24 @@ const RoomMain = ({ uId }) => {
               await useToggleSidebarFirebase(id, uId, true);
               await deleteUnseenMessages(uId);
              }} 
-             className="relative w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-500 transition-all shadow-lg ring-4 ring-indigo-500/20"
+             className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-500 transition-all shadow-lg ring-2 sm:ring-4 ring-indigo-500/20"
              title="Open Chat"
            >
              {msgcont > 0 && (
-                <span className='absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold text-white rounded-full flex justify-center items-center shadow-sm border border-[#0f172a]'>
+                <span className='absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-[9px] sm:text-[10px] md:text-xs font-bold text-white rounded-full flex justify-center items-center shadow-sm border border-[#0f172a]'>
                   {msgcont}
                 </span>
              )}
-             <i className="fas fa-comment-dots"></i>
+             <i className="fas fa-comment-dots text-sm sm:text-base md:text-lg"></i>
            </button>
 
            {/* Hangup Button */}
            <button 
              onClick={showModal} 
-             className="w-14 h-12 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-all shadow-lg ring-4 ring-red-500/20 ml-2"
+             className="w-12 h-10 sm:w-14 sm:h-12 rounded-3xl sm:rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-all shadow-lg ring-2 sm:ring-4 ring-red-500/20 sm:ml-2"
              title="Leave Call"
            >
-             <i className="fas fa-phone-slash rotate-90"></i>
+             <i className="fas fa-phone-slash rotate-90 text-sm sm:text-base md:text-lg"></i>
            </button>
         </div>
 

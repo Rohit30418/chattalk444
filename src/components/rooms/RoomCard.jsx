@@ -97,7 +97,6 @@ const RoomCard = ({ roomdata }) => {
              )}
          </div>
       </div>
-
     </div>
   );
 };
@@ -105,8 +104,24 @@ const RoomCard = ({ roomdata }) => {
 // --- Helper Functions ---
 
 const getFlagCode = (lang) => {
-    const map = { "English": "US", "Hindi": "IN", "Spanish": "ES", "Japanese": "JP", "French": "FR", "German": "DE", "Portuguese": "PT", "Urdu": "PK" };
-    return map[lang] || "US";
+    if (!lang) return "US"; // Safety check
+
+    // Normalize the input string: remove extra spaces and make it lowercase
+    const normalizedLang = lang.trim().toLowerCase();
+
+    // Map uses lowercase keys to match the normalized input
+    const map = { 
+        "english": "US", 
+        "hindi": "IN", 
+        "spanish": "ES", 
+        "japanese": "JP", 
+        "french": "FR", 
+        "german": "DE", 
+        "portuguese": "PT", 
+        "urdu": "PK" 
+    };
+
+    return map[normalizedLang] || "US";
 };
 
 const getLevelStyle = (level) => {

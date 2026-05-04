@@ -92,7 +92,7 @@ const Footer = () => {
           <div className="flex items-center gap-1 bg-gray-50 dark:bg-slate-900 px-4 py-2 rounded-full border border-gray-200 dark:border-slate-800 shadow-sm">
             <span>Designed & Developed by</span>
             <a 
-              href="https://github.com/rohitpant" // Replace with your actual portfolio/github link
+              href="https://rohitpant.in/" // Replace with your actual portfolio/github link
               target="_blank" 
               rel="noopener noreferrer"
               className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"

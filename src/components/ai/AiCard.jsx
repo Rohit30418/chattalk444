@@ -14,7 +14,7 @@ const AiCard = ({ pageName, title, description }) => {
       title: 'Authentication Required',
       text: 'Enter access code to chat with AI',
       input: 'password',
-      inputPlaceholder: 'Enter PIN (1178)',
+      inputPlaceholder: 'Enter PIN',
       showCancelButton: true,
       confirmButtonText: 'Unlock',
       confirmButtonColor: 'var(--color-primary, #4f46e5)',

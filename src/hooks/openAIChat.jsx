@@ -1,5 +1,5 @@
-const openAIChat = async (prompt, historyText = "") => {
-  // 1. Default Persona
+const openAIChat = async (prompt, historyText = "", customSystemPrompt = null) => {
+  // 1. Default Persona (Used for Chat)
   const defaultInstruction = `
     You are the savage best friend in the group chat.
     - Personality: You keep it 100% real. Chill, witty, slightly unhinged.
@@ -13,6 +13,11 @@ const openAIChat = async (prompt, historyText = "") => {
     Current User Prompt: ${prompt}
   `;
 
+  // 2. Decide which instruction to use (Moderation vs Chat)
+  const instructionToUse = customSystemPrompt 
+      ? `${customSystemPrompt}\n\nCurrent User Prompt: ${prompt}` 
+      : defaultInstruction;
+
   try {
     if (!prompt?.trim()) return null;
 
@@ -20,10 +25,10 @@ const openAIChat = async (prompt, historyText = "") => {
       throw new Error("AI client not available");
     }
 
-    const aiRes = await window.puter.ai.chat(defaultInstruction, { 
-      model: "gpt-4o-mini", // Switched to GPT-4o-mini for better reasoning/memory
-      temperature: 0.8,
-      max_tokens: 200, 
+    const aiRes = await window.puter.ai.chat(instructionToUse, { 
+      model: "gpt-4o-mini", 
+      temperature: customSystemPrompt ? 0.1 : 0.8, // Lower temperature for moderation (needs strict "SAFE"/"UNSAFE")
+      max_tokens: customSystemPrompt ? 10 : 200,   // Moderation only needs 1-2 words
     });
 
     return aiRes?.message?.content || aiRes?.message || null;
