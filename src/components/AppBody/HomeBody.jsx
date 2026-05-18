@@ -46,7 +46,7 @@ const HomeBody = () => {
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [showOffer, setShowOffer] = useState(false); 
 
-  // 🔥 ADDED: Reset to page 1 whenever filters change
+
   useEffect(() => {
     setPage(1);
   }, [searchText, selectedLanguage]);
@@ -82,7 +82,7 @@ const HomeBody = () => {
     return [...realData, ...DUMMY_ROOMS];
   }, [rooms]);
 
-  // 🔥 UPDATED: Normalized language string to prevent duplicates and casing issues
+  //  Normalized language string to prevent duplicates and casing issues
   const languageList = useMemo(() => {
     if (!allRooms.length) return [];
     const count = {};

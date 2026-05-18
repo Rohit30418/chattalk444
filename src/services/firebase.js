@@ -2,17 +2,16 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-
-// Your Firebase configuration
+// Your secure Firebase configuration using Vite Environment Variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCouMqbYG4VLwFEj6sFfxIlbE8GXQz1EUM",
-  authDomain: "bro-talk-ac21b.firebaseapp.com",
-  databaseURL: "https://bro-talk-ac21b-default-rtdb.firebaseio.com",
-  projectId: "bro-talk-ac21b",
-  storageBucket: "bro-talk-ac21b.appspot.com",
-  messagingSenderId: "347740247465",
-  appId: "1:347740247465:web:fd008e04a3b5791a37e0b8",
-  measurementId: "G-XBHRRQJ9GR"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
