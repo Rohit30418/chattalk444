@@ -1,39 +1,30 @@
-import { doc, setDoc, collection, updateDoc, increment, Timestamp } from "firebase/firestore";
-import { useSelector } from "react-redux";
-import { db } from "../services/firebase";
+import axios from 'axios';
+import { useAuth } from '../components/auth/AppWrapper';
 
 const useAddMembers = () => {
-  const userInfo = useSelector((state) => state.userData);
+  const { user: userInfo } = useAuth();
 
   const addMember = async (roomID) => {
+    if (!userInfo?.uid) {
+      console.warn("Cannot join room: No authenticated user found.");
+      return;
+    }
+
     try {
-      const time = Date.now();
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-      // 1) Add participant inside subcollection
-      const roomRef = collection(db, "rooms", roomID, "participants");
-      const userDocRef = doc(roomRef, userInfo.uid);
-
-      await setDoc(userDocRef, {
+      // Hit the Express backend to update the MongoDB document
+      await axios.post(`${backendUrl}/api/rooms/${roomID}/join`, {
+        uid: userInfo.uid,
         name: userInfo.displayName,
         photo: userInfo.photoURL,
-        uid: userInfo.uid,
-        isChatWindowOpen: false,
-        timestampField: time,
         isVideoEnabled: false,
         isAudioEnabled: false,
       });
 
-      // 2) Update room main fields
-      const mainRoomRef = doc(db, "rooms", roomID);
-
-      await updateDoc(mainRoomRef, {
-        participantsCount: increment(1), // increase by 1
-        expiresAt: Timestamp.fromDate(new Date(Date.now() + 10 * 60 * 1000)), // reset timer
-      });
-
-      console.log("User added + room updated");
+      console.log("✅ User joined MongoDB room successfully!");
     } catch (error) {
-      console.error("Error adding member:", error);
+      console.error("❌ Error adding member to MongoDB:", error.response?.data || error.message);
     }
   };
 

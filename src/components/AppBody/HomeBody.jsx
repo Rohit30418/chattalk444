@@ -12,6 +12,7 @@ import FeaturedEvents from './FeaturedEvents';
 import LiveActivityFeed from './LiveActivityFeed'; 
 import AnniversaryCard from './AnniversaryCard';
 import SpinWheelModal from './SpinWheelModal';
+import { useAuth } from '../auth/AppWrapper';
 
 // --- DUMMY DATA ---
 const FAKE_NAMES = ["Sarah", "Mike", "Priya", "Ali", "John", "Emma", "Ravi"];
@@ -32,10 +33,12 @@ const HomeBody = () => {
   const dispatch = useDispatch();
 
   // Redux Selectors
+ // Redux Selectors for UI modals
   const modalToggle = useSelector((state) => state.toggleModal);
   const togglePopUp = useSelector((state) => state.togglePopup);
-  const loginStatus = useSelector((state) => state.loginStatus);
-
+  
+  const { user } = useAuth();
+  const loginStatus = !!user; // True if user exists, false if null
   // Custom Hook
   const { rooms, loading, error } = getRoomData();
 

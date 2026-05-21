@@ -5,25 +5,15 @@ import {
   setPersistence,
   browserLocalPersistence
 } from "firebase/auth";
-
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  serverTimestamp
-} from "firebase/firestore";
-
 import { firebaseApp } from "../services/firebase";
 import { useDispatch } from "react-redux";
 import { userInfo, loginToggle } from "../redux/action";
-
-// Toast
 import { toast } from "react-toastify";
 
 const useGoogleLogin = () => {
   const auth = getAuth(firebaseApp);
-  const db = getFirestore(firebaseApp); // Firestore
   const dispatch = useDispatch();
+  const backendUrl = import.meta.env?.VITE_BACKEND_URL || "http://localhost:5000";
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -32,32 +22,31 @@ const useGoogleLogin = () => {
       // Persist login across sessions
       await setPersistence(auth, browserLocalPersistence);
 
-      // Sign in with Google
+      // Sign in with Google Popup
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Dispatch user info to Redux
+      // Dispatch user info to Redux instantly for snappy UI
       dispatch(userInfo(user));
       dispatch(loginToggle(true));
 
-      // Save/update user info in Firestore
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(
-        userRef,
-        {
+      // 🔥 MERN UPGRADE: Save to your custom MongoDB Database instead of Firestore
+      const response = await fetch(`${backendUrl}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
           displayName: user.displayName,
           email: user.email,
           photoURL: user.photoURL,
-          userid: user.uid,
-          onlineStatus: true,
-          lastLogin: serverTimestamp()
-        },
-        { merge: true } 
-      );
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to sync with MongoDB");
 
       toast.success("Logged in successfully!");
     } catch (err) {
-      toast.error(`Login failed: ${err.code} - ${err.message}`);
+      toast.error(`Login failed: ${err.message}`);
     }
   };
 

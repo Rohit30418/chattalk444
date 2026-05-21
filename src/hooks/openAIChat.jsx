@@ -1,19 +1,10 @@
 const openAIChat = async (prompt, historyText = "", customSystemPrompt = null) => {
-  // 1. Default Persona (Used for Chat)
   const defaultInstruction = `
-    You are the savage best friend in the group chat.
-    - Personality: You keep it 100% real. Chill, witty, slightly unhinged.
-    - Context: You are replying to a user in a group chat.
-    - History: Here is the recent conversation for context:
-    ${historyText}
-    
-    - Important: Reply ONLY to the "Current User Prompt". Do not repeat the history.
-    - Behavior: Keep it short (max 2 sentences). Use emojis like 💀, 😭.
-    
-    Current User Prompt: ${prompt}
+    You are the savage best friend in the group chat. Keep it 100% real.
+    Context: ${historyText}
+    Current Prompt: ${prompt}
   `;
 
-  // 2. Decide which instruction to use (Moderation vs Chat)
   const instructionToUse = customSystemPrompt 
       ? `${customSystemPrompt}\n\nCurrent User Prompt: ${prompt}` 
       : defaultInstruction;
@@ -21,21 +12,35 @@ const openAIChat = async (prompt, historyText = "", customSystemPrompt = null) =
   try {
     if (!prompt?.trim()) return null;
 
-    if (!window.puter?.ai?.chat) {
-      throw new Error("AI client not available");
+    // 1. Instantly bypass if Puter is completely blocked or missing
+    if (!window.puter || !window.puter.ai || !window.puter.ai.chat) {
+      console.warn("Puter AI missing. Bypassing check.");
+      return null; 
     }
 
-    const aiRes = await window.puter.ai.chat(instructionToUse, { 
-      model: "gpt-4o-mini", 
-      temperature: customSystemPrompt ? 0.1 : 0.8, // Lower temperature for moderation (needs strict "SAFE"/"UNSAFE")
-      max_tokens: customSystemPrompt ? 10 : 200,   // Moderation only needs 1-2 words
-    });
+    // 2. The 3-Second Timeout Bomb
+    const timeoutPromise = new Promise((resolve) => 
+      setTimeout(() => {
+        console.warn("AI Request Timed Out (3s). Bypassing check.");
+        resolve(null); // Resolve to null to skip cleanly
+      }, 3000)
+    );
 
-    return aiRes?.message?.content || aiRes?.message || null;
+    // 3. The actual AI Request
+    const aiPromise = window.puter.ai.chat(instructionToUse, { 
+      model: "gpt-4o-mini", 
+      temperature: customSystemPrompt ? 0.1 : 0.8,
+      max_tokens: customSystemPrompt ? 10 : 200,   
+    }).then(res => res?.message?.content || res?.message || null);
+
+    // 4. RACE! Whichever finishes first wins.
+    const result = await Promise.race([aiPromise, timeoutPromise]);
+    
+    return result;
 
   } catch (err) {
-    console.error("AI chat error:", err);
-    return null;
+    console.warn("AI check failed, bypassing:", err.message);
+    return null; // Return null so the room creation doesn't crash
   }
 };
 

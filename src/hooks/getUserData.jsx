@@ -1,20 +1,23 @@
-import { db } from '../services/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import axios from 'axios';
 
 const getUserData = async (uid) => {
+  if (!uid) return null;
+
   try {
-    const userDocRef = doc(db, 'users', uid); // Reference to the user document in Firestore
-    const userDocSnapshot = await getDoc(userDocRef); // Get the user document snapshot
-    if (userDocSnapshot.exists()) {
-      // If the user document exists, return the user data
-      return userDocSnapshot.data();
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    
+    // Hit the Express backend to fetch the user profile from MongoDB
+    const response = await axios.get(`${backendUrl}/api/users/${uid}`);
+    
+    if (response.data) {
+      return response.data;
     } else {
-      console.log('User document not found');
-      return null; // Return null if user document doesn't exist
+      console.log('User document not found in MongoDB');
+      return null;
     }
   } catch (error) {
-    console.error("Error fetching user data from Firestore:", error);
-    return null; // Return null if an error occurs
+    console.error("Error fetching user data from MongoDB:", error.response?.data || error.message);
+    return null; // Return null if an error occurs so the UI doesn't crash
   }
 };
 

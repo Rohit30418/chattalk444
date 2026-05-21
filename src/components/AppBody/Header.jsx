@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { getAuth } from 'firebase/auth';
-import { firebaseApp } from '../../services/firebase';
+import { useDispatch } from 'react-redux';
 import { loginToggle } from '../../redux/action';
-import { Link, NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import Loading from '../common/Loading';
 import Swal from "sweetalert2";
 import SpinWheelModal from './SpinWheelModal';
+import { useAuth } from '../auth/AppWrapper';
 
 const Header = () => {
   const [showDetails, setShowDetails] = useState(false);
@@ -15,17 +14,17 @@ const Header = () => {
   const [showOffer, setShowOffer] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
   const [timeLeft, setTimeLeft] = useState({ h: 2, m: 59, s: 28 });
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Added for mobile responsiveness
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState(
     localStorage.getItem("theme") ? localStorage.getItem("theme") : "light"
   );
 
+  // 🔥 MERN Upgrade: Use context instead of Redux/Firebase directly
   const dispatch = useDispatch();
-  const userdata = useSelector((state) => state.userData);
-  const loginStatus = useSelector((state) => state.loginStatus);
-  const auth = getAuth(firebaseApp);
+  const { user: userdata, logout } = useAuth(); 
+  const loginStatus = !!userdata; // True if userdata exists
   const signInWithGoogle = useGoogleLogin();
 
   // --- 1. AUTO-SHOW SPINNER LOGIC (Every 2 Hours) ---
@@ -110,12 +109,12 @@ const Header = () => {
     });
   };
 
+  // 🔥 Uses your new AuthContext logout
   function signOut() {
-    auth.signOut().then(() => {
-      dispatch(loginToggle(false));
-      setShowDetails(false);
-      setIsMobileMenuOpen(false);
-    });
+    logout();
+    dispatch(loginToggle(false)); // Keeps Redux synced just in case
+    setShowDetails(false);
+    setIsMobileMenuOpen(false);
   }
 
   // Online Users Sim
@@ -127,12 +126,10 @@ const Header = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Helper for Nav Links (Updated for responsiveness)
   const navLinkClass = "text-sm md:text-base font-medium text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors";
 
   return (
     <>
-      {/* --- UNIFIED FIXED WRAPPER --- */}
       <div className="fixed top-0 left-0 w-full z-50 flex flex-col transition-all duration-300">
         
         {/* Banner */}
@@ -246,7 +243,7 @@ const Header = () => {
               {loginStatus ? (
                 userdata ? (
                   <div className="relative z-50 pl-1 sm:pl-2" onMouseEnter={() => setShowDetails(true)} onMouseLeave={() => setShowDetails(false)}>
-                    <img src={userdata.photoURL} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white dark:border-[#0B0C15] cursor-pointer object-cover" alt="Profile" referrerPolicy="no-referrer" />
+                    <img src={userdata.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userdata.uid}`} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white dark:border-[#0B0C15] cursor-pointer object-cover bg-white" alt="Profile" referrerPolicy="no-referrer" />
                     <div 
                       className={`absolute right-0 pt-2 w-40 sm:w-48 transform transition-all duration-200 origin-top-right ${showDetails ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 -translate-y-2 pointer-events-none"}`}
                     >

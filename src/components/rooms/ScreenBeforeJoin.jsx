@@ -3,14 +3,19 @@ import { useDispatch } from "react-redux";
 import useAddMembers from "../../hooks/useAddMembers";
 import { useParams } from "react-router";
 import { tooglePrescreenRoom, setMediaPrefs } from "../../redux/action";
+import { toast } from "react-toastify"; // Optional: Good for showing errors
+import { useAuth } from "../auth/AppWrapper";
 
-// ─── Device permission states ─────────────────────────────────────────────────
 const PERM = { IDLE: "idle", REQUESTING: "requesting", GRANTED: "granted", DENIED: "denied", UNAVAILABLE: "unavailable" };
 
-const ScreenBeforeJoin = ({ userData }) => {
+// 🔥 2. Removed userData from props, we will get it from Context now!
+const ScreenBeforeJoin = () => { 
   const { id } = useParams();
   const addMember = useAddMembers();
   const dispatch = useDispatch();
+  
+  // 🔥 3. Grab the persistent user from Context (Survives page refresh!)
+  const { user: userData } = useAuth();
 
   // ── Media State ────────────────────────────────────────────────────────────
   const [isMicOn, setIsMicOn]         = useState(false);
@@ -25,7 +30,7 @@ const ScreenBeforeJoin = ({ userData }) => {
   const [videoDevices, setVideoDevices] = useState([]);
   const [selectedAudio, setSelectedAudio] = useState("");
   const [selectedVideo, setSelectedVideo] = useState("");
-  const [showDeviceMenu, setShowDeviceMenu] = useState(false); // "mic" | "cam" | false
+  const [showDeviceMenu, setShowDeviceMenu] = useState(false); 
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const videoRef          = useRef(null);
@@ -68,14 +73,12 @@ const ScreenBeforeJoin = ({ userData }) => {
       streamRef.current = stream;
 
       if (videoRef.current) videoRef.current.srcObject = stream;
-      // Default both OFF on first load
       stream.getVideoTracks().forEach((t) => { t.enabled = false; });
       stream.getAudioTracks().forEach((t)  => { t.enabled = false; });
 
       setPermState(PERM.GRANTED);
       await enumerateDevices();
 
-      // Audio analyser for level meter
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       const audioCtx = new AudioContext();
       const analyser = audioCtx.createAnalyser();
@@ -111,13 +114,11 @@ const ScreenBeforeJoin = ({ userData }) => {
     }
   }, [stopStream]);
 
-  // Initial stream start
   useEffect(() => {
     startStream();
     return () => stopStream();
   }, []);
 
-  // Re-start when device selection changes
   useEffect(() => {
     if (selectedAudio || selectedVideo) {
       const wasOn = { mic: isMicOn, cam: isCamOn };
@@ -130,7 +131,6 @@ const ScreenBeforeJoin = ({ userData }) => {
     }
   }, [selectedAudio, selectedVideo]);
 
-  // Close device menu on outside click
   useEffect(() => {
     const handleClick = (e) => {
       if (deviceMenuRef.current && !deviceMenuRef.current.contains(e.target)) setShowDeviceMenu(false);
@@ -139,7 +139,6 @@ const ScreenBeforeJoin = ({ userData }) => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // ── Toggles ────────────────────────────────────────────────────────────────
   const toggleCam = () => {
     if (!streamRef.current) return;
     const [track] = streamRef.current.getVideoTracks();
@@ -152,18 +151,33 @@ const ScreenBeforeJoin = ({ userData }) => {
     if (track) { track.enabled = !isMicOn; setIsMicOn(!isMicOn); }
   };
 
-  // ── Join ───────────────────────────────────────────────────────────────────
+  // 🔥 4. THE BULLETPROOF MODAL JOIN LOGIC
   const handleJoin = async () => {
     if (isJoining) return;
+    
+    // 1. Turn on the "Joining..." spinner
     setIsJoining(true);
-    // Stop the prescreen stream — RoomMain will create its own
-    stopStream();
-    dispatch(setMediaPrefs({ audio: isMicOn, video: isCamOn }));
-    addMember(id);
-    dispatch(tooglePrescreenRoom(false));
+    
+    try {
+      // 2. Shut off local pre-screen streams to free up the webcam
+      stopStream();
+      dispatch(setMediaPrefs({ audio: isMicOn, video: isCamOn }));
+      
+      // 3. Wait for MongoDB to successfully add you to the room!
+      await addMember(id);
+      
+      // 4. Close the modal/pre-screen ONLY after MongoDB says OK!
+      dispatch(tooglePrescreenRoom(false));
+      
+    } catch (error) {
+      console.error("Join failed:", error);
+      toast.error("Failed to join room. Please try again.");
+      
+      // 5. If it fails, turn off the spinner so they aren't stuck!
+      setIsJoining(false);
+    }
   };
 
-  // ── Derived UI ─────────────────────────────────────────────────────────────
   const isReady = permState === PERM.GRANTED;
   const bars = [0.4, 0.7, 1, 0.7, 0.4];
 
@@ -210,9 +224,9 @@ const ScreenBeforeJoin = ({ userData }) => {
                   <div className="relative">
                     <div className="absolute inset-0 bg-blue-400/20 dark:bg-blue-500/20 rounded-full blur-xl animate-pulse" />
                     <img
-                      src={userData?.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${userData?.uid || "user"}`}
+                      src={userData?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.uid || "user"}`}
                       alt="You"
-                      className="relative w-20 h-20 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-slate-800 shadow-xl object-cover bg-slate-100 dark:bg-slate-800"
+                      className="relative w-20 h-20 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-slate-800 shadow-xl object-cover bg-white dark:bg-slate-800"
                     />
                   </div>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Camera is off</p>
@@ -247,7 +261,7 @@ const ScreenBeforeJoin = ({ userData }) => {
 
           {/* Controls row */}
           <div className="flex justify-center gap-3 sm:gap-4">
-            {/* Mic toggle with device chooser */}
+            {/* Mic toggle */}
             <div className="relative" ref={deviceMenuRef}>
               <div className="flex rounded-2xl overflow-hidden shadow-sm">
                 <button
@@ -256,18 +270,12 @@ const ScreenBeforeJoin = ({ userData }) => {
                   className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-lg sm:text-xl border-r transition-all duration-200 ${
                     isMicOn
                       ? "bg-slate-800 text-white border-slate-700 dark:bg-white dark:text-slate-900"
-                      : "bg-red-50 text-red-500 border-red-200 hover:bg-red-500 hover:text-white dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-500 dark:hover:text-white"
-                  } disabled:opacity-40 disabled:cursor-not-allowed border-r`}
+                      : "bg-red-50 text-red-500 border-red-200 hover:bg-red-500 hover:text-white dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30"
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   <i className={`fa-solid ${isMicOn ? "fa-microphone" : "fa-microphone-slash"}`} />
                 </button>
-                <button
-                  onClick={() => setShowDeviceMenu(showDeviceMenu === "mic" ? false : "mic")}
-                  disabled={!isReady}
-                  className={`w-6 h-12 sm:h-14 flex items-center justify-center text-[10px] transition-all ${
-                    isMicOn ? "bg-slate-800 text-slate-300 dark:bg-white dark:text-slate-500" : "bg-red-50 text-red-400 dark:bg-red-500/10 dark:text-red-400"
-                  } disabled:opacity-40`}
-                >
+                <button onClick={() => setShowDeviceMenu(showDeviceMenu === "mic" ? false : "mic")} disabled={!isReady} className={`w-6 h-12 sm:h-14 flex items-center justify-center text-[10px] transition-all ${isMicOn ? "bg-slate-800 text-slate-300 dark:bg-white dark:text-slate-500" : "bg-red-50 text-red-400 dark:bg-red-500/10 dark:text-red-400"} disabled:opacity-40`}>
                   <i className="fa-solid fa-chevron-up" />
                 </button>
               </div>
@@ -275,13 +283,7 @@ const ScreenBeforeJoin = ({ userData }) => {
                 <div className="absolute bottom-full mb-2 left-0 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl py-1.5 z-50">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-3 pt-1 pb-1.5">Microphone</p>
                   {audioDevices.map((d) => (
-                    <button
-                      key={d.deviceId}
-                      onClick={() => { setSelectedAudio(d.deviceId); setShowDeviceMenu(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 transition-colors ${
-                        selectedAudio === d.deviceId ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
-                      }`}
-                    >
+                    <button key={d.deviceId} onClick={() => { setSelectedAudio(d.deviceId); setShowDeviceMenu(false); }} className={`w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 transition-colors ${selectedAudio === d.deviceId ? "text-blue-600 bg-blue-50 dark:bg-blue-500/10" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"}`}>
                       <i className={`fa-solid fa-check text-[10px] ${selectedAudio === d.deviceId ? "opacity-100" : "opacity-0"}`} />
                       <span className="truncate">{d.label || `Microphone ${d.deviceId.slice(0, 5)}`}</span>
                     </button>
@@ -290,7 +292,7 @@ const ScreenBeforeJoin = ({ userData }) => {
               )}
             </div>
 
-            {/* Cam toggle with device chooser */}
+            {/* Cam toggle */}
             <div className="relative">
               <div className="flex rounded-2xl overflow-hidden shadow-sm">
                 <button
@@ -299,18 +301,12 @@ const ScreenBeforeJoin = ({ userData }) => {
                   className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-lg sm:text-xl border-r transition-all duration-200 ${
                     isCamOn
                       ? "bg-slate-800 text-white border-slate-700 dark:bg-white dark:text-slate-900"
-                      : "bg-red-50 text-red-500 border-red-200 hover:bg-red-500 hover:text-white dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-500 dark:hover:text-white"
+                      : "bg-red-50 text-red-500 border-red-200 hover:bg-red-500 hover:text-white dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30"
                   } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   <i className={`fa-solid ${isCamOn ? "fa-video" : "fa-video-slash"}`} />
                 </button>
-                <button
-                  onClick={() => setShowDeviceMenu(showDeviceMenu === "cam" ? false : "cam")}
-                  disabled={!isReady}
-                  className={`w-6 h-12 sm:h-14 flex items-center justify-center text-[10px] transition-all ${
-                    isCamOn ? "bg-slate-800 text-slate-300 dark:bg-white dark:text-slate-500" : "bg-red-50 text-red-400 dark:bg-red-500/10 dark:text-red-400"
-                  } disabled:opacity-40`}
-                >
+                <button onClick={() => setShowDeviceMenu(showDeviceMenu === "cam" ? false : "cam")} disabled={!isReady} className={`w-6 h-12 sm:h-14 flex items-center justify-center text-[10px] transition-all ${isCamOn ? "bg-slate-800 text-slate-300 dark:bg-white dark:text-slate-500" : "bg-red-50 text-red-400 dark:bg-red-500/10 dark:text-red-400"} disabled:opacity-40`}>
                   <i className="fa-solid fa-chevron-up" />
                 </button>
               </div>
@@ -318,13 +314,7 @@ const ScreenBeforeJoin = ({ userData }) => {
                 <div className="absolute bottom-full mb-2 left-0 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl py-1.5 z-50">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-3 pt-1 pb-1.5">Camera</p>
                   {videoDevices.map((d) => (
-                    <button
-                      key={d.deviceId}
-                      onClick={() => { setSelectedVideo(d.deviceId); setShowDeviceMenu(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 transition-colors ${
-                        selectedVideo === d.deviceId ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
-                      }`}
-                    >
+                    <button key={d.deviceId} onClick={() => { setSelectedVideo(d.deviceId); setShowDeviceMenu(false); }} className={`w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center gap-2 transition-colors ${selectedVideo === d.deviceId ? "text-blue-600 bg-blue-50 dark:bg-blue-500/10" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"}`}>
                       <i className={`fa-solid fa-check text-[10px] ${selectedVideo === d.deviceId ? "opacity-100" : "opacity-0"}`} />
                       <span className="truncate">{d.label || `Camera ${d.deviceId.slice(0, 5)}`}</span>
                     </button>
@@ -337,8 +327,6 @@ const ScreenBeforeJoin = ({ userData }) => {
 
         {/* ── RIGHT: Info & Join ──────────────────────────────────────────────── */}
         <div className="w-full md:w-[45%] flex flex-col justify-between gap-6 sm:gap-8">
-
-          {/* Heading */}
           <div>
             <span className="inline-block px-3 py-1 sm:px-4 sm:py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/20 dark:text-blue-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">
               Ready to Connect
@@ -358,7 +346,6 @@ const ScreenBeforeJoin = ({ userData }) => {
             </p>
           </div>
 
-          {/* Device status card */}
           <div className="bg-slate-50 dark:bg-black/20 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-white/5">
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Device Status</span>
@@ -379,8 +366,6 @@ const ScreenBeforeJoin = ({ userData }) => {
                 <strong className="text-slate-900 dark:text-white ml-auto">{isCamOn ? "Active" : "Off"}</strong>
               </div>
             </div>
-
-            {/* Permission denied warning */}
             {(permState === PERM.DENIED || permState === PERM.UNAVAILABLE) && (
               <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-xl">
                 <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">{deviceError}</p>
@@ -388,7 +373,6 @@ const ScreenBeforeJoin = ({ userData }) => {
             )}
           </div>
 
-          {/* Join button */}
           <button
             onClick={handleJoin}
             disabled={isJoining}
@@ -398,7 +382,7 @@ const ScreenBeforeJoin = ({ userData }) => {
             {isJoining ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Joining…
+                Joining Server...
               </>
             ) : (
               <>
@@ -407,7 +391,6 @@ const ScreenBeforeJoin = ({ userData }) => {
               </>
             )}
           </button>
-
           <p className="text-center text-[10px] text-slate-400 dark:text-slate-600">
             You can change your settings after joining
           </p>

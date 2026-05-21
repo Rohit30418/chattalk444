@@ -1,15 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Timestamp } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 
 import CustomSelect from './common/CustomSelect'; 
 import { addRoomModalToggle, togglePopup } from '../redux/action';
 import useAddRoom from '../hooks/useAddRoom';
 import openAIChat from '../hooks/openAIChat'; 
+import { useAuth } from './auth/AppWrapper';
 
-// --- 1. Move Static Logic OUTSIDE ---
-// This prevents function recreation on every render
 const getInputClass = (hasError) => `
   w-full bg-gray-50 dark:bg-slate-900 
   border ${hasError ? 'border-red-500' : 'border-gray-200 dark:border-slate-700'} 
@@ -20,7 +18,6 @@ const getInputClass = (hasError) => `
   placeholder-gray-400 dark:placeholder-slate-500
 `;
 
-// Move prompt outside to keep code clean
 const MODERATION_PROMPT = (text) => `
   Task: Content Moderation. Analyze Title: "${text}"
   Rules:
@@ -31,26 +28,17 @@ const MODERATION_PROMPT = (text) => `
 
 const AddRoomForm = ({ data }) => {
   const dispatch = useDispatch();
-  const addRoom = useAddRoom();
+  const addRoom = useAddRoom(); // This hits your MongoDB backend now
   
-  // Selectors
   const modalToggle = useSelector((state) => state.toggleModal);
-  const userdata = useSelector((state) => state.userData);
   
-  // State
+  // Grab user from context
+  const { user: userdata } = useAuth(); 
+  
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState({});
-  
-  // Optimization 2: Removed redundant user data from local state
-  const [roomData, setRoomData] = useState({
-    Title: '',
-    Language: '',
-    Level: '',
-    MaximumPeople: '',
-  });
+  const [roomData, setRoomData] = useState({ Title: '', Language: '', Level: '', MaximumPeople: '' });
 
-  // --- 2. PERFORMANCE: useMemo for Expensive Filter ---
-  // Only recalculate this if 'data' or 'userdata.uid' changes, not on every keystroke.
   const activeRoom = useMemo(() => {
     if (!Array.isArray(data) || !userdata?.uid) return null;
     return data.find((room) => room?.ownerUid === userdata.uid);
@@ -64,12 +52,9 @@ const AddRoomForm = ({ data }) => {
   const inputHandler = (e) => {
     const { name, value } = e.target;
     setRoomData((prev) => ({ ...prev, [name]: value }));
-    // Clear error for this field immediately for better UX
     if (error[name]) setError((prev) => ({ ...prev, [name]: null }));
   };
 
-  // --- 3. PERFORMANCE: useCallback for Child Props ---
-  // Prevents <CustomSelect> from re-rendering unnecessarily
   const languageSelect = useCallback((language) => {
     setRoomData((prev) => ({ ...prev, Language: language }));
     setError((prev) => ({ ...prev, Language: null }));
@@ -86,7 +71,6 @@ const AddRoomForm = ({ data }) => {
     if (!roomData.Level) newErrors.Level = 'Please select a level';
     if (!roomData.Language) newErrors.Language = 'Please select a language';
     
-    // Convert logic moved here to avoid storing numbers as strings constantly
     const maxPeople = Number(roomData.MaximumPeople);
     if (!roomData.MaximumPeople || isNaN(maxPeople) || maxPeople <= 0) {
       newErrors.MaximumPeople = 'Invalid number';
@@ -98,63 +82,53 @@ const AddRoomForm = ({ data }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // 🔥 BULLETPROOF CREATE FUNCTION
   const createRoom = async (e) => {
-    // Prevent default if called from a form submit
     if (e) e.preventDefault(); 
 
-    if (!userdata?.uid) {
-        toast.error("Please sign in first");
-        return;
-    }
-
-    if (activeRoom) {
-      toast.error('You already have an active room.');
-      return;
-    }
-
+    if (!userdata?.uid) return toast.error("Please sign in first");
+    if (activeRoom) return toast.error('You already have an active room.');
     if (!handleValidation()) return;
     
+    // 1. Turn ON spinner
     setIsValidating(true);
     
-    // AI Check
     try {
-      const result = await openAIChat("Check this title", MODERATION_PROMPT(roomData.Title));
+      // 2. Fast AI Check (skips if it takes > 3 seconds)
+      const result = await openAIChat(roomData.Title, "", MODERATION_PROMPT(roomData.Title));
       const cleanResult = result ? result.trim().toUpperCase() : "SAFE";
       
       if (cleanResult.includes("UNSAFE")) {
-        setIsValidating(false);
         setError(prev => ({ ...prev, Title: "Topic rejected: Unsafe or meaningless." }));
-        return;
+        return; // Exits early without creating room
       }
+
+      // 3. Format Payload for MongoDB
+      const finalPayload = {
+        ...roomData,
+        ownerUid: userdata.uid,
+        ownerName: userdata.displayName || "Anonymous",
+        ownerPhoto: userdata.photoURL || "",
+        createdAt: Date.now(), 
+        roomImg: "", 
+      };
+
+      // 4. Save to Database
+      await addRoom(finalPayload);
+      
+      toast.success('Room created successfully!');
+      dispatch(togglePopup(true));
+      dispatch(addRoomModalToggle(false));
+
+      setRoomData({ Title: '', Language: '', Level: '', MaximumPeople: '' });
+
     } catch (err) {
-      console.warn("AI Check skipped due to error", err);
-      // Decide policy: Fail open (allow) or fail closed (block). Currently allowing.
+      console.error("Backend Error:", err);
+      toast.error("Failed to create room on server.");
+    } finally {
+      // 5. GUARANTEE SPINNER TURNS OFF
+      setIsValidating(false);
     }
-    setIsValidating(false);
-
-    // --- 4. DATA MERGE ON SUBMIT ---
-    // Merge global user data HERE, not in useEffect.
-    const finalPayload = {
-      ...roomData,
-      ownerUid: userdata.uid,
-      ownerName: userdata.displayName || "Anonymous",
-      ownerPhoto: userdata.photoURL || "",
-      timestampField: Timestamp.fromDate(new Date()),
-      roomImg: "", // Add logic if you have room images
-    };
-
-    toast.success('Room created successfully!');
-    addRoom(finalPayload);
-    dispatch(togglePopup(true));
-    dispatch(addRoomModalToggle(false));
-
-    // Reset Form
-    setRoomData({
-      Title: '',
-      Language: '',
-      Level: '',
-      MaximumPeople: '',
-    });
   };
 
   return (
@@ -199,7 +173,7 @@ const AddRoomForm = ({ data }) => {
              </div>
           ) : (
             
-            // --- FORM (Wrapped in <form> for accessibility) ---
+            // --- FORM ---
             <form onSubmit={createRoom} className="space-y-5">
               
               {/* Title Input */}
@@ -213,7 +187,7 @@ const AddRoomForm = ({ data }) => {
                     value={roomData.Title}
                     name="Title"
                     placeholder="e.g. English Practice"
-                    className={getInputClass(error.Title)} // Use helper
+                    className={getInputClass(error.Title)} 
                     disabled={isValidating}
                   />
                   {isValidating && (
@@ -277,7 +251,7 @@ const AddRoomForm = ({ data }) => {
                 `}
               >
                 {isValidating ? (
-                    <> <i className="fas fa-shield-alt animate-pulse"></i> Verifying Topic... </>
+                    <> <i className="fas fa-shield-alt animate-pulse"></i> Creating Room... </>
                 ) : (
                     <> <i className="fa-solid fa-plus"></i> Create Room </>
                 )}
