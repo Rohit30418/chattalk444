@@ -1,28 +1,5 @@
 /**
  * Chat.jsx — Production-grade chat component
- *
- * ROOT CAUSE FIXES:
- *
- * 1. CHAT IMAGE NOT VISIBLE TO OTHERS
- *    Root cause: The image was being shown optimistically only on the sender's
- *    side via setMessages. The socket events (image-upload-start/chunk/complete)
- *    were defined but the SERVER was never re-emitting them to other room members.
- *    This fix adds proper sender-side socket emission with chunk progress, and the
- *    receiver-side reassembly. The server must broadcast these events to the room.
- *
- *    Additionally: the previous code called setMessages with a local-only entry
- *    that had `id: uploadId + '_local'` — other clients received the real
- *    `image-upload-complete` and added a SECOND entry. The sender now de-dupes
- *    by uploadId so no double images appear on the sender's side.
- *
- * 2. CHAT INPUT FOCUS BUG
- *    Root cause: The textarea was inside a conditionally rendered parent
- *    (translate-y-full / translate-y-0). When the parent was hidden, React
- *    recycled the DOM node. Using a stable ref callback + double rAF focus
- *    on sidebar open resolves this reliably.
- *
- * 3. MOBILE RESPONSIVE
- *    Full-height flex column layout with proper safe-area inset support.
  */
 
 import React, {
@@ -128,7 +105,6 @@ async function fileToDataUrl(file) {
   });
 }
 
-// base64 from DataURL
 const dataUrlToBase64 = (dataUrl) => dataUrl.split(',')[1];
 
 // ─── ImageModal ───────────────────────────────────────────────────────────────
@@ -205,11 +181,11 @@ class ChatErrorBoundary extends React.Component {
 
 // ─── MessageCard ──────────────────────────────────────────────────────────────
 const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImageClick }) => {
-  const [showMore,        setShowMore]        = useState(false);
-  const [showReactPicker, setShowReactPicker] = useState(false);
-  const reactRef = useRef(null);
-
-  const isOwn  = uId === msgData.userid || uId === msgData.senderId;
+  const [showMore, setShowMore] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  
+  const longPressTimer = useRef(null);
+  const isOwn   = uId === msgData.userid || uId === msgData.senderId;
   const isEmoji = /^\p{Emoji}+$/u.test((msgData?.text || '').trim()) && (msgData.text?.trim().length || 0) <= 4;
 
   const time = useMemo(() => {
@@ -225,26 +201,49 @@ const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImag
     return msgData.text || '';
   }, [isEmoji, msgData.text, showMore]);
 
-  const reactionSummary = useMemo(() => {
-    if (!msgReactions || Object.keys(msgReactions).length === 0) return null;
-    return Object.values(msgReactions).reduce((acc, e) => { acc[e] = (acc[e] || 0) + 1; return acc; }, {});
-  }, [msgReactions]);
+const reactionSummary = useMemo(() => {
+  if (!msgReactions || Object.keys(msgReactions).length === 0) return null;
+  return Object.values(msgReactions).reduce((acc, e) => { 
+    acc[e] = (acc[e] || 0) + 1; 
+    return acc; 
+  }, {});
+}, [msgReactions]);
 
-  useEffect(() => {
-    const h = e => { if (reactRef.current && !reactRef.current.contains(e.target)) setShowReactPicker(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+  // Handle right-click (Desktop)
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+    setShowMenu(true);
   }, []);
 
+  // Handle long-press (Mobile)
+  const handleTouchStart = useCallback(() => {
+    longPressTimer.current = setTimeout(() => {
+      setShowMenu(true);
+      if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
+    }, 400); // 400ms threshold for long press
+  }, []);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
+
+  // Close menu on scroll
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleScroll = () => setShowMenu(false);
+    document.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    return () => document.removeEventListener('scroll', handleScroll, { capture: true });
+  }, [showMenu]);
+
   return (
-    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4 group`}>
-      <div className={`flex items-end gap-2.5 max-w-[85%] md:max-w-[75%] ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`flex items-end gap-2.5 max-w-[85%] md:max-w-[75%] ${isOwn ? 'flex-row-reverse' : 'flex-row'} relative`}>
         {!isOwn && (
           <div className="relative flex-shrink-0 mb-1">
             <img
               referrerPolicy="no-referrer"
               src={msgData.role === 'bot' ? botimg : (msgData?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}
-              className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-sm"
+              className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-sm select-none pointer-events-none"
               alt="Avatar"
             />
             {msgData.role === 'bot' && (
@@ -255,7 +254,14 @@ const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImag
           </div>
         )}
 
-        <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+        {/* Message Container listening for interactions */}
+        <div 
+          className={`flex flex-col relative ${isOwn ? 'items-end' : 'items-start'} select-none sm:select-auto`}
+          onContextMenu={handleContextMenu}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
+        >
           {!isOwn && !isEmoji && (
             <span className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 ml-1 font-medium">
               {msgData.role === 'bot' ? 'AI Assistant' : (msgData.displayName || msgData.senderName || 'User')}
@@ -280,7 +286,7 @@ const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImag
 
           {/* Text message */}
           {msgData.type !== 'image' && (
-            <div className={`relative group/bubble ${
+            <div className={`relative ${
               isEmoji ? 'bg-transparent' : isOwn
                 ? 'bg-gradient-to-br from-blue-600 to-blue-500 text-white rounded-[22px] rounded-br-[6px] shadow-[0_2px_10px_-2px_rgba(37,99,235,0.3)]'
                 : 'bg-white dark:bg-[#1E2532] text-gray-800 dark:text-gray-100 rounded-[22px] rounded-bl-[6px] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-gray-800'
@@ -297,7 +303,7 @@ const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImag
               )}
 
               {isEmoji ? (
-                <span className="text-5xl block select-none hover:scale-110 transition-transform duration-300 origin-bottom" role="img">{msgData.text}</span>
+                <span className="text-5xl block select-none origin-bottom" role="img">{msgData.text}</span>
               ) : (
                 <div className="pb-3 relative min-w-[60px]">
                   <MarkdownContent text={displayText} isOwn={isOwn} />
@@ -317,7 +323,7 @@ const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImag
               )}
 
               {reactionSummary && (
-                <div className={`absolute -bottom-3 ${isOwn ? 'right-2' : 'left-2'} flex flex-wrap gap-1 z-10`}>
+                <div className={`absolute -bottom-3 ${isOwn ? 'right-2' : 'left-2'} flex flex-wrap gap-1 z-10 pointer-events-none`}>
                   {Object.entries(reactionSummary).map(([emoji, count]) => (
                     <span key={emoji} className="text-[12px] flex items-center gap-1 rounded-full px-2 py-0.5 shadow-sm border bg-white border-gray-100 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200">
                       {emoji} {count > 1 && <span className="text-[10px] font-bold opacity-70">{count}</span>}
@@ -327,27 +333,47 @@ const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImag
               )}
             </div>
           )}
-        </div>
 
-        {/* Action buttons */}
-        <div ref={reactRef} className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all duration-200 self-center mb-1 ${isOwn ? 'flex-row-reverse' : ''}`}>
-          <button onClick={() => onReply(msgData)} className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-500 flex items-center justify-center transition-all" aria-label="Reply">
-            <i className="fas fa-reply text-[12px]" />
-          </button>
-          <div className="relative">
-            <button onClick={() => setShowReactPicker(v => !v)} className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500 hover:text-yellow-500 flex items-center justify-center transition-all" aria-label="React">
-              <i className="far fa-face-smile text-[14px]" />
-            </button>
-            {showReactPicker && (
-              <div role="menu" className={`absolute bottom-10 ${isOwn ? 'right-0' : 'left-0'} flex gap-1.5 p-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-50`}>
-                {MSG_REACTIONS.map(e => (
-                  <button key={e} onClick={() => { onReact(msgData._id || msgData.id, e); setShowReactPicker(false); }} className="text-xl hover:scale-125 hover:-translate-y-1 transition-all duration-200 cursor-pointer">
-                    {e}
-                  </button>
-                ))}
+          {/* Telegram-style Context Menu */}
+         {/* Telegram-style Context Menu */}
+          {showMenu && (
+            <>
+              {/* Invisible backdrop to close the menu when clicking outside */}
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} 
+                onContextMenu={(e) => { e.preventDefault(); setShowMenu(false); }}
+                onTouchStart={() => setShowMenu(false)}
+              />
+              
+              {/* FIX: Changed "top-full mt-2" to "bottom-full mb-2" to make it pop upwards */}
+              <div className={`absolute z-50 ${isOwn ? 'right-0' : 'left-0'} bottom-full mb-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl flex flex-col p-1.5 min-w-[200px]`}>
+                
+                {/* Reactions Row */}
+                <div className="flex justify-between items-center gap-1 p-1 border-b border-gray-100 dark:border-gray-700/50 mb-1">
+                  {MSG_REACTIONS.map(e => (
+                    <button 
+                      key={e} 
+                      onClick={() => { onReact(msgData._id || msgData.id, e); setShowMenu(false); }} 
+                      className="text-2xl hover:scale-125 transition-transform duration-200 cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Menu Actions */}
+                <button 
+                  onClick={() => { onReply(msgData); setShowMenu(false); }} 
+                  className="flex items-center gap-3 px-3 py-2.5 text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors w-full text-left"
+                >
+                  <i className="fas fa-reply text-blue-500 w-5 text-center" />
+                  Reply
+                </button>
               </div>
-            )}
-          </div>
+            </>
+          )}
+
         </div>
       </div>
     </div>
@@ -428,9 +454,8 @@ const Chat = ({ uId }) => {
   const sendCooldownRef    = useRef(0);
   const botCooldownRef     = useRef(0);
   const lastSmartCtxRef    = useRef('');
-  const uploadSeqRef       = useRef({});  // uploadId → { chunks[], total, received, meta }
+  const uploadSeqRef       = useRef({});
   const inputRef           = useRef(null);
-  // Track which uploadIds have already been shown locally (sender de-dupe)
   const shownUploadsRef    = useRef(new Set());
 
   const inputCallbackRef = useCallback(el => {
@@ -453,14 +478,12 @@ const Chat = ({ uId }) => {
     return () => { isMounted.current = false; };
   }, []);
 
-  // Focus input when chat opens
   useEffect(() => {
     if (isChatOpen && inputRef.current) {
       requestAnimationFrame(() => requestAnimationFrame(() => { inputRef.current?.focus({ preventScroll: true }); }));
     }
   }, [isChatOpen]);
 
-  // Load history
   useEffect(() => {
     const fetch = async () => {
       try {
@@ -473,7 +496,16 @@ const Chat = ({ uId }) => {
 
   // ── Socket listeners ──────────────────────────────────────────────────────
   useEffect(() => {
-    const onMessage = msg => { if (isMounted.current) setMessages(p => [...p, msg]); };
+    const onMessage = msg => { 
+      if (isMounted.current) {
+        setMessages(p => {
+          // Deduplication: Ignore if ID already exists
+          const alreadyExists = p.some(m => (m._id === msg._id) || (m.id && msg.id && m.id === msg.id));
+          if (alreadyExists) return p;
+          return [...p, msg];
+        });
+      }
+    };
 
     const onTyping  = ({ name, isTyping }) => {
       if (!isMounted.current) return;
@@ -488,11 +520,6 @@ const Chat = ({ uId }) => {
       if (!isMounted.current) return;
       setMsgReactions(p => ({ ...p, [msgId]: { ...(p[msgId] || {}), [userId]: emoji } }));
     };
-
-    // ── FIX #1: Image chunk reassembly ──
-    // Server must relay these events to all room members.
-    // When the upload-complete fires, we build the dataUrl from assembled chunks
-    // and add it to messages. The SENDER skips adding it again if already shown.
 
     const onImageStart = ({ uploadId, totalChunks, meta }) => {
       uploadSeqRef.current[uploadId] = {
@@ -514,9 +541,8 @@ const Chat = ({ uId }) => {
       const entry = uploadSeqRef.current[uploadId];
       if (!entry) return;
 
-      // Verify all chunks received
       if (entry.received < entry.total || entry.chunks.some(c => c === null)) {
-        console.warn('[Chat] Image upload incomplete, missing chunks for', uploadId);
+        console.warn('[Chat] Image upload incomplete for', uploadId);
         delete uploadSeqRef.current[uploadId];
         return;
       }
@@ -525,7 +551,6 @@ const Chat = ({ uId }) => {
       const dataUrl = `data:${entry.meta.mimeType};base64,${base64}`;
       delete uploadSeqRef.current[uploadId];
 
-      // FIX: sender already shows it optimistically; skip duplicate
       if (shownUploadsRef.current.has(uploadId)) {
         shownUploadsRef.current.delete(uploadId);
         return;
@@ -542,7 +567,14 @@ const Chat = ({ uId }) => {
         createdAt: timestamp,
         role: 'user',
       };
-      if (isMounted.current) setMessages(p => [...p, imgMsg]);
+      
+      if (isMounted.current) {
+        setMessages(p => {
+          const alreadyExists = p.some(m => (m._id === imgMsg._id) || (m.id && imgMsg.id && m.id === imgMsg.id));
+          if (alreadyExists) return p;
+          return [...p, imgMsg];
+        });
+      }
     };
 
     socket.on('receive-message',       onMessage);
@@ -562,13 +594,11 @@ const Chat = ({ uId }) => {
     };
   }, []);
 
-  // Auto-scroll
   useEffect(() => {
     const t = setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 80);
     return () => clearTimeout(t);
   }, [messages.length, isAiTyping]);
 
-  // Load user data
   useEffect(() => {
     let cancelled = false;
     getUserDataFromFirestore(uId)
@@ -577,7 +607,6 @@ const Chat = ({ uId }) => {
     return () => { cancelled = true; };
   }, [uId]);
 
-  // Smart replies
   useEffect(() => {
     clearTimeout(smartReplyTimerRef.current);
     if (!messages.length) return;
@@ -595,7 +624,7 @@ const Chat = ({ uId }) => {
         const prompt = `Suggest exactly 3 very short (max 6 words each) natural chat reply options to: \`\`\`${(last.text || '').slice(0, 120)}\`\`\`. Return ONLY a JSON array of 3 strings.`;
         const raw = await openAIChat(prompt, '');
         if (!isMounted.current) return;
-        const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        const parsed = JSON.parse(raw.replace(/`{3}json|`{3}/g, '').trim());
         if (Array.isArray(parsed)) setSmartReplies(parsed.slice(0, 3).filter(s => typeof s === 'string'));
       } catch { if (isMounted.current) setSmartReplies([]); }
       finally { if (isMounted.current) setSmartLoading(false); }
@@ -603,22 +632,18 @@ const Chat = ({ uId }) => {
     return () => clearTimeout(smartReplyTimerRef.current);
   }, [messages.length, uId]);
 
-  // ── Image upload via Socket chunks ─────────────────────────────────────────
   const uploadImage = useCallback(async (file) => {
     const err = validateImage(file);
     if (err) { alert(err); return; }
 
-    // Build preview
     const previewDataUrl = await fileToDataUrl(file);
     const uploadId = `img_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-    // Show upload progress bar
     setUploads(p => [...p, { id: uploadId, name: file.name, preview: previewDataUrl, progress: 0 }]);
 
-    // Optimistic: add locally for sender immediately
     const localMsg = {
-      id: uploadId + '_local',
-      _id: uploadId + '_local',
+      id: uploadId,
+      _id: uploadId,
       type: 'image',
       dataUrl: previewDataUrl,
       userid: uId,
@@ -627,16 +652,13 @@ const Chat = ({ uId }) => {
       createdAt: new Date().toISOString(),
       role: 'user',
     };
+    
     setMessages(p => [...p, localMsg]);
-
-    // Mark this uploadId so we skip the duplicate when image-upload-complete fires on our end
     shownUploadsRef.current.add(uploadId);
 
-    // Convert to base64
     const base64 = dataUrlToBase64(previewDataUrl);
     const totalChunks = Math.ceil(base64.length / CHUNK_SIZE);
 
-    // Signal start to server (server must relay to room)
     socket.emit('image-upload-start', {
       uploadId,
       roomId: id,
@@ -649,17 +671,14 @@ const Chat = ({ uId }) => {
       },
     });
 
-    // Send chunks
     for (let i = 0; i < totalChunks; i++) {
       const chunk = base64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       socket.emit('image-upload-chunk', { uploadId, roomId: id, index: i, data: chunk });
       const progress = Math.round(((i + 1) / totalChunks) * 100);
       setUploads(p => p.map(u => u.id === uploadId ? { ...u, progress } : u));
-      // Yield every 10 chunks to avoid blocking the event loop
       if (i % 10 === 9) await new Promise(r => setTimeout(r, 0));
     }
 
-    // Signal complete (server assembles and relays to other room members)
     socket.emit('image-upload-complete', {
       uploadId,
       roomId: id,
@@ -697,14 +716,12 @@ const Chat = ({ uId }) => {
     setImagePreviews([]);
   }, [imagePreviews, uploadImage]);
 
-  // Drag & drop
   const handleDrop = useCallback(e => {
     e.preventDefault();
     setDragOver(false);
     handleFileSelect(e.dataTransfer.files);
   }, [handleFileSelect]);
 
-  // Paste images
   const handlePaste = useCallback(e => {
     const items = Array.from(e.clipboardData?.items || []);
     const imageItems = items.filter(item => item.kind === 'file' && ALLOWED_MIME.includes(item.type));
@@ -714,7 +731,6 @@ const Chat = ({ uId }) => {
     }
   }, [handleFileSelect]);
 
-  // Input handlers
   const handleInputChange = useCallback(e => {
     const val = e.target.value;
     if (val.length > MAX_MSG_LENGTH) return;
@@ -746,18 +762,42 @@ const Chat = ({ uId }) => {
       const replyData = replyingTo
         ? { replyto: replyingTo.text, replytoName: replyingTo.role === 'bot' ? 'AI' : (replyingTo.displayName || replyingTo.senderName || 'User'), replytophoto: replyingTo.photoURL || null }
         : {};
+      
+      const msgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      const messagePayload = {
+        id: msgId,
+        _id: msgId,
+        roomId: id,
+        text: txt,
+        role: 'user',
+        userid: uId,
+        displayName: currentUser?.displayName,
+        photoURL: currentUser?.photoURL,
+        createdAt: new Date().toISOString(),
+        ...replyData
+      };
+
       setMessage('');
       setReplyingTo(null);
       setSmartReplies([]);
       clearTimeout(typingTimerRef.current);
       socket.emit('typing-status', { isTyping: false, name: currentUser?.displayName });
       msgPopAudio.play().catch(() => {});
-      await addMessage({ text: txt, role: 'user', userid: uId, displayName: currentUser?.displayName, photoURL: currentUser?.photoURL, ...replyData });
+
+      socket.emit('send-message', messagePayload);
+      setMessages(prev => [...prev, messagePayload]);
+
+      try {
+        await addMessage(messagePayload);
+      } catch (error) {
+        console.error("Failed to save message", error);
+      }
     } else {
       setMessage('');
       setReplyingTo(null);
     }
-  }, [message, imagePreviews, sendQueuedImages, addMessage, currentUser, uId, replyingTo]);
+  }, [message, imagePreviews, sendQueuedImages, addMessage, currentUser, uId, replyingTo, id]);
 
   const handleBotMsg = useCallback(async () => {
     const txt = message.trim();
@@ -770,21 +810,65 @@ const Chat = ({ uId }) => {
     const replyExt = replyingTo ? `\n[Replying to: """${replyingTo.text}"""]` : '';
     const replyData = replyingTo ? { replyto: replyingTo.text, replytoName: replyingTo.role === 'bot' ? 'AI' : (replyingTo.displayName || 'User') } : {};
 
+    const userMsgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    const userMessagePayload = {
+      id: userMsgId,
+      _id: userMsgId,
+      roomId: id,
+      text: txt,
+      role: 'user',
+      userid: uId,
+      displayName: currentUser?.displayName,
+      photoURL: currentUser?.photoURL,
+      createdAt: new Date().toISOString(),
+      ...replyData
+    };
+
     setMessage('');
     setReplyingTo(null);
     setSmartReplies([]);
     setIsAiTyping(true);
     socket.emit('typing-status', { isTyping: false, name: currentUser?.displayName });
     msgPopAudio.play().catch(() => {});
-    await addMessage({ text: txt, role: 'user', userid: uId, displayName: currentUser?.displayName, photoURL: currentUser?.photoURL, ...replyData });
+
+    socket.emit('send-message', userMessagePayload);
+    setMessages(prev => [...prev, userMessagePayload]);
+    
+    try {
+      await addMessage(userMessagePayload);
+    } catch (e) {
+      console.error(e);
+    }
 
     try {
       const reply = await openAIChat(txt, ctxText + replyExt);
       if (reply && isMounted.current) {
-        await addMessage({ text: reply, role: 'bot', userid: 'ai-bot', displayName: 'AI Assistant', replyto: txt, replytoName: currentUser?.displayName });
+        const botMsgId = `bot_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+        const botMessagePayload = {
+          id: botMsgId,
+          _id: botMsgId,
+          roomId: id,
+          text: reply,
+          role: 'bot',
+          userid: 'ai-bot',
+          displayName: 'AI Assistant',
+          replyto: txt,
+          replytoName: currentUser?.displayName,
+          createdAt: new Date().toISOString()
+        };
+
+        socket.emit('send-message', botMessagePayload);
+        setMessages(prev => [...prev, botMessagePayload]);
+        await addMessage(botMessagePayload);
       }
-    } catch {} finally { if (isMounted.current) setIsAiTyping(false); }
-  }, [message, addMessage, currentUser, uId, messages, replyingTo]);
+    } catch (err) {
+      console.error(err);
+    } finally { 
+      if (isMounted.current) setIsAiTyping(false); 
+    }
+  }, [message, addMessage, currentUser, uId, messages, replyingTo, id]);
 
   const groupedMessages = useMemo(() => {
     const groups = [];
@@ -801,7 +885,7 @@ const Chat = ({ uId }) => {
     return groups;
   }, [messages]);
 
-  const canSend    = message.trim().length > 0 || imagePreviews.length > 0;
+  const canSend  = message.trim().length > 0 || imagePreviews.length > 0;
   const charCount  = message.length;
   const charWarn   = charCount > 1800;
 
@@ -825,7 +909,7 @@ const Chat = ({ uId }) => {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        {/* Drag overlay */}
+        
         {dragOver && (
           <div className="absolute inset-0 z-50 bg-blue-500/20 border-4 border-dashed border-blue-400 rounded-2xl flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-3 text-blue-500 dark:text-blue-300">
@@ -835,7 +919,6 @@ const Chat = ({ uId }) => {
           </div>
         )}
 
-        {/* Header */}
         <div className="flex-shrink-0 h-16 px-5 flex items-center justify-between border-b border-gray-200/60 dark:border-gray-800 bg-white/80 dark:bg-[#0B1120]/80 backdrop-blur-md z-20 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -854,13 +937,12 @@ const Chat = ({ uId }) => {
           </button>
         </div>
 
-        {/* Messages */}
         <div
           ref={chatBoxRef}
           role="log"
           aria-live="polite"
           aria-label="Chat messages"
-          className="flex-1 overflow-y-auto px-4 md:px-5 py-4 min-h-0"
+          className="flex-1 overflow-y-auto px-4 md:px-5 py-4 min-h-0 relative"
           style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(148,163,184,0.4) transparent' }}
         >
           {loading && (
@@ -879,18 +961,18 @@ const Chat = ({ uId }) => {
             </div>
           )}
 
-          {groupedMessages.map(item =>
-            item.type === 'date'
-              ? <DateSeparator key={item.key} date={item.label} />
-              : <MessageCard
-                  key={item.key}
-                  uId={uId}
-                  msgData={item.data}
-                  onReply={setReplyingTo}
-                  onReact={handleReact}
-                  msgReactions={msgReactions[item.data._id || item.data.id]}
-                  onImageClick={setLightboxSrc}
-                />
+         {groupedMessages.map(item =>
+          item.type === 'date'
+            ? <DateSeparator key={item.key} date={item.label} />
+            : <MessageCard 
+                key={item.key} 
+                uId={uId} 
+                msgData={item.data} 
+                onReply={setReplyingTo} 
+                onReact={handleReact} 
+                msgReactions={msgReactions[item.data._id || item.data.id]} 
+                onImageClick={setLightboxSrc} 
+              />
           )}
 
           {isAiTyping && (
@@ -907,11 +989,9 @@ const Chat = ({ uId }) => {
         <TypingIndicator typingUsers={typingUsers} />
         <UploadProgress uploads={uploads} />
 
-        {/* Input area */}
         <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-transparent z-20 relative" onPaste={handlePaste}>
           <div className="max-w-4xl mx-auto w-full relative">
 
-            {/* Reply preview */}
             {replyingTo && (
               <div className="flex items-center justify-between bg-white dark:bg-[#1E2532] px-4 py-2.5 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 mb-3 ml-2 border-l-[4px] border-l-blue-500">
                 <div className="flex flex-col overflow-hidden">
@@ -928,20 +1008,18 @@ const Chat = ({ uId }) => {
 
             <ImagePreviews previews={imagePreviews} onRemove={handleRemovePreview} />
 
-            <SmartReplies
-              replies={smartReplies}
+            <SmartReplies 
+              replies={smartReplies} 
               onSelect={r => { setMessage(r); setSmartReplies([]); requestAnimationFrame(() => inputRef.current?.focus()); }}
               isLoading={smartLoading}
             />
 
-            {/* Emoji picker */}
             {isOpenEmoji && (
               <div className="absolute bottom-full mb-2 left-0 z-50 shadow-2xl border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
                 <EmojiPicker theme="auto" height={320} onEmojiClick={handleEmojiClick} />
               </div>
             )}
 
-            {/* Input box */}
             <div className="flex items-end bg-white dark:bg-[#1E2532] rounded-[24px] shadow-sm border-2 border-transparent focus-within:border-blue-400 dark:focus-within:border-blue-600 focus-within:ring-4 ring-blue-50 dark:ring-blue-900/20 transition-all duration-300 min-h-[52px] py-2">
               <button onClick={() => setIsOpenEmoji(v => !v)} className="self-end mb-0.5 w-[48px] h-[36px] text-gray-400 hover:text-yellow-500 transition-colors flex items-center justify-center flex-shrink-0" tabIndex={-1} aria-label="Emoji">
                 <i className="far fa-face-smile text-[20px]" />
@@ -951,7 +1029,7 @@ const Chat = ({ uId }) => {
                 value={message}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Message… (Markdown supported, paste images)"
+                placeholder="Message…"
                 rows={1}
                 aria-label="Message input"
                 className="flex-1 bg-transparent border-none outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-[15px] px-2 py-1 min-w-0 resize-none overflow-hidden leading-6"
@@ -981,7 +1059,15 @@ const Chat = ({ uId }) => {
           </div>
         </div>
 
-        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple className="hidden" aria-hidden="true" onChange={e => { handleFileSelect(e.target.files); e.target.value = ''; }} />
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="image/jpeg,image/png,image/gif,image/webp" 
+          multiple 
+          className="hidden" 
+          aria-hidden="true" 
+          onChange={e => { handleFileSelect(e.target.files); e.target.value = ''; }} 
+        />
 
         {lightboxSrc && <ImageModal src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
       </div>
