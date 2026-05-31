@@ -1,37 +1,66 @@
-import axios from 'axios';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import socket from "../services/socket"
+import socket from '../services/socket';
+import api from '../services/api';
+
+const getRoomId = (room) => (
+  room?._id
+  || room?.id
+  || room?.roomId
+  || room?.data?._id
+  || room?.data?.id
+  || room?.room?._id
+  || room?.room?.id
+);
+
+const normalizeCreatedRoom = (responseData) => (
+  responseData?.room
+  || responseData?.data
+  || responseData
+);
 
 const useAddRoom = () => {
   const navigate = useNavigate();
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  const addRoom = async (roomData) => {
-    try {
-      // 1. Send data to your Node.js/MongoDB backend
-      const response = await axios.post(`${backendUrl}/api/rooms`, {
-        ...roomData,
-        participantsCount: 0,
-        joinedAt: Date.now(),
-        lastActive: Date.now(),
-      });
+  const addRoom = useCallback(async (roomData, options = {}) => {
+    const { navigateToRoom = true } = options;
 
-      const newRoom = response.data; // The backend should return the saved room (with its new _id)
-      console.log("Room added successfully to MongoDB with ID:", newRoom._id);
-
-      // 2. Tell the WebSockets to update the dashboard for everyone else online
-      if (socket.connected) {
-        socket.emit('dashboard-update'); 
-      }
-
-      // 3. Navigate the host directly into their new room
-      navigate(`/Room/${newRoom._id}`);
-      
-    } catch (error) {
-      console.error("Failed to save room to MongoDB:", error.response?.data || error.message);
-      throw error; // Let the form know if it failed
+    if (!roomData || typeof roomData !== 'object') {
+      throw new Error('Room data is required.');
     }
-  };
+
+    const payload = {
+      ...roomData,
+      Title: roomData.Title || roomData.title || '',
+      Language: roomData.Language || roomData.language || '',
+      Level: roomData.Level || roomData.level || '',
+      MaximumPeople: Number(
+        roomData.MaximumPeople
+        ?? roomData.maximumPeople
+        ?? roomData.maxPeople
+        ?? roomData.capacity
+        ?? 5
+      ),
+      createdAt: roomData.createdAt || Date.now(),
+    };
+
+    const response = await api.post('/api/rooms', payload);
+
+    const createdRoom = normalizeCreatedRoom(response?.data);
+    const roomId = getRoomId(createdRoom);
+
+    socket.emit('request-dashboard-sync');
+
+    if (createdRoom) {
+      socket.emit('room-created', createdRoom);
+    }
+
+    if (navigateToRoom && roomId) {
+      navigate(`/room/${roomId}`);
+    }
+
+    return createdRoom;
+  }, [navigate]);
 
   return addRoom;
 };

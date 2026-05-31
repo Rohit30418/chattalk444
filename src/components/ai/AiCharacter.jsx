@@ -1,143 +1,180 @@
-import React, { Suspense, useEffect, useRef, useState, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber"; // Added useFrame
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import {
-  OrbitControls,
-  Environment,
   ContactShadows,
-  useGLTF,
+  Environment,
+  Html,
+  OrbitControls,
   useAnimations,
-} from "@react-three/drei";
-import * as THREE from "three"; // Import THREE
-import VoiceRecognition from "./VoiceRecognition";
+  useGLTF,
+  useProgress,
+} from '@react-three/drei';
+import * as THREE from 'three';
+
+import VoiceRecognition from './VoiceRecognition';
+
+function CanvasLoader() {
+  const { progress } = useProgress();
+
+  return (
+    <Html center>
+      <div className="rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-center text-white shadow-2xl backdrop-blur-xl">
+        <div className="mx-auto mb-2 h-7 w-7 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+        <p className="text-xs font-bold">Loading avatar {Math.round(progress)}%</p>
+      </div>
+    </Html>
+  );
+}
+
+function findMorphMesh(root) {
+  let target = null;
+
+  root?.traverse?.((child) => {
+    if (target) return;
+
+    if (
+      child.isMesh
+      && child.morphTargetDictionary
+      && child.morphTargetInfluences
+      && (
+        child.morphTargetDictionary.viseme_aa !== undefined
+        || child.morphTargetDictionary.jawOpen !== undefined
+      )
+    ) {
+      target = child;
+    }
+  });
+
+  return target;
+}
 
 function AvatarModel({ mouthLevel }) {
   const group = useRef();
-  
-  // State Refs
-  const currentState = useRef("idle");
-  const currentIdle = useRef("Idle1");
-// .glb?pose=T
-  // 1. Load Model & Animations
-  const { scene, nodes } = useGLTF("/aicheractar.glb?pose=T");
-  const idle1 = useGLTF("/Idle.glb");
-  const idle2 = useGLTF("/Idle2.glb");
-  const idle3 = useGLTF("/Idle3.glb");
-  const talk = useGLTF("/Talking.glb");
+  const morphMeshRef = useRef(null);
+  const currentState = useRef('idle');
+  const currentIdle = useRef('Idle1');
 
-  // 2. Rename Animations safely
+  const { scene } = useGLTF('/aicheractar.glb?pose=T');
+  const idle1 = useGLTF('/Idle.glb');
+  const idle2 = useGLTF('/Idle2.glb');
+  const idle3 = useGLTF('/Idle3.glb');
+  const talk = useGLTF('/Talking.glb');
+
   const animations = useMemo(() => {
     const validAnimations = [];
+
     const addAnim = (gltf, name) => {
-      if (gltf.animations && gltf.animations.length > 0) {
-        const clip = gltf.animations[0].clone();
-        clip.name = name;
-        validAnimations.push(clip);
-      } else {
-        console.warn(`Warning: ${name} GLB has no animations!`);
-      }
+      const clip = gltf?.animations?.[0];
+
+      if (!clip) return;
+
+      const cloned = clip.clone();
+      cloned.name = name;
+      validAnimations.push(cloned);
     };
-    addAnim(idle1, "Idle1");
-    addAnim(idle2, "Idle2");
-    addAnim(idle3, "Idle3");
-    addAnim(talk, "Talk");
+
+    addAnim(idle1, 'Idle1');
+    addAnim(idle2, 'Idle2');
+    addAnim(idle3, 'Idle3');
+    addAnim(talk, 'Talk');
+
     return validAnimations;
   }, [idle1, idle2, idle3, talk]);
 
   const { actions } = useAnimations(animations, group);
 
-  // 3. Lip Sync Logic (Moves the mouth)
-  // We use useFrame to update the mouth smoothly every frame
-  useFrame(() => {
-    if (!nodes) return;
-    
-    // Find the head mesh (ReadyPlayerMe usually names it 'Wolf3D_Head')
-    const headMesh = nodes.Wolf3D_Head || nodes.Wolf3D_Avatar;
-    
-    if (headMesh && headMesh.morphTargetDictionary && headMesh.morphTargetInfluences) {
-      // 'viseme_aa' is the "Ah" mouth shape. 'jawOpen' is another option.
-      const mouthIdx = headMesh.morphTargetDictionary["viseme_aa"] ?? headMesh.morphTargetDictionary["jawOpen"];
-      
-      if (mouthIdx !== undefined) {
-        // Map audio level (0 to 1) to mouth open (0 to 1)
-        // We multiply by a factor (e.g. 5) to make the mouth more responsive
-        const targetValue = THREE.MathUtils.lerp(
-          headMesh.morphTargetInfluences[mouthIdx],
-          mouthLevel * 5, // Sensitivity
-          0.5 // Smoothing
-        );
-        headMesh.morphTargetInfluences[mouthIdx] = targetValue;
+  useEffect(() => {
+    morphMeshRef.current = findMorphMesh(scene);
+
+    scene.traverse((child) => {
+      if (child.isMesh) {
+        child.frustumCulled = false;
+        child.castShadow = true;
+        child.receiveShadow = true;
       }
-    }
+    });
+  }, [scene]);
+
+  useFrame(() => {
+    const mesh = morphMeshRef.current;
+    if (!mesh?.morphTargetDictionary || !mesh?.morphTargetInfluences) return;
+
+    const mouthIdx =
+      mesh.morphTargetDictionary.viseme_aa
+      ?? mesh.morphTargetDictionary.jawOpen;
+
+    if (mouthIdx === undefined) return;
+
+    const current = mesh.morphTargetInfluences[mouthIdx] || 0;
+    const target = THREE.MathUtils.clamp(mouthLevel * 1.8, 0, 1);
+
+    mesh.morphTargetInfluences[mouthIdx] = THREE.MathUtils.lerp(current, target, 0.35);
   });
 
-  // 4. Initial Mount
   useEffect(() => {
-    if (actions && actions["Idle1"]) {
-      actions["Idle1"].reset().fadeIn(0.5).play();
-    }
+    if (!actions?.Idle1) return;
+
+    actions.Idle1.reset().fadeIn(0.45).play();
+
+    return () => {
+      Object.values(actions).forEach((action) => action?.stop());
+    };
   }, [actions]);
 
-  // 5. Body Animation Switcher (Idle <-> Talk)
   useEffect(() => {
     if (!actions) return;
 
-    const talkAction = actions["Talk"];
-    const getActiveIdle = () => actions[currentIdle.current];
+    const talkAction = actions.Talk;
+    const activeIdle = () => actions[currentIdle.current];
+    const isTalking = mouthLevel > 0.045;
 
-    // Added Logic: Hysteresis (Prevents flickering)
-    // Start talking at 0.05, Stop talking at 0.01
-    const isTalking = mouthLevel > 0.05;
+    if (isTalking && currentState.current !== 'talk') {
+      activeIdle()?.fadeOut(0.35);
 
-    if (isTalking) {
-      if (currentState.current !== "talk") {
-        console.log("Starting Talk Animation..."); // Debug Log
-        getActiveIdle()?.fadeOut(0.5);
-        
-        if (talkAction) {
-            talkAction.reset().fadeIn(0.5).play();
-            talkAction.setLoop(THREE.LoopRepeat); // Ensure it loops
-        }
-        currentState.current = "talk";
+      if (talkAction) {
+        talkAction.reset().fadeIn(0.35).play();
+        talkAction.setLoop(THREE.LoopRepeat);
       }
-    } else {
-        // Only switch back if we dip really low (avoid flickering)
-        if (mouthLevel < 0.02 && currentState.current !== "idle") {
-            console.log("Stopping Talk Animation..."); // Debug Log
-            talkAction?.fadeOut(0.5);
-            getActiveIdle()?.reset().fadeIn(0.5).play();
-            currentState.current = "idle";
-        }
+
+      currentState.current = 'talk';
+      return;
+    }
+
+    if (!isTalking && mouthLevel < 0.018 && currentState.current !== 'idle') {
+      talkAction?.fadeOut(0.35);
+      activeIdle()?.reset().fadeIn(0.35).play();
+      currentState.current = 'idle';
     }
   }, [mouthLevel, actions]);
 
-  // 6. Random Idle Switcher
   useEffect(() => {
-    if (!actions) return;
-    const idleNames = ["Idle1", "Idle2", "Idle3"];
+    if (!actions) return undefined;
+
+    const idleNames = ['Idle1', 'Idle2', 'Idle3'];
+    let timeoutId;
 
     const switchIdle = () => {
-      if (currentState.current === "idle") {
-        const randomIndex = Math.floor(Math.random() * idleNames.length);
-        const nextIdleName = idleNames[randomIndex];
+      if (currentState.current === 'idle') {
+        const nextIdleName = idleNames[Math.floor(Math.random() * idleNames.length)];
 
         if (currentIdle.current !== nextIdleName && actions[nextIdleName]) {
-          console.log(`Switching Idle to: ${nextIdleName}`);
-          actions[currentIdle.current]?.fadeOut(0.5);
-          actions[nextIdleName].reset().fadeIn(0.5).play();
+          actions[currentIdle.current]?.fadeOut(0.4);
+          actions[nextIdleName].reset().fadeIn(0.4).play();
           currentIdle.current = nextIdleName;
         }
       }
-      const nextTime = 5000 + Math.random() * 5000;
-      timeoutId = setTimeout(switchIdle, nextTime);
+
+      timeoutId = setTimeout(switchIdle, 4500 + Math.random() * 4500);
     };
 
-    let timeoutId = setTimeout(switchIdle, 5000);
+    timeoutId = setTimeout(switchIdle, 4500);
+
     return () => clearTimeout(timeoutId);
   }, [actions]);
 
   return (
     <group ref={group}>
-      <primitive object={scene} scale={2.3} position={[0, -2, 0]} />
+      <primitive object={scene} scale={2.22} position={[0, -2.08, 0]} />
     </group>
   );
 }
@@ -146,26 +183,58 @@ export default function AiCharacter() {
   const [mouthLevel, setMouthLevel] = useState(0);
 
   return (
-    <div className="h-screen w-full relative bg-gray-900">
-      <Canvas camera={{ position: [0, 2, 5], fov: 55 }}>
-        <Suspense fallback={null}>
-          <AvatarModel mouthLevel={mouthLevel} />
-        </Suspense>
-
-        <ambientLight intensity={1} />
-        <spotLight position={[0, 5, 5]} intensity={1.5} angle={0.3} />
-        <ContactShadows position={[0, -1.2, 0]} opacity={0.5} blur={2.5} />
-        <Environment preset="apartment" />
-        <OrbitControls enableZoom={false} enableRotate={false} />
-      </Canvas>
-
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] sm:w-[400px]">
-        {/* Debug View for Audio Level */}
-        <div className="text-white text-center mb-2">
-            Mouth Level: {mouthLevel.toFixed(4)}
-        </div>
-        <VoiceRecognition onMouthLevel={setMouthLevel} />
+    <main className="relative h-[100dvh] w-full overflow-hidden bg-[#050713] text-white">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-[32rem] w-[32rem] rounded-full bg-blue-600/15 blur-[140px]" />
+        <div className="absolute -bottom-40 -right-40 h-[34rem] w-[34rem] rounded-full bg-violet-600/15 blur-[150px]" />
       </div>
-    </div>
+
+      <header className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-center px-4 pt-4 sm:pt-6">
+        <div className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-center shadow-2xl backdrop-blur-2xl">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">AI Voice Practice</p>
+          <h1 className="text-sm font-black text-white sm:text-base">Talk with Vanni</h1>
+        </div>
+      </header>
+
+      <section className="absolute inset-0">
+        <Canvas
+          shadows
+          dpr={[1, 1.7]}
+          camera={{ position: [0, 1.75, 5.1], fov: 52 }}
+          gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
+        >
+          <Suspense fallback={<CanvasLoader />}>
+            <AvatarModel mouthLevel={mouthLevel} />
+            <Environment preset="apartment" />
+            <ContactShadows
+              position={[0, -1.32, 0]}
+              opacity={0.45}
+              blur={2.8}
+              scale={6}
+            />
+          </Suspense>
+
+          <ambientLight intensity={0.85} />
+          <directionalLight position={[3, 5, 5]} intensity={1.6} />
+          <spotLight position={[-2, 4, 4]} intensity={1.1} angle={0.34} penumbra={0.8} />
+
+          <OrbitControls
+            enableZoom={false}
+            enableRotate={false}
+            enablePan={false}
+          />
+        </Canvas>
+      </section>
+
+      <section className="absolute bottom-0 left-0 right-0 z-30">
+        <VoiceRecognition onMouthLevel={setMouthLevel} />
+      </section>
+    </main>
   );
 }
+
+useGLTF.preload('/aicheractar.glb?pose=T');
+useGLTF.preload('/Idle.glb');
+useGLTF.preload('/Idle2.glb');
+useGLTF.preload('/Idle3.glb');
+useGLTF.preload('/Talking.glb');

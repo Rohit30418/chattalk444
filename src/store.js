@@ -1,4 +1,7 @@
-import { createStore } from "@reduxjs/toolkit"
-import { Reducer } from "./redux/Reducer";
+import { configureStore } from '@reduxjs/toolkit';
+import { Reducer } from './redux/Reducer';
 
-export const store=createStore(Reducer);
+export const store = configureStore({
+  reducer: Reducer,
+  devTools: import.meta.env.DEV,
+});

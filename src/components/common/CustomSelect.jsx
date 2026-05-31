@@ -1,118 +1,200 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Globe2 } from 'lucide-react'; 
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react';
+import { ChevronDown, Search, Globe2, Check, X } from 'lucide-react';
 import { languageData } from '../../utils/Language';
 
-const CustomSelect = ({ languageSelect, value, error }) => {
+const CustomSelect = ({
+  languageSelect,
+  value = '',
+  error = '',
+  label = 'Primary language',
+  placeholder = 'Search languages...',
+  disabled = false,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value || '');
   const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     setSearchTerm(value || '');
   }, [value]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event) => {
+      if (!dropdownRef.current?.contains(event.target)) {
         setIsOpen(false);
+        setSearchTerm(value || '');
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    };
 
-  const handleSelect = (languageName) => {
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [value]);
+
+  const filteredLanguages = useMemo(() => {
+    const text = searchTerm.trim().toLowerCase();
+
+    if (!text) return languageData;
+
+    return languageData.filter((language) => (
+      language.name.toLowerCase().includes(text)
+      || language.code?.toLowerCase?.().includes(text)
+    ));
+  }, [searchTerm]);
+
+  const handleSelect = useCallback((languageName) => {
     setSearchTerm(languageName);
     setIsOpen(false);
-    languageSelect(languageName);
-  };
+    languageSelect?.(languageName);
+  }, [languageSelect]);
 
-  const filteredLanguages = languageData.filter((lang) =>
-    lang.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const clearSelection = useCallback((event) => {
+    event.stopPropagation();
+
+    setSearchTerm('');
+    languageSelect?.('');
+    inputRef.current?.focus();
+    setIsOpen(true);
+  }, [languageSelect]);
 
   return (
-    <div className="relative z-50 w-full group" ref={dropdownRef}>
-      {/* Label - Updated to match Host Room style */}
-      <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1 mb-2 block transition-colors">
-        Primary Language {error && <span className="text-red-500 lowercase font-normal ml-1">({error})</span>}
+    <div className="relative z-[80] w-full" ref={dropdownRef}>
+      <label className="mb-2 block text-sm font-black text-slate-800 dark:text-slate-200">
+        {label}
       </label>
 
-      {/* Input Container */}
       <div className="relative">
-        {/* Leading Icon - New for consistency */}
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors z-10">
+        <span
+          className={`
+            pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 transition-colors
+            ${error ? 'text-red-400' : 'text-slate-400 dark:text-slate-500'}
+          `}
+        >
           <Globe2 size={18} />
         </span>
 
         <input
+          ref={inputRef}
           type="text"
-          placeholder="Search languages..."
+          placeholder={placeholder}
+          disabled={disabled}
           className={`
-            w-full bg-slate-50 dark:bg-slate-900/50 
-            border-2 text-slate-900 dark:text-slate-100 
-            rounded-2xl px-5 py-3.5 pl-12 text-sm md:text-base
-            focus:outline-none focus:ring-4 transition-all duration-300
-            placeholder-slate-400 dark:placeholder-slate-600
-            ${error 
-              ? "border-red-500/50 focus:ring-red-500/10" 
-              : "border-transparent dark:border-slate-800 focus:ring-indigo-500/10 focus:border-indigo-500/50 focus:bg-white dark:focus:bg-slate-900"
-            }
+            w-full rounded-2xl border px-4 py-3.5 pl-11 pr-20 text-sm font-semibold outline-none transition-all duration-200
+            bg-white text-slate-900 placeholder:text-slate-400
+            dark:bg-slate-950/55 dark:text-white dark:placeholder:text-slate-600
+            ${error
+              ? 'border-red-400/70 focus:border-red-500 focus:ring-4 focus:ring-red-500/10'
+              : 'border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:focus:border-indigo-400/70'}
+            disabled:cursor-not-allowed disabled:opacity-60
           `}
           value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            if (!disabled) setIsOpen(true);
+          }}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-autocomplete="list"
         />
 
-        {/* Chevron Icon */}
-        <div 
-          className="absolute inset-y-0 right-0 flex items-center pr-4 cursor-pointer text-slate-400 dark:text-slate-500 hover:text-indigo-500 transition-colors"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <ChevronDown 
-            size={18} 
-            className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} 
-          />
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+          {value && !disabled && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+              aria-label="Clear language"
+            >
+              <X size={15} />
+            </button>
+          )}
+
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/10 dark:hover:text-indigo-300"
+            aria-label="Toggle language dropdown"
+          >
+            <ChevronDown
+              size={18}
+              className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
         </div>
       </div>
 
-      {/* Dropdown Menu - Refined Glassmorphism */}
-      {isOpen && (
-        <div className="absolute mt-3 w-full bg-white dark:bg-slate-800 rounded-[1.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 dark:border-slate-700/50 max-h-64 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300 origin-top z-[60]">
-          
-          <div className="overflow-y-auto max-h-64 custom-scrollbar">
+      {error && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-red-500 dark:text-red-300">
+          <i className="fa-solid fa-circle-exclamation text-[10px]" />
+          {error}
+        </p>
+      )}
+
+      {isOpen && !disabled && (
+        <div className="absolute left-0 right-0 top-full z-[120] mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0f172a]">
+          <div className="border-b border-slate-100 px-3 py-2 dark:border-white/10">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+              <Search size={13} />
+              Select language
+            </div>
+          </div>
+
+          <div className="max-h-[230px] overflow-y-auto p-2">
             {filteredLanguages.length > 0 ? (
-              <ul className="p-2">
-                {filteredLanguages.map((language) => (
-                  <li key={language.code}>
-                    <button
-                      type="button"
-                      className={`
-                        w-full text-left px-4 py-3 rounded-xl text-sm transition-all duration-200 mb-1 last:mb-0
-                        ${searchTerm === language.name 
-                          ? 'bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30' 
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:pl-6'
-                        }
-                      `}
-                      onClick={() => handleSelect(language.name)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{language.name}</span>
-                        {searchTerm === language.name && <i className="fa-solid fa-check text-xs"></i>}
-                      </div>
-                    </button>
-                  </li>
-                ))}
+              <ul className="space-y-1">
+                {filteredLanguages.map((language) => {
+                  const selected = value === language.name;
+
+                  return (
+                    <li key={language.code || language.name}>
+                      <button
+                        type="button"
+                        className={`
+                          flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-all
+                          ${selected
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                            : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/[0.06]'}
+                        `}
+                        onClick={() => handleSelect(language.name)}
+                      >
+                        <span className="truncate">{language.name}</span>
+
+                        {selected && (
+                          <Check size={15} className="shrink-0" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
-              <div className="px-4 py-8 text-sm text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center gap-3">
-                 <div className="w-12 h-12 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center">
-                    <Search size={20} className="opacity-20" />
-                 </div>
-                 No languages found
+              <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500">
+                  <Search size={19} />
+                </div>
+
+                <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                  No languages found
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-600">
+                  Try a different keyword.
+                </p>
               </div>
             )}
           </div>

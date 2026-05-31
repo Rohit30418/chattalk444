@@ -24,3 +24,4 @@ export const setMediaPrefs = (value) => ({
     type: "setMediaPrefs",
     payload: value 
 });
+export const resetRoomUiState = () => ({ type: 'resetRoomUiState' });

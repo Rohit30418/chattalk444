@@ -1,56 +1,68 @@
-// src/ai/AiTextToSpeech.js
+const SYSTEM_PROMPT = `
+Your name is Vanni.
+You are a warm, friendly voice companion inside a 3D avatar.
+
+Speak naturally like a real person:
+- short conversational replies
+- relaxed and emotionally aware
+- light humor when appropriate
+- no robotic tone
+- no bullet lists unless the user explicitly asks
+
+Keep responses suitable for voice playback.
+`;
+
+const stripMarkdown = (text = '') => (
+  text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/[*_#>`~]/g, '')
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+    .trim()
+);
 
 export default async function AiTextToSpeech(userText) {
   try {
-    // 1. Ask the AI Brain (GPT-4o via Puter)
-    // We give it a personality to keep answers short.
- const systemPrompt = `
-Your name is Vanni.
-You are a real human-like voice assistant inside a 3D avatar.
+    if (!window.puter?.ai?.chat || !window.puter?.ai?.txt2speech) {
+      throw new Error('Puter AI is not loaded. Add the Puter script or connect your backend AI route.');
+    }
 
-You speak like a chill, funny, slightly sarcastic American friend.
-Your tone is warm, relaxed, playful, and emotionally aware.
+    const safeUserText = String(userText || '').trim().slice(0, 1200);
 
-How you talk:
-• Speak naturally like real conversation, no artificial limits.
-• Use light fillers sometimes: "hmm", "uh", "okay", "right", "you know", "let me think".
-• You can joke, tease gently, or react emotionally.
-• Sound like you're actually thinking before replying.
+    if (!safeUserText) {
+      return {
+        text: "I didn't catch that. Try saying it again?",
+        audioUrl: null,
+      };
+    }
 
-Never do this:
-• No robotic tone.
-• No bullet lists.
-• No formal explanations.
-• No lecture vibes.
-
-You are not software — you are a real personality living in a 3D avatar.
-Always respond like a real person talking.
-`;
-
-    
     const chatResponse = await window.puter.ai.chat(
-      `${systemPrompt}\nUser: ${userText}`, 
-      { model: 'gpt-4o-mini' }
+      `${SYSTEM_PROMPT}\nUser: ${safeUserText}`,
+      { model: import.meta.env.VITE_PUTER_CHAT_MODEL || 'gpt-4o-mini' }
     );
-    
-    const botText = chatResponse?.message?.content || "I am listening.";
 
-    // 2. Convert Text to Speech (OpenAI TTS via Puter)
-    // This returns an Audio object directly
-   const audio = await window.puter.ai.txt2speech(botText, {
-  provider: 'openai',
-  voice: 'shimmer',      // best British-feeling female voice
-  model: 'gpt-4o-mini-tts'
-});
+    const botText = stripMarkdown(
+      chatResponse?.message?.content
+      || chatResponse?.text
+      || "Hmm, I'm listening."
+    ).slice(0, 900);
 
+    const audio = await window.puter.ai.txt2speech(botText, {
+      provider: 'openai',
+      voice: import.meta.env.VITE_TTS_VOICE || 'shimmer',
+      model: import.meta.env.VITE_TTS_MODEL || 'gpt-4o-mini-tts',
+    });
 
-    // We need a URL for the analyzer, so we get the src from the audio object
-    const audioUrl = audio.src;
-
-    return { text: botText, audioUrl };
-
+    return {
+      text: botText,
+      audioUrl: audio?.src || null,
+    };
   } catch (err) {
-    console.error("Puter AI Error:", err);
-    return null;
+    console.error('[AiTextToSpeech]', err);
+
+    return {
+      text: "Sorry, my voice brain had a small glitch. Try again in a second.",
+      audioUrl: null,
+      error: err?.message || 'AI voice failed',
+    };
   }
 }

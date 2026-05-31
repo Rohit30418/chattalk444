@@ -1,5 +1,5 @@
 import { doc,deleteDoc } from "firebase/firestore"
-import { db } from "../../firebase"
+import { db } from "../services/firebase"
 const useDeleteFriend=()=>{
 
 const deleteById= async(userId,friendId)=>{

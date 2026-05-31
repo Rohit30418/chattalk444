@@ -1,5 +1,5 @@
 import { doc, setDoc, getDoc, deleteDoc, collection } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../services/firebase';
 import { useParams } from 'react-router';
 import { useCallback } from 'react';
 

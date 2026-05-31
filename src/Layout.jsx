@@ -1,16 +1,18 @@
-import React from 'react'
-import Header from './components/AppBody/Header'
-import Footer from './components/common/Footer'
-import { Outlet } from 'react-router'
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Header from './components/AppBody/Header';
+import Footer from './components/common/Footer';
+
 const Layout = () => {
   return (
-    <>
-    <Header></Header>
-     <Outlet></Outlet>
-    <Footer></Footer>
-    </>
-  
-  )
-}
+    <div className="min-h-screen bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-[#050713] dark:text-white">
+      <Header />
+      <main className="min-h-screen">
+        <Outlet />
+      </main>
+      <Footer />
+    </div>
+  );
+};
 
-export default Layout
+export default Layout;

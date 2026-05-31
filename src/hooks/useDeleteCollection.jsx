@@ -1,4 +1,4 @@
-import { db } from '../../firebase';
+import { db } from '../services/firebase';
 import {  doc, deleteDoc } from 'firebase/firestore';
 import { useParams } from 'react-router';
 import { useNavigate } from 'react-router';

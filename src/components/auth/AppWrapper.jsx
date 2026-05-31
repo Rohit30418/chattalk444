@@ -8,9 +8,10 @@ import React, {
 } from 'react';
 import axios from 'axios';
 import { getAuth, onAuthStateChanged } from 'firebase/auth'; 
-import { firebaseApp } from '../../services/firebase'; // Adjust path if needed
-import socket from '../../services/socket'; // Adjust path if needed
-import Loading from '../common/Loading'; // Adjust path if needed
+import { firebaseApp } from '../../services/firebase';
+import socket from '../../services/socket';
+import Loading from '../common/Loading';
+import { backendUrl } from '../../services/api';
 
 // 1. Create the Auth Context Channel
 export const AuthContext = createContext();
@@ -67,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
+        `${backendUrl}/api/auth/login`,
         { email, password }
       );
 
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }) => {
   const register = useCallback(async (displayName, email, password) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/register`,
+        `${backendUrl}/api/auth/register`,
         { displayName, email, password }
       );
 

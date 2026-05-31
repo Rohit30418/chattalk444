@@ -1,6 +1,6 @@
 // firebaseDummyData.js
 import { collection, addDoc, setDoc, doc, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../services/firebase';
 
 const randomId = () => crypto.randomUUID();
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import RoomCard from '../rooms/RoomCard';
+
+import RoomCard from '../../room/components/RoomCard';
 import AddRoomForm from '../AddRoomForm';
 import { addRoomModalToggle, togglePopup } from '../../redux/action';
 import { getRoomData } from '../../hooks/getRoom';
@@ -9,296 +10,373 @@ import { Popup } from '../common/Popup';
 import AiCard from '../ai/AiCard';
 import SkeletonLoader from './SkeletonLoader';
 import FeaturedEvents from './FeaturedEvents';
-import LiveActivityFeed from './LiveActivityFeed'; 
+import LiveActivityFeed from './LiveActivityFeed';
 import AnniversaryCard from './AnniversaryCard';
 import SpinWheelModal from './SpinWheelModal';
 import { useAuth } from '../auth/AppWrapper';
 
-// --- DUMMY DATA ---
-const FAKE_NAMES = ["Sarah", "Mike", "Priya", "Ali", "John", "Emma", "Ravi"];
-const FAKE_ROOMS = ["English Club", "Gaming Lounge", "Chill Zone", "Tech Talk"];
 const DUMMY_ROOMS = [
-  { id: "room_001", joinedAt: 1766078139215, participantsCount: 5, MaximumPeople: "5", Level: "#intermediate", ownerName: "Fatima", ownerUid: "uid_001", Language: "Portuguese", flagCode: "PT", Title: "🦥 Procrastinators Assemble #6", bgColor: "#99BC85" },
-  { id: "room_002", joinedAt: 1766078140000, participantsCount: 4, MaximumPeople: "4", Level: "#advanced", ownerName: "Ahmed", ownerUid: "uid_002", Language: "Urdu", flagCode: "PK", Title: "🫠 Socially Awkward Club #5", bgColor: "#FFD6BA" },
-  { id: "room_003", joinedAt: 1766078200000, participantsCount: 6, MaximumPeople: "6", Level: "#beginner", ownerName: "Maria", ownerUid: "uid_003", Language: "Spanish", flagCode: "ES", Title: "🌮 Taco Tuesday Debate", bgColor: "#FEC8D8" },
-  { id: "room_004", joinedAt: 1766078350000, participantsCount: 8, MaximumPeople: "8", Level: "#advanced", ownerName: "Kenji", ownerUid: "uid_004", Language: "Japanese", flagCode: "JP", Title: "⛩️ Anime Spoilers Only", bgColor: "#D4F1F4" },
-  { id: "room_005", joinedAt: 1766078420000, participantsCount: 4, MaximumPeople: "4", Level: "#intermediate", ownerName: "Sophie", ownerUid: "uid_005", Language: "French", flagCode: "FR", Title: "🥐 Croissant Chronicles", bgColor: "#E0BBE4" },
-  { id: "room_006", joinedAt: 1766078550000, participantsCount: 3, MaximumPeople: "3", Level: "#beginner", ownerName: "Hans", ownerUid: "uid_006", Language: "German", flagCode: "DE", Title: "🍺 Beer & Grammar", bgColor: "#FFDFD3" },
-  { id: "room_007", joinedAt: 1766078600000, participantsCount: 10, MaximumPeople: "10", Level: "#intermediate", ownerName: "Min-ji", ownerUid: "uid_007", Language: "Korean", flagCode: "KR", Title: "🎵 K-Pop Stans Unite", bgColor: "#B5EAD7" },
-  { id: "room_008", joinedAt: 1766078700000, participantsCount: 5, MaximumPeople: "5", Level: "#advanced", ownerName: "Sarah", ownerUid: "uid_008", Language: "English", flagCode: "US", Title: "💼 Business Talk (Boring)", bgColor: "#A0E7E5" }
+  { id: 'room_001', joinedAt: 1766078139215, participantsCount: 5, MaximumPeople: '5', Level: '#intermediate', ownerName: 'Fatima', ownerUid: 'uid_001', Language: 'Portuguese', flagCode: 'PT', Title: '🦥 Procrastinators Assemble #6', bgColor: '#99BC85' },
+  { id: 'room_002', joinedAt: 1766078140000, participantsCount: 5, MaximumPeople: '5', Level: '#advanced', ownerName: 'Ahmed', ownerUid: 'uid_002', Language: 'Urdu', flagCode: 'PK', Title: '🫠 Socially Awkward Club #5', bgColor: '#FFD6BA' },
+  { id: 'room_003', joinedAt: 1766078200000, participantsCount: 6, MaximumPeople: '6', Level: '#beginner', ownerName: 'Maria', ownerUid: 'uid_003', Language: 'Spanish', flagCode: 'ES', Title: '🌮 Taco Tuesday Debate', bgColor: '#FEC8D8' },
+  { id: 'room_004', joinedAt: 1766078350000, participantsCount: 8, MaximumPeople: '8', Level: '#advanced', ownerName: 'Kenji', ownerUid: 'uid_004', Language: 'Japanese', flagCode: 'JP', Title: '⛩️ Anime Spoilers Only', bgColor: '#D4F1F4' },
+  { id: 'room_005', joinedAt: 1766078420000, participantsCount: 4, MaximumPeople: '4', Level: '#intermediate', ownerName: 'Sophie', ownerUid: 'uid_005', Language: 'French', flagCode: 'FR', Title: '🥐 Croissant Chronicles', bgColor: '#E0BBE4' },
+  { id: 'room_006', joinedAt: 1766078550000, participantsCount: 4, MaximumPeople: '4', Level: '#beginner', ownerName: 'Hans', ownerUid: 'uid_006', Language: 'German', flagCode: 'DE', Title: '🍺 Grammar without boring rules', bgColor: '#FFDFD3' },
+  { id: 'room_007', joinedAt: 1766078600000, participantsCount: 10, MaximumPeople: '10', Level: '#intermediate', ownerName: 'Min-ji', ownerUid: 'uid_007', Language: 'Korean', flagCode: 'KR', Title: '🎵 K-Pop pronunciation practice', bgColor: '#B5EAD7' },
+  { id: 'room_008', joinedAt: 1766078700000, participantsCount: 5, MaximumPeople: '5', Level: '#advanced', ownerName: 'Sarah', ownerUid: 'uid_008', Language: 'English', flagCode: 'US', Title: '💼 Business English mock interview', bgColor: '#A0E7E5' },
 ];
-const PAGE_SIZE = 16;
+
+const PAGE_SIZE = 15;
+
+const normalizeLanguage = (value) => {
+  const clean = typeof value === 'string' && value.trim() ? value.trim() : 'Unknown';
+  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+};
+
+const getMaxPeople = (room) => Number(room?.MaximumPeople || room?.maxPeople || room?.capacity || 5) || 5;
+const getParticipants = (room) => Number(room?.participantsCount || room?.activeCount || room?.memberCount || 0) || 0;
+
+const MetricCard = ({ icon, label, value, hint }) => (
+  <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.045]">
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
+        <p className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{value}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{hint}</p>
+      </div>
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+        <i className={`fa-solid ${icon}`} />
+      </div>
+    </div>
+  </div>
+);
 
 const HomeBody = () => {
   const dispatch = useDispatch();
-
-  // Redux Selectors
- // Redux Selectors for UI modals
   const modalToggle = useSelector((state) => state.toggleModal);
   const togglePopUp = useSelector((state) => state.togglePopup);
-  
   const { user } = useAuth();
-  const loginStatus = !!user; // True if user exists, false if null
-  // Custom Hook
   const { rooms, loading, error } = getRoomData();
 
-  // Local State
   const [searchText, setSearchText] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [page, setPage] = useState(1);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
-  const [showOffer, setShowOffer] = useState(false); 
+  const [showOffer, setShowOffer] = useState(false);
 
+  const loginStatus = Boolean(user);
 
   useEffect(() => {
     setPage(1);
   }, [searchText, selectedLanguage]);
 
-  // --- PRIVACY NOTICE ---
   useEffect(() => {
     const isAccepted = localStorage.getItem('privacy_policy_accepted');
     if (!isAccepted) {
-      const timer = setTimeout(() => setShowPrivacyNotice(true), 1500);
+      const timer = setTimeout(() => setShowPrivacyNotice(true), 1200);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, []);
+
+  useEffect(() => {
+    if (!togglePopUp) return undefined;
+    const timer = setTimeout(() => dispatch(togglePopup(false)), 1200);
+    return () => clearTimeout(timer);
+  }, [togglePopUp, dispatch]);
+
+  const allRooms = useMemo(() => {
+    const realData = Array.isArray(rooms) ? rooms.filter(Boolean) : [];
+    return realData.length ? realData : DUMMY_ROOMS;
+  }, [rooms]);
+
+  const languageList = useMemo(() => {
+    const counts = allRooms.reduce((acc, room) => {
+      const lang = normalizeLanguage(room?.Language || room?.language);
+      acc[lang] = (acc[lang] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(counts)
+      .map(([item, count]) => ({ item, count }))
+      .sort((a, b) => a.item.localeCompare(b.item));
+  }, [allRooms]);
+
+  const filteredRooms = useMemo(() => {
+    const text = searchText.trim().toLowerCase();
+    return allRooms.filter((room) => {
+      const title = String(room?.Title || room?.title || '').toLowerCase();
+      const lang = normalizeLanguage(room?.Language || room?.language).toLowerCase();
+      const level = String(room?.Level || room?.level || '').toLowerCase();
+      const owner = String(room?.ownerName || room?.hostName || '').toLowerCase();
+      const matchesText = !text || title.includes(text) || lang.includes(text) || level.includes(text) || owner.includes(text);
+      const matchesLanguage = !selectedLanguage || lang === selectedLanguage.toLowerCase();
+      return matchesText && matchesLanguage;
+    });
+  }, [allRooms, searchText, selectedLanguage]);
+
+  const paginatedRooms = useMemo(() => filteredRooms.slice(0, PAGE_SIZE * page), [filteredRooms, page]);
+
+  const metrics = useMemo(() => {
+    const active = allRooms.length;
+    const learners = allRooms.reduce((sum, room) => sum + getParticipants(room), 0);
+    const seats = allRooms.reduce((sum, room) => Math.max(sum + getMaxPeople(room) - getParticipants(room), 0), 0);
+    return [
+      { icon: 'fa-signal', label: 'Live rooms', value: active, hint: 'available now' },
+      { icon: 'fa-users', label: 'Learners', value: learners || '24+', hint: 'currently practicing' },
+      { icon: 'fa-language', label: 'Languages', value: languageList.length, hint: 'active communities' },
+      { icon: 'fa-chair', label: 'Open seats', value: seats, hint: 'ready to join' },
+    ];
+  }, [allRooms, languageList.length]);
 
   const handleAcceptPrivacy = () => {
     localStorage.setItem('privacy_policy_accepted', 'true');
     setShowPrivacyNotice(false);
   };
 
-  // --- NOTIFICATION LOGIC ---
-  useEffect(() => {
-    const triggerNotification = () => {
-      const randomName = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
-      const randomRoom = FAKE_ROOMS[Math.floor(Math.random() * FAKE_ROOMS.length)];
-      toast.info(`${randomName} just joined ${randomRoom} 🚀`, { position: "bottom-left", theme: "dark", autoClose: 3000 });
-    };
-    const interval = setInterval(() => { if (Math.random() > 0.7) triggerNotification(); }, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // --- MEMOIZED DATA PROCESSING ---
-  const allRooms = useMemo(() => {
-    const realData = rooms || [];
-    return [...realData, ...DUMMY_ROOMS];
-  }, [rooms]);
-
-  //  Normalized language string to prevent duplicates and casing issues
-  const languageList = useMemo(() => {
-    if (!allRooms.length) return [];
-    const count = {};
-    allRooms.forEach((r) => {
-      let lang = r?.Language ? r.Language.trim() : "Unknown";
-      lang = lang.charAt(0).toUpperCase() + lang.slice(1).toLowerCase();
-      
-      count[lang] = (count[lang] || 0) + 1;
-    });
-    
-    // Sorted alphabetically for a better UX
-    return Object.entries(count)
-      .map(([item, count]) => ({ item, count }))
-      .sort((a, b) => a.item.localeCompare(b.item));
-  }, [allRooms]);
-
-  const filteredRooms = useMemo(() => {
-    const text = searchText.trim().toUpperCase();
-    if (!allRooms.length) return [];
-    return allRooms.filter((room) => {
-      const title = room?.Title?.toUpperCase() || "";
-      const lang = room?.Language?.toUpperCase() || "";
-      const matchTitle = title.includes(text);
-      const matchLang = lang.includes(text);
-      const matchSelect = selectedLanguage === '' || lang === selectedLanguage.toUpperCase();
-      return (matchTitle || matchLang) && matchSelect;
-    });
-  }, [allRooms, searchText, selectedLanguage]);
-
-  const paginatedRooms = useMemo(() => filteredRooms.slice(0, PAGE_SIZE * page), [filteredRooms, page]);
-
-  // Auto-close Popup
-  useEffect(() => {
-    if (togglePopUp) {
-      const timer = setTimeout(() => dispatch(togglePopup(false)), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [togglePopUp, dispatch]);
-
   const handleAddRoomClick = () => {
-    if (loginStatus) dispatch(addRoomModalToggle(true));
-    else toast.error("Please sign in to create a room");
+    if (loginStatus) {
+      dispatch(addRoomModalToggle(true));
+      return;
+    }
+    toast.error('Please sign in to create a room');
   };
 
-  if (error) return <div className="text-red-500 text-center mt-32 font-bold text-xl">Unable to load rooms. Please refresh.</div>;
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-28 text-center dark:bg-[#050713]">
+        <div className="max-w-md rounded-[2rem] border border-red-200 bg-white p-8 shadow-xl dark:border-red-400/20 dark:bg-white/5">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500 dark:bg-red-500/10">
+            <i className="fa-solid fa-wifi text-xl" />
+          </div>
+          <h2 className="text-xl font-black text-slate-950 dark:text-white">Unable to load rooms</h2>
+          <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">Please refresh or check your backend connection.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="pt-36 md:pt-44 pb-20 min-h-screen bg-gray-50 dark:bg-[#0B0C15] transition-colors duration-300 px-4 md:px-6 lg:px-8 font-sans selection:bg-primary/30 overflow-x-hidden">
-      <div className='max-w-[1440px] mx-auto'>
-        
-        {/* --- DISCOVERY RIBBON (Horizontal Scroll) --- */}
-        <div className="mb-12">
-           <div className="flex items-center gap-2 mb-5 ml-1 animate-fade-in-up">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              <h2 className="text-xs font-bold text-gray-500 dark:text-slate-500 uppercase tracking-[0.2em]">Trending Now</h2>
-           </div>
-           <FeaturedEvents />
-        </div>
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[136px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[144px]">
+      <div className="container-app">
+        <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
 
-        {/* --- HEADER TITLE & FILTERS --- */}
-        <div className="flex flex-col xl:flex-row justify-between items-end gap-6 mb-8 md:mb-12">
-          <div className="w-full xl:w-auto">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 text-gray-900 dark:text-white">
-                Public Rooms <span className="text-primary">.</span>
-            </h1>
-            <p className="text-gray-500 dark:text-slate-400 font-medium text-sm md:text-base">Join 2,400+ people learning together</p>
+          <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-500/10 dark:text-indigo-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                Live discovery
+              </div>
+
+              <h1 className="max-w-4xl text-4xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+                Find the right room and start speaking with confidence.
+              </h1>
+
+              <p className="mt-4 max-w-2xl text-base font-medium leading-8 text-slate-500 dark:text-slate-400 sm:text-lg">
+                Browse real-time language rooms, join open seats, or host a focused practice session with a cleaner, production-ready interface.
+              </p>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleAddRoomClick}
+                  className="btn-primary px-5 py-3.5 text-sm"
+                >
+                  <i className="fa-solid fa-plus" />
+                  Create room
+                </button>
+                <a href="#rooms-grid" className="btn-secondary px-5 py-3.5 text-sm">
+                  Explore rooms
+                  <i className="fa-solid fa-arrow-down text-xs" />
+                </a>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {metrics.map((metric) => (
+                <MetricCard key={metric.label} {...metric} />
+              ))}
+            </div>
           </div>
+        </section>
 
-          <div className="flex flex-col sm:flex-row w-full xl:w-auto gap-3">
-             {/* Filter Dropdown */}
-             <div className="relative w-full sm:w-48 lg:w-64 group">
-                 <select
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="w-full appearance-none bg-white dark:bg-[#151725] border border-gray-200 dark:border-slate-800 text-gray-700 dark:text-gray-200 py-3 px-5 rounded-2xl shadow-sm focus:outline-none focus:border-primary transition-all font-medium cursor-pointer text-sm md:text-base"
+        <section className="mt-10">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Trending now</p>
+              <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Featured practice themes</h2>
+            </div>
+          </div>
+          <FeaturedEvents />
+        </section>
+
+        <section id="rooms-grid" className="mt-10">
+          <div className="sticky top-[116px] z-30 mb-6 rounded-[1.7rem] border border-slate-200 bg-white/88 p-3 shadow-lg shadow-slate-200/60 backdrop-blur-2xl dark:border-white/10 dark:bg-[#0b1120]/88 dark:shadow-black/20 sm:p-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                  Public Rooms <span className="text-indigo-600 dark:text-indigo-300">.</span>
+                </h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  Showing {filteredRooms.length} room{filteredRooms.length === 1 ? '' : 's'} {selectedLanguage ? `in ${selectedLanguage}` : 'across all languages'}
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[220px_1fr] xl:w-[560px]">
+                <div className="relative">
+                  <select
+                    value={selectedLanguage}
+                    onChange={(event) => setSelectedLanguage(event.target.value)}
+                    className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-10 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:focus:bg-white/10"
                   >
-                    <option value="">All Languages</option>
+                    <option value="">All languages</option>
                     {languageList.map((lang) => (
                       <option key={lang.item} value={lang.item}>{lang.item} ({lang.count})</option>
                     ))}
                   </select>
-                  <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-             </div>
-
-             {/* Search Input */}
-             <div className="relative w-full sm:w-64 lg:w-72 group">
-                 <i className="fa-solid fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors"></i>
-                 <input
-                  type="text"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder="Search topics..."
-                  className="w-full bg-white dark:bg-[#151725] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white pl-12 pr-4 py-3 rounded-2xl shadow-sm focus:outline-none focus:border-primary transition-all font-medium placeholder-gray-400 dark:placeholder-slate-600 text-sm md:text-base"
-                />
-             </div>
-          </div>
-        </div>
- 
-        {/* --- MAIN GRID LAYOUT --- */}
-        <div className="flex flex-col xl:flex-row gap-8 items-start relative">
-            
-            {/* LEFT: ROOMS (Grid: 1 col mobile, 2 col tablet, 3 col desktop) */}
-            <div className="w-full xl:w-[73%]">
-               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 md:gap-6">
-                  
-                  {/* AI Card - Spans 2 cols on tablet+ */}
-                  <div className="col-span-1 md:col-span-2">
-                      <AiCard pageName="AI Voice Room" title="Luna — AI Friend" description="Chat with Luna 24/7." avatar="https://static.vecteezy.com/system/resources/previews/034/599/439/non_2x/ai-generated-3d-cute-cartoon-woman-character-in-blue-suit-on-transparent-background-png.png" />
-                  </div>
-
-                  {/* Room Cards */}
-                  {loading && Array(6).fill(0).map((_, i) => (
-                     <div key={i} className="w-full h-[260px]"><SkeletonLoader /></div>
-                  ))}
-
-                  {!loading && paginatedRooms.map((room) => (
-                    <RoomCard key={room.id} roomdata={room} />
-                  ))}
-               </div>
-
-               {/* Empty State */}
-               {!loading && paginatedRooms.length === 0 && (
-                  <div className="text-center py-20 opacity-60">
-                     <i className="fa-solid fa-ghost text-4xl mb-4 text-gray-400 dark:text-slate-600"></i>
-                     <p className="text-gray-500 dark:text-slate-500">No rooms found matching "{searchText}"</p>
-                  </div>
-               )}
-
-               {/* Load More Button */}
-               {!loading && filteredRooms.length > page * PAGE_SIZE && (
-                  <div className="text-center mt-12 mb-8">
-                    <button 
-                      onClick={() => setPage((p) => p + 1)} 
-                      className="group flex items-center gap-2 mx-auto px-8 py-3 bg-white dark:bg-[#151725] border border-gray-200 dark:border-slate-800 rounded-full text-gray-700 dark:text-slate-200 font-bold shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all"
-                    >
-                      Load More Rooms
-                      <i className="fa-solid fa-arrow-down text-xs group-hover:animate-bounce"></i>
-                    </button>
-                  </div>
-               )}
-            </div>
-
-            {/* RIGHT: SIDEBAR */}
-            <div className="hidden xl:block w-[27%] space-y-6 sticky top-44">
-               <LiveActivityFeed />  
-               {/* CTA Card */}
-               <div className="group relative bg-gradient-to-br from-primary to-blue-600 rounded-[2.5rem] p-8 text-center shadow-xl overflow-hidden cursor-pointer hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-1">
-                  <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                  <div className="relative z-10">
-                     <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 backdrop-blur-md border border-white/20 shadow-inner group-hover:rotate-12 transition-transform">
-                        <i className="fa-solid fa-plus text-3xl text-white"></i>
-                     </div>
-                     <h3 className="text-xl font-black mb-2 text-white">Start Hosting</h3>
-                     <p className="text-white/90 text-xs font-medium mb-6 leading-relaxed">Create a topic, invite friends, and lead.</p>
-                     <button onClick={handleAddRoomClick} className="w-full bg-white text-primary font-bold py-3.5 rounded-xl hover:bg-gray-50 transition-colors shadow-lg flex items-center justify-center gap-2">
-                        Create Room <i className="fa-solid fa-arrow-right text-xs"></i>
-                     </button>
-                  </div>
-               </div>
-            </div>
-        </div>
-
-        {/* --- FLOATING WIDGETS --- */}
-        
-        {/* 1. Mobile FAB (Create Room) */}
-        <div className="xl:hidden">
-            <button 
-                onClick={handleAddRoomClick} 
-                className="fixed bottom-6 right-6 bg-primary text-white p-4 w-14 h-14 rounded-full shadow-lg shadow-primary/40 hover:scale-110 active:scale-90 transition-all z-50 flex items-center justify-center"
-            >
-                <i className="fa fa-plus text-xl"></i>
-            </button>
-        </div>
-
-        {/* 2. Anniversary Sale Card */}
-        <AnniversaryCard onClick={() => setShowOffer(true)} />
-
-        {/* --- MODALS --- */}
-        <AddRoomForm data={rooms} /> 
-        {modalToggle && <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[60]" />}
-        {togglePopUp && <div className="fixed top-28 left-1/2 transform -translate-x-1/2 z-[70] animate-bounce"><Popup text="Room created successfully!" color="bg-emerald-600" /></div>}
-        
-        {/* Spinner Modal */}
-        {showOffer && <SpinWheelModal onClose={() => setShowOffer(false)} />}
-
-        {/* Privacy Modal */}
-        {showPrivacyNotice && (
-            <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-all animate-fade-in">
-              <div className="bg-white dark:bg-[#151725] w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl p-8 border border-gray-100 dark:border-slate-800 transform transition-all animate-slide-up">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl">
-                    <i className="fa-solid fa-shield-halved text-primary text-2xl"></i>
-                  </div>
-                  <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Community Guidelines</h2>
+                  <i className="fa-solid fa-chevron-down pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
                 </div>
-                <div className="space-y-4 text-gray-600 dark:text-slate-400 mb-8 leading-relaxed text-sm">
-                  <p>Welcome to Vaani! To ensure a safe learning environment:</p>
-                  <ul className="space-y-3">
-                    <li className="flex gap-3 items-start"><i className="fa-solid fa-check-circle text-primary mt-0.5"></i><span><strong>Respect:</strong> Zero tolerance for hate speech.</span></li>
-                    <li className="flex gap-3 items-start"><i className="fa-solid fa-check-circle text-primary mt-0.5"></i><span><strong>Privacy:</strong> Be mindful of sharing info.</span></li>
-                  </ul>
-                  <p className="text-xs opacity-70 mt-4">By continuing, you agree to our Terms of Service.</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button onClick={handleAcceptPrivacy} className="flex-1 bg-primary hover:opacity-90 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all active:scale-95">I Agree</button>
-                  <button onClick={() => setShowPrivacyNotice(false)} className="flex-1 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 font-bold py-4 px-6 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">Later</button>
+
+                <div className="relative">
+                  <i className="fa-solid fa-search pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+                  <input
+                    type="search"
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                    placeholder="Search topic, level, host..."
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-bold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/10"
+                  />
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+                <div className="md:col-span-2">
+                  <AiCard
+                    pageName="AI Voice Room"
+                    title="Luna — AI Friend"
+                    description="Practice pronunciation, ask for replies, and keep speaking even when no one is online."
+                    avatar="https://static.vecteezy.com/system/resources/previews/034/599/439/non_2x/ai-generated-3d-cute-cartoon-woman-character-in-blue-suit-on-transparent-background-png.png"
+                  />
+                </div>
+
+                {loading && Array.from({ length: 6 }, (_, index) => (
+                  <div key={index} className="h-[260px] w-full">
+                    <SkeletonLoader />
+                  </div>
+                ))}
+
+                {!loading && paginatedRooms.map((room) => (
+                  <RoomCard key={room._id || room.id || room.roomId} roomdata={room} />
+                ))}
+              </div>
+
+              {!loading && paginatedRooms.length === 0 && (
+                <div className="mt-6 rounded-[2rem] border border-dashed border-slate-300 bg-white p-12 text-center dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500">
+                    <i className="fa-solid fa-ghost text-2xl" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-950 dark:text-white">No rooms found</h3>
+                  <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">Try a different search or create a new room.</p>
+                </div>
+              )}
+
+              {!loading && filteredRooms.length > page * PAGE_SIZE && (
+                <div className="mt-10 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setPage((value) => value + 1)}
+                    className="btn-secondary px-6 py-3 text-sm"
+                  >
+                    Load more rooms
+                    <i className="fa-solid fa-arrow-down text-xs" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <aside className="hidden space-y-5 xl:block">
+              <LiveActivityFeed />
+
+              <div className="relative overflow-hidden rounded-[2rem] border border-indigo-400/20 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-6 text-white shadow-xl shadow-indigo-500/20">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+                <div className="relative">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-2xl backdrop-blur-xl">
+                    <i className="fa-solid fa-plus" />
+                  </div>
+                  <h3 className="text-2xl font-black">Host a focused room</h3>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-white/80">Create a safe topic, invite your friends, and lead a better live practice session.</p>
+                  <button
+                    type="button"
+                    onClick={handleAddRoomClick}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:-translate-y-0.5"
+                  >
+                    Create Room
+                    <i className="fa-solid fa-arrow-right text-xs" />
+                  </button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <div className="xl:hidden">
+          <button
+            type="button"
+            onClick={handleAddRoomClick}
+            className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-2xl shadow-indigo-500/35 transition hover:scale-105 active:scale-95"
+            aria-label="Create room"
+          >
+            <i className="fa fa-plus text-xl" />
+          </button>
+        </div>
+
+        <AnniversaryCard onClick={() => setShowOffer(true)} />
+        <AddRoomForm data={rooms} />
+
+        {modalToggle && <div className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-sm" />}
+        {togglePopUp && (
+          <div className="fixed left-1/2 top-28 z-[70] -translate-x-1/2 animate-bounce">
+            <Popup text="Room created successfully!" color="bg-emerald-600" />
+          </div>
         )}
 
+        {showOffer && <SpinWheelModal onClose={() => setShowOffer(false)} />}
+
+        {showPrivacyNotice && (
+          <div className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/60 p-4 backdrop-blur-sm sm:items-center">
+            <div className="w-full max-w-lg rounded-t-[2rem] border border-slate-200 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#0f172a] sm:rounded-[2rem] sm:p-8">
+              <div className="mb-5 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+                  <i className="fa-solid fa-shield-halved text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-950 dark:text-white">Community Guidelines</h2>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Keep rooms respectful and safe.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">
+                <p>Welcome to Vaani. To keep practice rooms useful:</p>
+                <p><i className="fa-solid fa-check-circle mr-2 text-indigo-500" /> Respect everyone. Hate speech is not allowed.</p>
+                <p><i className="fa-solid fa-check-circle mr-2 text-indigo-500" /> Protect privacy. Do not share sensitive information in public rooms.</p>
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button type="button" onClick={handleAcceptPrivacy} className="btn-primary px-5 py-3 text-sm">I Agree</button>
+                <button type="button" onClick={() => setShowPrivacyNotice(false)} className="btn-secondary px-5 py-3 text-sm">Later</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

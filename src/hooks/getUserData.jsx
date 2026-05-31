@@ -1,23 +1,17 @@
-import axios from 'axios';
+import api from '../services/api';
 
 const getUserData = async (uid) => {
   if (!uid) return null;
 
   try {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-    
-    // Hit the Express backend to fetch the user profile from MongoDB
-    const response = await axios.get(`${backendUrl}/api/users/${uid}`);
-    
-    if (response.data) {
-      return response.data;
-    } else {
-      console.log('User document not found in MongoDB');
+    const response = await api.get(`/api/users/${uid}`);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
       return null;
     }
-  } catch (error) {
-    console.error("Error fetching user data from MongoDB:", error.response?.data || error.message);
-    return null; // Return null if an error occurs so the UI doesn't crash
+
+    throw error;
   }
 };
 

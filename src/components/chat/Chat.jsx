@@ -1,39 +1,39 @@
-/**
- * Chat.jsx — Production-grade chat component
- */
-
 import React, {
-  useState, useEffect, useRef, useCallback, useMemo, memo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  memo,
 } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import axios from 'axios';
+import api from '../../services/api';
 import socket from '../../services/socket';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import EmojiPicker from 'emoji-picker-react';
+import { Virtuoso } from 'react-virtuoso';
 
 import useAddMessage from '../../hooks/useAddMessage';
 import getUserDataFromFirestore from '../../hooks/getUserData';
-import openAIChat from '../../hooks/openAIChat';
 import { toggleChatSidebar } from '../../redux/action';
 import botimg from '../../assets/robot.png';
 
 import msgpopSrc from '../../assets/happy-pop-3-185288.mp3';
+
 const msgPopAudio = new Audio(msgpopSrc);
 msgPopAudio.preload = 'auto';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const MSG_REACTIONS      = ['👍', '❤️', '😂', '😮', '🎉'];
+const MSG_REACTIONS = ['👍', '❤️', '😂', '😮', '🎉'];
 const TYPING_DEBOUNCE_MS = 3000;
-const SMART_REPLY_DELAY  = 800;
-const MAX_MSG_LENGTH     = 2000;
-const SEND_COOLDOWN_MS   = 500;
-const BOT_COOLDOWN_MS    = 3000;
-const MAX_IMAGE_SIZE     = 5 * 1024 * 1024; // 5 MB
-const CHUNK_SIZE         = 16 * 1024;       // 16 KB
-const ALLOWED_MIME       = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const SMART_REPLY_DELAY = 700;
+const MAX_MSG_LENGTH = 2000;
+const SEND_COOLDOWN_MS = 500;
+const BOT_COOLDOWN_MS = 3000;
+const MAX_IMAGE_SIZE = 1.5 * 1024 * 1024;
+const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 const sanitizeSchema = {
   ...defaultSchema,
@@ -41,31 +41,204 @@ const sanitizeSchema = {
     ...defaultSchema.attributes,
     a: [['rel', 'noopener noreferrer'], ['target', '_blank'], 'href', 'title'],
   },
-  protocols: { ...defaultSchema.protocols, href: ['http', 'https', 'mailto'] },
+  protocols: {
+    ...defaultSchema.protocols,
+    href: ['http', 'https', 'mailto'],
+  },
 };
 
-// ─── Markdown renderers ───────────────────────────────────────────────────────
-const markdownComponents = {
-  p:      ({ children }) => <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{children}</p>,
-  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-  em:     ({ children }) => <em className="italic">{children}</em>,
-  del:    ({ children }) => <del className="line-through opacity-60">{children}</del>,
-  code:   ({ inline, children }) => inline
-    ? <code className="px-1.5 py-0.5 rounded-md text-[13px] font-mono bg-black/10">{children}</code>
-    : <pre className="mt-2 mb-2 p-3 rounded-xl text-[13px] font-mono overflow-x-auto bg-black/20 shadow-inner"><code>{children}</code></pre>,
+const getMessageId = (msg) => msg?._id || msg?.id || msg?.clientId || '';
+
+const isSameMessage = (a, b) => {
+  const aId = getMessageId(a);
+  const bId = getMessageId(b);
+
+  if (aId && bId && aId === bId) return true;
+
+  return (
+    a?.createdAt
+    && b?.createdAt
+    && a?.userid === b?.userid
+    && a?.senderId === b?.senderId
+    && a?.text === b?.text
+    && a?.type === b?.type
+    && Math.abs(new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) < 1200
+  );
+};
+
+const playPop = () => {
+  try {
+    msgPopAudio.currentTime = 0;
+    msgPopAudio.play().catch(() => {});
+  } catch {}
+};
+
+const getDisplayTime = (msgData) => {
+  let date = new Date();
+
+  if (msgData?.createdAt) {
+    date = new Date(msgData.createdAt);
+  } else if (msgData?.timestampField?.seconds) {
+    date = new Date(msgData.timestampField.seconds * 1000);
+  }
+
+  if (Number.isNaN(date.getTime())) date = new Date();
+
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const getReplyText = (msg) => {
+  if (!msg) return '';
+  if (msg.type === 'image') return 'Image';
+  return msg.text || '';
+};
+
+function validateImage(file) {
+  if (!file) return 'No file selected.';
+
+  if (!ALLOWED_MIME.includes(file.type)) {
+    return 'Only JPEG, PNG, GIF, or WebP images are allowed.';
+  }
+
+  if (file.size > MAX_IMAGE_SIZE) {
+    return `Image must be smaller than ${(MAX_IMAGE_SIZE / 1024 / 1024).toFixed(1)} MB.`;
+  }
+
+  return null;
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function useAutoResize(ref, value) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const minHeight = 40;
+    const maxHeight = 96;
+
+    el.style.height = `${minHeight}px`;
+
+    const next = Math.min(Math.max(el.scrollHeight, minHeight), maxHeight);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, [value, ref]);
+}
+
+const PremiumChatStyles = () => (
+  <style>{`
+    @keyframes chatPopIn {
+      from { opacity: 0; transform: translateY(6px) scale(0.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes chatShine {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
+    }
+
+    .premium-chat-scrollbar,
+    .premium-chat-scrollbar * {
+      overscroll-behavior-x: none;
+    }
+
+    .premium-chat-scrollbar [data-virtuoso-scroller="true"] {
+      overflow-x: hidden !important;
+    }
+
+    .premium-chat-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 0;
+    }
+
+    .premium-chat-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .premium-chat-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.22);
+      border-radius: 999px;
+    }
+
+    .premium-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.34);
+    }
+  `}</style>
+);
+
+const markdownComponentsOwn = {
+  p: ({ children }) => (
+    <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-white/95">
+      {children}
+    </p>
+  ),
+  strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+  del: ({ children }) => <del className="line-through opacity-60">{children}</del>,
+  code: ({ inline, children }) => (
+    inline ? (
+      <code className="rounded-lg bg-black/20 px-1.5 py-0.5 font-mono text-[12px] text-blue-50">
+        {children}
+      </code>
+    ) : (
+      <pre className="my-2 max-w-full overflow-x-auto rounded-2xl bg-black/25 p-3 text-[12px] shadow-inner">
+        <code>{children}</code>
+      </pre>
+    )
+  ),
   a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="underline decoration-white/40 underline-offset-2 hover:decoration-white transition-all break-all">{children}</a>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="break-all font-semibold text-white underline decoration-white/40 underline-offset-4 hover:decoration-white"
+    >
+      {children}
+    </a>
   ),
 };
 
 const markdownComponentsOther = {
-  ...markdownComponents,
-  p: ({ children }) => <p className="text-[15px] leading-relaxed whitespace-pre-wrap text-gray-800 dark:text-gray-100">{children}</p>,
-  code: ({ inline, children }) => inline
-    ? <code className="px-1.5 py-0.5 rounded-md text-[13px] font-mono bg-gray-100 dark:bg-gray-700 text-pink-600 dark:text-pink-400">{children}</code>
-    : <pre className="mt-2 mb-2 p-3 rounded-xl text-[13px] font-mono overflow-x-auto bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-inner"><code>{children}</code></pre>,
+  p: ({ children }) => (
+    <p className="text-[14px] leading-relaxed whitespace-pre-wrap text-slate-100">
+      {children}
+    </p>
+  ),
+  strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+  em: ({ children }) => <em className="italic">{children}</em>,
+  del: ({ children }) => <del className="line-through opacity-60">{children}</del>,
+  code: ({ inline, children }) => (
+    inline ? (
+      <code className="rounded-lg bg-white/10 px-1.5 py-0.5 font-mono text-[12px] text-pink-200">
+        {children}
+      </code>
+    ) : (
+      <pre className="my-2 max-w-full overflow-x-auto rounded-2xl border border-white/10 bg-black/25 p-3 text-[12px] shadow-inner">
+        <code>{children}</code>
+      </pre>
+    )
+  ),
   a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 dark:text-blue-400 underline decoration-blue-500/30 underline-offset-2 transition-all break-all">{children}</a>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="break-all font-semibold text-blue-300 underline decoration-blue-300/40 underline-offset-4 hover:text-blue-200 hover:decoration-blue-200"
+    >
+      {children}
+    </a>
   ),
 };
 
@@ -73,87 +246,102 @@ const MarkdownContent = memo(({ text, isOwn }) => (
   <ReactMarkdown
     remarkPlugins={[remarkGfm]}
     rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
-    components={isOwn ? markdownComponents : markdownComponentsOther}
+    components={isOwn ? markdownComponentsOwn : markdownComponentsOther}
   >
-    {text}
+    {text || ''}
   </ReactMarkdown>
 ));
 
-// ─── useAutoResize ─────────────────────────────────────────────────────────────
-function useAutoResize(ref, value) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  }, [value, ref]);
-}
-
-// ─── Image helpers ─────────────────────────────────────────────────────────────
-function validateImage(file) {
-  if (!ALLOWED_MIME.includes(file.type)) return 'Only JPEG, PNG, GIF, or WebP images are allowed.';
-  if (file.size > MAX_IMAGE_SIZE) return `Image must be smaller than ${MAX_IMAGE_SIZE / 1024 / 1024} MB.`;
-  return null;
-}
-
-async function fileToDataUrl(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload  = () => res(r.result);
-    r.onerror = () => rej(new Error('File read failed'));
-    r.readAsDataURL(file);
-  });
-}
-
-const dataUrlToBase64 = (dataUrl) => dataUrl.split(',')[1];
-
-// ─── ImageModal ───────────────────────────────────────────────────────────────
 const ImageModal = memo(({ src, onClose }) => {
   useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', h);
-    return () => document.removeEventListener('keydown', h);
+    const handler = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', handler);
+
+    return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors" aria-label="Close">
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white shadow-2xl transition hover:bg-white/20"
+        aria-label="Close image preview"
+      >
         <i className="fas fa-times" />
       </button>
-      <img src={src} alt="Full size" className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain" onClick={e => e.stopPropagation()} />
+
+      <img
+        src={src}
+        alt="Full size"
+        className="max-h-[90vh] max-w-full rounded-[1.6rem] object-contain shadow-2xl ring-1 ring-white/10"
+        onClick={(event) => event.stopPropagation()}
+      />
     </div>
   );
 });
 
-// ─── UploadProgress ───────────────────────────────────────────────────────────
 const UploadProgress = memo(({ uploads }) => {
   if (!uploads?.length) return null;
+
   return (
-    <div className="px-4 mb-2 flex flex-col gap-1.5">
-      {uploads.map(u => (
-        <div key={u.id} className="flex items-center gap-2 bg-white dark:bg-[#1E2532] border border-gray-100 dark:border-gray-800 rounded-xl px-3 py-2">
-          <img src={u.preview} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-gray-600 dark:text-gray-400 truncate">{u.name}</p>
-            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${u.progress}%` }} />
+    <div className="mx-4 mb-3 flex flex-col gap-2">
+      {uploads.map((upload) => (
+        <div
+          key={upload.id}
+          className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] p-2.5 shadow-xl backdrop-blur-xl"
+        >
+          <div className="flex items-center gap-3">
+            <img
+              src={upload.preview}
+              alt=""
+              className="h-10 w-10 flex-shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+            />
+
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <p className="truncate text-[11px] font-bold text-slate-200">{upload.name}</p>
+                <span className="shrink-0 text-[10px] font-black text-blue-300">{upload.progress}%</span>
+              </div>
+
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all duration-300"
+                  style={{ width: `${upload.progress}%` }}
+                />
+              </div>
             </div>
           </div>
-          <span className="text-[10px] text-gray-400 flex-shrink-0">{u.progress}%</span>
         </div>
       ))}
     </div>
   );
 });
 
-// ─── ImagePreviews ────────────────────────────────────────────────────────────
 const ImagePreviews = memo(({ previews, onRemove }) => {
   if (!previews?.length) return null;
+
   return (
-    <div className="flex gap-2 flex-wrap px-4 mb-2">
-      {previews.map(p => (
-        <div key={p.id} className="relative">
-          <img src={p.dataUrl} alt="" className="w-20 h-20 rounded-xl object-cover border-2 border-blue-400 shadow-md" />
-          <button onClick={() => onRemove(p.id)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-[10px] transition-colors shadow">
+    <div className="mb-3 flex flex-wrap gap-2 px-1">
+      {previews.map((preview) => (
+        <div key={preview.id} className="group relative">
+          <img
+            src={preview.dataUrl}
+            alt=""
+            className="h-20 w-20 rounded-2xl border border-white/10 object-cover shadow-xl ring-2 ring-blue-400/50"
+          />
+
+          <button
+            type="button"
+            onClick={() => onRemove(preview.id)}
+            className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-[10px] text-white shadow-lg transition hover:bg-red-600"
+            aria-label="Remove image"
+          >
             <i className="fas fa-times" />
           </button>
         </div>
@@ -162,153 +350,359 @@ const ImagePreviews = memo(({ previews, onRemove }) => {
   );
 });
 
-// ─── ChatErrorBoundary ────────────────────────────────────────────────────────
 class ChatErrorBoundary extends React.Component {
   state = { error: null };
-  static getDerivedStateFromError(e) { return { error: e }; }
-  componentDidCatch(e, i) { console.error('[ChatErrorBoundary]', e, i.componentStack); }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    console.error('[ChatErrorBoundary]', error, info.componentStack);
+  }
+
   render() {
-    if (this.state.error) return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-3">
-        <i className="fas fa-triangle-exclamation text-3xl text-amber-500" />
-        <p className="text-gray-600 dark:text-gray-400 text-sm">Something went wrong in the chat.</p>
-        <button onClick={() => this.setState({ error: null })} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm transition-colors">Try again</button>
-      </div>
-    );
+    if (this.state.error) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#050713] p-8 text-center text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20">
+            <i className="fas fa-triangle-exclamation text-3xl" />
+          </div>
+          <div>
+            <p className="text-lg font-black">Chat crashed</p>
+            <p className="mt-1 text-sm text-slate-400">Something went wrong in the chat panel.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => this.setState({ error: null })}
+            className="rounded-2xl bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-xl transition hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
     return this.props.children;
   }
 }
 
-// ─── MessageCard ──────────────────────────────────────────────────────────────
-const MessageCard = memo(({ msgData, uId, onReply, onReact, msgReactions, onImageClick }) => {
-  const [showMore, setShowMore] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  
-  const longPressTimer = useRef(null);
-  const isOwn   = uId === msgData.userid || uId === msgData.senderId;
-  const isEmoji = /^\p{Emoji}+$/u.test((msgData?.text || '').trim()) && (msgData.text?.trim().length || 0) <= 4;
+const MessageActionSheet = memo(({
+  message,
+  currentUserId,
+  onClose,
+  onReply,
+  onReact,
+  onDelete,
+}) => {
+  if (!message) return null;
 
-  const time = useMemo(() => {
-    let d = new Date();
-    if (msgData?.createdAt) d = new Date(msgData.createdAt);
-    else if (msgData?.timestampField?.seconds) d = new Date(msgData.timestampField.seconds * 1000);
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  }, [msgData]);
-
-  const displayText = useMemo(() => {
-    if (isEmoji) return msgData.text || '';
-    if (!showMore && (msgData.text?.length || 0) > 300) return msgData.text.slice(0, 300) + '…';
-    return msgData.text || '';
-  }, [isEmoji, msgData.text, showMore]);
-
-const reactionSummary = useMemo(() => {
-  if (!msgReactions || Object.keys(msgReactions).length === 0) return null;
-  return Object.values(msgReactions).reduce((acc, e) => { 
-    acc[e] = (acc[e] || 0) + 1; 
-    return acc; 
-  }, {});
-}, [msgReactions]);
-
-  // Handle right-click (Desktop)
-  const handleContextMenu = useCallback((e) => {
-    e.preventDefault();
-    setShowMenu(true);
-  }, []);
-
-  // Handle long-press (Mobile)
-  const handleTouchStart = useCallback(() => {
-    longPressTimer.current = setTimeout(() => {
-      setShowMenu(true);
-      if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback
-    }, 400); // 400ms threshold for long press
-  }, []);
-
-  const cancelLongPress = useCallback(() => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-  }, []);
-
-  // Close menu on scroll
-  useEffect(() => {
-    if (!showMenu) return;
-    const handleScroll = () => setShowMenu(false);
-    document.addEventListener('scroll', handleScroll, { passive: true, capture: true });
-    return () => document.removeEventListener('scroll', handleScroll, { capture: true });
-  }, [showMenu]);
+  const msgId = getMessageId(message);
+  const isOwn = currentUserId === message.userid || currentUserId === message.senderId;
+  const canDelete = isOwn || message.type === 'image';
 
   return (
-    <div className={`w-full flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className={`flex items-end gap-2.5 max-w-[85%] md:max-w-[75%] ${isOwn ? 'flex-row-reverse' : 'flex-row'} relative`}>
+    <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-[320px] rounded-[1.6rem] border border-white/10 bg-[#0b1120]/95 p-3 text-white shadow-2xl ring-1 ring-white/5"
+        onClick={(event) => event.stopPropagation()}
+        style={{ animation: 'chatPopIn 0.15s ease-out' }}
+      >
+        <div className="mb-2 flex items-center gap-2 border-b border-white/10 pb-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-300">
+            <i className={`fa-solid ${message.type === 'image' ? 'fa-image' : 'fa-message'} text-sm`} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black text-white">
+              Message actions
+            </p>
+            <p className="truncate text-xs text-slate-500">
+              {message.type === 'image' ? 'Image message' : (message.text || 'Message')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/8 text-slate-400 hover:bg-white/12 hover:text-white"
+            aria-label="Close actions"
+          >
+            <i className="fa-solid fa-xmark text-xs" />
+          </button>
+        </div>
+
+        <div className="mb-2 grid grid-cols-5 gap-1.5">
+          {MSG_REACTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => {
+                onReact(msgId, emoji);
+                onClose();
+              }}
+              className="flex h-11 items-center justify-center rounded-2xl bg-white/7 text-2xl transition hover:scale-110 hover:bg-white/12 active:scale-95"
+              aria-label={`React ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => {
+              onReply(message);
+              onClose();
+            }}
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-slate-200 transition hover:bg-white/10"
+          >
+            <i className="fas fa-reply w-5 text-center text-blue-300" />
+            Reply
+          </button>
+
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                onDelete(message);
+                onClose();
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-red-300 transition hover:bg-red-500/10"
+            >
+              <i className="fas fa-trash w-5 text-center" />
+              Delete {isOwn ? 'message' : 'for me'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const MessageCard = memo(({
+  msgData,
+  uId,
+  onOpenActions,
+  msgReactions,
+  onImageClick,
+}) => {
+  const [showMore, setShowMore] = useState(false);
+  const longPressTimer = useRef(null);
+
+  const isOwn = uId === msgData.userid || uId === msgData.senderId;
+  const textValue = msgData?.text || '';
+
+  const isEmoji = useMemo(() => {
+    const trimmed = textValue.trim();
+    if (!trimmed) return false;
+    return /^\p{Emoji}+$/u.test(trimmed) && trimmed.length <= 4;
+  }, [textValue]);
+
+  const time = useMemo(() => getDisplayTime(msgData), [msgData]);
+
+  const displayText = useMemo(() => {
+    if (isEmoji) return textValue;
+    if (!showMore && textValue.length > 300) return `${textValue.slice(0, 300)}…`;
+    return textValue;
+  }, [isEmoji, textValue, showMore]);
+
+  const reactionSummary = useMemo(() => {
+    if (!msgReactions || Object.keys(msgReactions).length === 0) return null;
+
+    return Object.values(msgReactions).reduce((acc, emoji) => {
+      acc[emoji] = (acc[emoji] || 0) + 1;
+      return acc;
+    }, {});
+  }, [msgReactions]);
+
+  const openActions = useCallback((event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    onOpenActions(msgData);
+  }, [msgData, onOpenActions]);
+
+  const handleTouchStart = useCallback(() => {
+    longPressTimer.current = setTimeout(() => {
+      onOpenActions(msgData);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 420);
+  }, [msgData, onOpenActions]);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => cancelLongPress();
+  }, [cancelLongPress]);
+
+  const imageSrc = msgData.dataUrl || msgData.imageUrl || msgData.url;
+
+  return (
+    <div
+      className={`flex w-full min-w-0 overflow-x-hidden ${isOwn ? 'justify-end' : 'justify-start'} px-1 pb-4`}
+      style={{ animation: 'chatPopIn 0.18s ease-out' }}
+    >
+      <div
+        className={`relative flex px-5 max-w-[88%] min-w-0 items-end gap-2.5 md:max-w-[80%] ${
+          isOwn ? 'flex-row-reverse' : 'flex-row'
+        }`}
+      >
         {!isOwn && (
-          <div className="relative flex-shrink-0 mb-1">
+          <div className="relative mb-1 shrink-0">
+            <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-md" />
             <img
               referrerPolicy="no-referrer"
-              src={msgData.role === 'bot' ? botimg : (msgData?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}
-              className="w-8 h-8 rounded-full object-cover border-2 border-white dark:border-gray-800 shadow-sm select-none pointer-events-none"
+              src={
+                msgData.role === 'bot'
+                  ? botimg
+                  : (msgData?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png')
+              }
+              className="relative h-8 w-8 rounded-full border-2 border-white/10 object-cover shadow-lg"
               alt="Avatar"
             />
+
             {msgData.role === 'bot' && (
-              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-blue-500 border-2 border-white dark:border-gray-800 rounded-full flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#080d1c] bg-blue-500">
                 <i className="fas fa-bolt text-[6px] text-white" />
               </div>
             )}
           </div>
         )}
 
-        {/* Message Container listening for interactions */}
-        <div 
-          className={`flex flex-col relative ${isOwn ? 'items-end' : 'items-start'} select-none sm:select-auto`}
-          onContextMenu={handleContextMenu}
+        <div
+          className={`relative flex min-w-0 flex-col ${isOwn ? 'items-end' : 'items-start'} select-none sm:select-auto`}
+          onContextMenu={openActions}
           onTouchStart={handleTouchStart}
           onTouchEnd={cancelLongPress}
           onTouchMove={cancelLongPress}
         >
           {!isOwn && !isEmoji && (
-            <span className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 ml-1 font-medium">
-              {msgData.role === 'bot' ? 'AI Assistant' : (msgData.displayName || msgData.senderName || 'User')}
+            <span className="mb-1 ml-1 text-[11px] font-black text-slate-400">
+              {msgData.role === 'bot'
+                ? 'AI Assistant'
+                : (msgData.displayName || msgData.senderName || 'User')}
             </span>
           )}
 
-          {/* Image message */}
-          {msgData.type === 'image' && msgData.dataUrl && (
-            <div className={`rounded-2xl overflow-hidden shadow-md cursor-pointer hover:opacity-95 transition-opacity ${isOwn ? 'rounded-br-[6px]' : 'rounded-bl-[6px]'}`}>
-              <img
-                src={msgData.dataUrl}
-                alt="Shared image"
-                className="max-w-[240px] max-h-[240px] sm:max-w-[280px] sm:max-h-[280px] object-cover block"
-                onClick={() => onImageClick(msgData.dataUrl)}
-                loading="lazy"
-              />
-              <div className={`px-2 py-1 text-[10px] text-right ${isOwn ? 'text-blue-100 bg-blue-600' : 'text-gray-400 dark:text-gray-500 bg-white dark:bg-[#1E2532]'}`}>
+          {msgData.type === 'image' && imageSrc && (
+            <div
+              className={`group relative max-w-full overflow-hidden rounded-[1.35rem] border shadow-xl transition hover:scale-[1.01] ${
+                isOwn
+                  ? 'rounded-br-md border-blue-400/20 bg-blue-600/20'
+                  : 'rounded-bl-md border-white/10 bg-white/[0.06]'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={openActions}
+                className={`absolute top-2  z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-md transition hover:bg-black/65 ${
+                  isOwn ? 'left-2' : 'right-2'
+                }`}
+                aria-label="Image actions"
+              >
+                <i className="fa-solid fa-ellipsis-vertical text-[11px]" />
+              </button>
+
+              <button
+                type="button"
+                className="block max-w-full"
+                onClick={() => onImageClick(imageSrc)}
+              >
+                <img
+                  src={imageSrc}
+                  alt="Shared"
+                  className="block max-h-[270px] w-auto max-w-[min(250px,calc(100vw-96px))] object-cover sm:max-w-[280px]"
+                  loading="lazy"
+                />
+              </button>
+
+              <div
+                className={`flex items-center justify-end gap-1 px-3 py-1.5 text-[10px] font-bold ${
+                  isOwn ? 'bg-blue-600/80 text-blue-50' : 'bg-black/20 text-slate-400'
+                }`}
+              >
                 {time}
               </div>
             </div>
           )}
 
-          {/* Text message */}
           {msgData.type !== 'image' && (
-            <div className={`relative ${
-              isEmoji ? 'bg-transparent' : isOwn
-                ? 'bg-gradient-to-br from-blue-600 to-blue-500 text-white rounded-[22px] rounded-br-[6px] shadow-[0_2px_10px_-2px_rgba(37,99,235,0.3)]'
-                : 'bg-white dark:bg-[#1E2532] text-gray-800 dark:text-gray-100 rounded-[22px] rounded-bl-[6px] shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-gray-800'
-            } ${!isEmoji ? 'px-4 py-3' : ''}`}>
+            <div
+              className={`group relative min-w-0 max-w-full  ${
+                isEmoji
+                  ? 'bg-transparent'
+                  : isOwn
+                    ? 'rounded-[1.35rem] rounded-br-md bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 text-white shadow-xl shadow-blue-500/15'
+                    : 'rounded-[1.35rem] rounded-bl-md border border-white/10 bg-white/[0.075] text-slate-100 shadow-xl backdrop-blur-xl'
+              } ${!isEmoji ? 'px-4 py-3' : ''}`}
+            >
+              {!isEmoji && (
+                <button
+                  type="button"
+                  onClick={openActions}
+                  className={`absolute top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full text-slate-300 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100 ${
+                    isOwn ? 'right-1.5' : 'right-1.5'
+                  }`}
+                  aria-label="Message actions"
+                >
+                  <i className="fa-solid fa-ellipsis-vertical text-[10px]" />
+                </button>
+              )}
 
-              {/* Reply preview */}
+              {isOwn && !isEmoji && (
+                <div className="pointer-events-none absolute inset-0 opacity-25">
+                  <div
+                    className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    style={{ animation: 'chatShine 4s ease-in-out infinite' }}
+                  />
+                </div>
+              )}
+
               {!isEmoji && msgData?.replyto && (
-                <div className={`text-[12px] mb-2.5 p-2 rounded-xl flex flex-col gap-0.5 ${isOwn ? 'bg-black/10 text-white/90' : 'bg-gray-50 dark:bg-[#131823] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700/50'}`}>
-                  <span className={`font-semibold flex items-center gap-1.5 ${isOwn ? 'text-blue-100' : 'text-blue-500 dark:text-blue-400'}`}>
-                    <i className="fas fa-reply text-[9px]" /> {msgData.replytoName}
+                <div
+                  className={`relative mb-2.5 flex flex-col gap-0.5 rounded-2xl border-l-4 p-2.5 text-[12px] ${
+                    isOwn
+                      ? 'border-l-white/70 bg-black/15 text-white/90'
+                      : 'border-l-blue-400 bg-black/20 text-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`flex items-center gap-1.5 font-black ${
+                      isOwn ? 'text-blue-100' : 'text-blue-300'
+                    }`}
+                  >
+                    <i className="fas fa-reply text-[9px]" />
+                    {msgData.replytoName || 'User'}
                   </span>
-                  <span className="truncate max-w-[220px] opacity-80">{msgData.replyto}</span>
+
+                  <span className="max-w-[220px] truncate opacity-80">
+                    {msgData.replyto}
+                  </span>
                 </div>
               )}
 
               {isEmoji ? (
-                <span className="text-5xl block select-none origin-bottom" role="img">{msgData.text}</span>
+                <span className="block origin-bottom select-none text-5xl drop-shadow-lg" role="img" aria-label="emoji">
+                  {textValue}
+                </span>
               ) : (
-                <div className="pb-3 relative min-w-[60px]">
+                <div className="relative min-w-[60px] max-w-full pb-4">
                   <MarkdownContent text={displayText} isOwn={isOwn} />
-                  {(msgData.text?.length || 0) > 300 && (
-                    <button onClick={() => setShowMore(v => !v)} className={`text-[12px] mt-1.5 font-semibold transition-colors ${isOwn ? 'text-blue-200 hover:text-white' : 'text-blue-500 hover:text-blue-600'}`}>
+
+                  {textValue.length > 300 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMore((value) => !value)}
+                      className={`mt-1.5 text-[12px] font-black transition-colors ${
+                        isOwn
+                          ? 'text-blue-100 hover:text-white'
+                          : 'text-blue-300 hover:text-blue-200'
+                      }`}
+                    >
                       {showMore ? 'Show less' : 'Read more'}
                     </button>
                   )}
@@ -316,691 +710,951 @@ const reactionSummary = useMemo(() => {
               )}
 
               {!isEmoji && (
-                <div className={`absolute bottom-2 right-3 flex items-center gap-1 ${isOwn ? 'text-blue-100/80' : 'text-gray-400 dark:text-gray-500'}`}>
-                  <span className="text-[10px] font-medium">{time}</span>
-                  {isOwn && <i className="fa-solid fa-check-double text-[10px]" />}
+                <div
+                  className={`absolute bottom-2 right-3 flex items-center gap-1 ${
+                    isOwn ? 'text-blue-100/80' : 'text-slate-500'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold">{time}</span>
                 </div>
               )}
 
               {reactionSummary && (
-                <div className={`absolute -bottom-3 ${isOwn ? 'right-2' : 'left-2'} flex flex-wrap gap-1 z-10 pointer-events-none`}>
+                <div
+                  className={`absolute -bottom-3 ${
+                    isOwn ? 'right-2' : 'left-2'
+                  } z-10 flex flex-wrap gap-1 pointer-events-none`}
+                >
                   {Object.entries(reactionSummary).map(([emoji, count]) => (
-                    <span key={emoji} className="text-[12px] flex items-center gap-1 rounded-full px-2 py-0.5 shadow-sm border bg-white border-gray-100 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200">
-                      {emoji} {count > 1 && <span className="text-[10px] font-bold opacity-70">{count}</span>}
+                    <span
+                      key={emoji}
+                      className="flex items-center gap-1 rounded-full border border-white/10 bg-[#10172a] px-2 py-0.5 text-[12px] text-slate-100 shadow-xl"
+                    >
+                      {emoji}
+                      {count > 1 && (
+                        <span className="text-[10px] font-black opacity-75">{count}</span>
+                      )}
                     </span>
                   ))}
                 </div>
               )}
             </div>
           )}
-
-          {/* Telegram-style Context Menu */}
-         {/* Telegram-style Context Menu */}
-          {showMenu && (
-            <>
-              {/* Invisible backdrop to close the menu when clicking outside */}
-              <div 
-                className="fixed inset-0 z-40" 
-                onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} 
-                onContextMenu={(e) => { e.preventDefault(); setShowMenu(false); }}
-                onTouchStart={() => setShowMenu(false)}
-              />
-              
-              {/* FIX: Changed "top-full mt-2" to "bottom-full mb-2" to make it pop upwards */}
-              <div className={`absolute z-50 ${isOwn ? 'right-0' : 'left-0'} bottom-full mb-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl flex flex-col p-1.5 min-w-[200px]`}>
-                
-                {/* Reactions Row */}
-                <div className="flex justify-between items-center gap-1 p-1 border-b border-gray-100 dark:border-gray-700/50 mb-1">
-                  {MSG_REACTIONS.map(e => (
-                    <button 
-                      key={e} 
-                      onClick={() => { onReact(msgData._id || msgData.id, e); setShowMenu(false); }} 
-                      className="text-2xl hover:scale-125 transition-transform duration-200 cursor-pointer w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Menu Actions */}
-                <button 
-                  onClick={() => { onReply(msgData); setShowMenu(false); }} 
-                  className="flex items-center gap-3 px-3 py-2.5 text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors w-full text-left"
-                >
-                  <i className="fas fa-reply text-blue-500 w-5 text-center" />
-                  Reply
-                </button>
-              </div>
-            </>
-          )}
-
         </div>
       </div>
     </div>
   );
-}, (prev, next) =>
-  prev.msgData === next.msgData &&
-  prev.uId === next.uId &&
-  prev.msgReactions === next.msgReactions
-);
+}, (prev, next) => (
+  prev.msgData === next.msgData
+  && prev.uId === next.uId
+  && prev.msgReactions === next.msgReactions
+));
 
 const TypingIndicator = memo(({ typingUsers }) => {
   if (!typingUsers?.length) return null;
-  const names  = typingUsers.slice(0, 2).join(', ');
+
+  const names = typingUsers.slice(0, 2).join(', ');
   const suffix = typingUsers.length > 2 ? ` +${typingUsers.length - 2} more` : '';
+
   return (
-    <div className="flex items-center gap-3 px-4 py-2 mb-1">
-      <div className="bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-2xl rounded-bl-md shadow-sm border border-gray-200/50 dark:border-gray-700/50">
-        <div className="flex gap-1">
-          {[0, 1, 2].map(i => <span key={i} className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
-        </div>
+    <div className="mx-4 mb-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 backdrop-blur-xl">
+      <div className="flex gap-1 rounded-full bg-white/8 px-3 py-2">
+        {[0, 1, 2].map((index) => (
+          <span
+            key={index}
+            className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-300"
+            style={{ animationDelay: `${index * 0.15}s` }}
+          />
+        ))}
       </div>
-      <span className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">
-        <strong>{names}{suffix}</strong> {typingUsers.length === 1 ? 'is typing' : 'are typing'}…
+
+      <span className="text-[12px] font-semibold text-slate-400">
+        <strong className="text-slate-200">{names}{suffix}</strong>{' '}
+        {typingUsers.length === 1 ? 'is typing' : 'are typing'}…
       </span>
     </div>
   );
 });
 
 const DateSeparator = memo(({ date }) => (
-  <div className="flex items-center justify-center my-6">
-    <span className="text-[11px] tracking-wide text-gray-500 dark:text-gray-400 font-semibold px-4 py-1 bg-gray-100 dark:bg-gray-800 rounded-full shadow-sm border border-gray-200 dark:border-gray-700/50">
+  <div className="my-6 flex items-center justify-center">
+    <span className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 shadow-xl backdrop-blur-xl">
       {date}
     </span>
   </div>
 ));
 
 const SmartReplies = memo(({ replies, onSelect, isLoading }) => {
-  if (!isLoading && (!replies?.length)) return null;
+  if (!isLoading && !replies?.length) return null;
+
   return (
-    <div className="flex gap-2 flex-wrap mb-3 px-1">
-      <div className="flex items-center gap-1.5 mr-1"><i className="fas fa-sparkles text-blue-500 text-[12px]" /></div>
-      {isLoading
-        ? [1, 2, 3].map(i => <div key={i} className="h-8 w-24 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />)
-        : replies.map((r, i) => (
-          <button key={i} onClick={() => onSelect(r)} className="text-[13px] px-4 py-1.5 bg-white dark:bg-[#1E2532] border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:border-blue-300 transition-all shadow-sm active:scale-95">
-            {r}
-          </button>
+    <div className="mb-3 flex flex-wrap items-center gap-2 px-1">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/20">
+        <i className="fas fa-sparkles text-[12px]" />
+      </div>
+
+      {isLoading ? (
+        [1, 2, 3].map((item) => (
+          <div
+            key={item}
+            className="h-8 w-24 animate-pulse rounded-full bg-white/10"
+          />
         ))
-      }
+      ) : replies.map((reply, index) => (
+        <button
+          key={`${reply}-${index}`}
+          type="button"
+          onClick={() => onSelect(reply)}
+          className="rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-1.5 text-[13px] font-bold text-blue-200 shadow-lg transition hover:border-blue-300/40 hover:bg-blue-500/20 active:scale-95"
+        >
+          {reply}
+        </button>
+      ))}
     </div>
   );
 });
 
-// ─── Main Chat Component ──────────────────────────────────────────────────────
+const EmptyState = memo(() => (
+  <div className="flex flex-1 items-center justify-center p-6">
+    <div className="relative max-w-xs text-center">
+      <div className="absolute inset-0 rounded-full bg-blue-500/10 blur-3xl" />
+      <div className="relative mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-white/10 bg-white/[0.06] text-blue-300 shadow-2xl backdrop-blur-xl">
+        <i className="fas fa-comments text-3xl" />
+      </div>
+
+      <h3 className="relative text-xl font-black text-white">No messages yet</h3>
+
+      <p className="relative mt-2 text-sm leading-6 text-slate-400">
+        Start the conversation, share an image, or ask AI for a quick reply.
+      </p>
+    </div>
+  </div>
+));
+
 const Chat = ({ uId }) => {
-  const [messages,      setMessages]      = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [message,       setMessage]       = useState('');
-  const [currentUser,   setCurrentUser]   = useState(null);
-  const [isOpenEmoji,   setIsOpenEmoji]   = useState(false);
-  const [replyingTo,    setReplyingTo]    = useState(null);
-  const [msgReactions,  setMsgReactions]  = useState({});
-  const [typingUsers,   setTypingUsers]   = useState([]);
-  const [isAiTyping,    setIsAiTyping]    = useState(false);
-  const [smartReplies,  setSmartReplies]  = useState([]);
-  const [smartLoading,  setSmartLoading]  = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isOpenEmoji, setIsOpenEmoji] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [actionMessage, setActionMessage] = useState(null);
+  const [msgReactions, setMsgReactions] = useState({});
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  const [smartReplies, setSmartReplies] = useState([]);
+  const [smartLoading, setSmartLoading] = useState(false);
   const [imagePreviews, setImagePreviews] = useState([]);
-  const [uploads,       setUploads]       = useState([]);
-  const [lightboxSrc,   setLightboxSrc]   = useState(null);
-  const [dragOver,      setDragOver]      = useState(false);
+  const [uploads, setUploads] = useState([]);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
 
-  const typingTimerRef     = useRef(null);
+  const typingTimerRef = useRef(null);
   const smartReplyTimerRef = useRef(null);
-  const isMounted          = useRef(true);
-  const chatBoxRef         = useRef(null);
-  const bottomRef          = useRef(null);
-  const fileInputRef       = useRef(null);
-  const sendCooldownRef    = useRef(0);
-  const botCooldownRef     = useRef(0);
-  const lastSmartCtxRef    = useRef('');
-  const uploadSeqRef       = useRef({});
-  const inputRef           = useRef(null);
-  const shownUploadsRef    = useRef(new Set());
+  const isMounted = useRef(true);
+  const fileInputRef = useRef(null);
+  const sendCooldownRef = useRef(0);
+  const botCooldownRef = useRef(0);
+  const lastSmartCtxRef = useRef('');
+  const inputRef = useRef(null);
 
-  const inputCallbackRef = useCallback(el => {
-    inputRef.current = el;
-    if (el) {
-      requestAnimationFrame(() => requestAnimationFrame(() => { el.focus({ preventScroll: true }); }));
+  const { id } = useParams();
+  const dispatch = useDispatch();
+  const addMessage = useAddMessage();
+  const isChatOpen = useSelector((state) => state.toggleChatSidebar);
+
+  const inputCallbackRef = useCallback((element) => {
+    inputRef.current = element;
+
+    if (element) {
+      element.style.height = '40px';
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          element.focus({ preventScroll: true });
+        });
+      });
     }
   }, []);
 
   useAutoResize(inputRef, message);
 
-  const { id }     = useParams();
-  const dispatch   = useDispatch();
-  const addMessage = useAddMessage();
-  const isChatOpen = useSelector(s => s.toggleChatSidebar);
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const addLocalMessage = useCallback((newMessage) => {
+    setMessages((prev) => {
+      if (prev.some((existing) => isSameMessage(existing, newMessage))) return prev;
+      return [...prev, newMessage];
+    });
+  }, []);
+
+  const removeMessageLocally = useCallback((targetMsg) => {
+    const targetId = getMessageId(targetMsg);
+    if (!targetId) return;
+
+    setMessages((prev) => prev.filter((item) => getMessageId(item) !== targetId));
+
+    setMsgReactions((prev) => {
+      const next = { ...prev };
+      delete next[targetId];
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+
+    return () => {
+      isMounted.current = false;
+      clearTimeout(typingTimerRef.current);
+      clearTimeout(smartReplyTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
     if (isChatOpen && inputRef.current) {
-      requestAnimationFrame(() => requestAnimationFrame(() => { inputRef.current?.focus({ preventScroll: true }); }));
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          inputRef.current?.focus({ preventScroll: true });
+        });
+      });
     }
   }, [isChatOpen]);
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const res = await axios.get(`${backendUrl}/api/chat/${id}`);
-        if (isMounted.current) { setMessages(res.data); setLoading(false); }
-      } catch { if (isMounted.current) setLoading(false); }
-    };
-    fetch();
-  }, [id, backendUrl]);
+    let cancelled = false;
 
-  // ── Socket listeners ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const onMessage = msg => { 
-      if (isMounted.current) {
-        setMessages(p => {
-          // Deduplication: Ignore if ID already exists
-          const alreadyExists = p.some(m => (m._id === msg._id) || (m.id && msg.id && m.id === msg.id));
-          if (alreadyExists) return p;
-          return [...p, msg];
-        });
+    const fetchMessages = async () => {
+      try {
+        const response = await api.get(`/api/chat/${id}`);
+
+        if (!cancelled && isMounted.current) {
+          const list = Array.isArray(response.data) ? response.data : [];
+          setMessages(list);
+        }
+      } catch (error) {
+        console.warn('[Chat] history fetch failed:', error?.message);
+      } finally {
+        if (!cancelled && isMounted.current) setLoading(false);
       }
     };
 
-    const onTyping  = ({ name, isTyping }) => {
+    if (id) fetchMessages();
+    else setLoading(false);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    const onMessage = (incoming) => {
+      if (!isMounted.current || !incoming) return;
+      if (incoming.roomId && incoming.roomId !== id) return;
+      addLocalMessage(incoming);
+    };
+
+    const onTyping = ({ userId, name, isTyping }) => {
       if (!isMounted.current) return;
-      setTypingUsers(p => {
-        if (isTyping && !p.includes(name)) return [...p, name];
-        if (!isTyping) return p.filter(n => n !== name);
-        return p;
+      if (userId && userId === uId) return;
+
+      const finalName = name || 'User';
+
+      setTypingUsers((prev) => {
+        if (isTyping && !prev.includes(finalName)) return [...prev, finalName];
+        if (!isTyping) return prev.filter((item) => item !== finalName);
+        return prev;
       });
     };
 
     const onReaction = ({ msgId, emoji, userId }) => {
-      if (!isMounted.current) return;
-      setMsgReactions(p => ({ ...p, [msgId]: { ...(p[msgId] || {}), [userId]: emoji } }));
+      if (!isMounted.current || !msgId || !emoji || !userId) return;
+
+      setMsgReactions((prev) => ({
+        ...prev,
+        [msgId]: {
+          ...(prev[msgId] || {}),
+          [userId]: emoji,
+        },
+      }));
     };
 
-    const onImageStart = ({ uploadId, totalChunks, meta }) => {
-      uploadSeqRef.current[uploadId] = {
-        chunks: new Array(totalChunks).fill(null),
-        total: totalChunks,
-        received: 0,
-        meta,
-      };
+    const onMessageDeleted = ({ roomId, msgId }) => {
+      if (roomId && roomId !== id) return;
+      if (!msgId) return;
+
+      setMessages((prev) => prev.filter((item) => getMessageId(item) !== msgId));
+      setMsgReactions((prev) => {
+        const next = { ...prev };
+        delete next[msgId];
+        return next;
+      });
     };
 
-    const onImageChunk = ({ uploadId, index, data }) => {
-      const entry = uploadSeqRef.current[uploadId];
-      if (!entry) return;
-      entry.chunks[index] = data;
-      entry.received += 1;
-    };
-
-    const onImageComplete = ({ uploadId, senderId, senderName, senderPhoto, timestamp }) => {
-      const entry = uploadSeqRef.current[uploadId];
-      if (!entry) return;
-
-      if (entry.received < entry.total || entry.chunks.some(c => c === null)) {
-        console.warn('[Chat] Image upload incomplete for', uploadId);
-        delete uploadSeqRef.current[uploadId];
-        return;
-      }
-
-      const base64  = entry.chunks.join('');
-      const dataUrl = `data:${entry.meta.mimeType};base64,${base64}`;
-      delete uploadSeqRef.current[uploadId];
-
-      if (shownUploadsRef.current.has(uploadId)) {
-        shownUploadsRef.current.delete(uploadId);
-        return;
-      }
-
-      const imgMsg = {
-        id: uploadId,
-        _id: uploadId,
-        type: 'image',
-        dataUrl,
-        userid: senderId,
-        displayName: senderName,
-        photoURL: senderPhoto,
-        createdAt: timestamp,
-        role: 'user',
-      };
-      
-      if (isMounted.current) {
-        setMessages(p => {
-          const alreadyExists = p.some(m => (m._id === imgMsg._id) || (m.id && imgMsg.id && m.id === imgMsg.id));
-          if (alreadyExists) return p;
-          return [...p, imgMsg];
-        });
-      }
-    };
-
-    socket.on('receive-message',       onMessage);
-    socket.on('user-typing',           onTyping);
-    socket.on('receive-reaction',      onReaction);
-    socket.on('image-upload-start',    onImageStart);
-    socket.on('image-upload-chunk',    onImageChunk);
-    socket.on('image-upload-complete', onImageComplete);
+    socket.on('receive-message', onMessage);
+    socket.on('user-typing', onTyping);
+    socket.on('receive-reaction', onReaction);
+    socket.on('message-deleted', onMessageDeleted);
 
     return () => {
-      socket.off('receive-message',       onMessage);
-      socket.off('user-typing',           onTyping);
-      socket.off('receive-reaction',      onReaction);
-      socket.off('image-upload-start',    onImageStart);
-      socket.off('image-upload-chunk',    onImageChunk);
-      socket.off('image-upload-complete', onImageComplete);
+      socket.off('receive-message', onMessage);
+      socket.off('user-typing', onTyping);
+      socket.off('receive-reaction', onReaction);
+      socket.off('message-deleted', onMessageDeleted);
     };
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, 80);
-    return () => clearTimeout(t);
-  }, [messages.length, isAiTyping]);
+  }, [id, uId, addLocalMessage]);
 
   useEffect(() => {
     let cancelled = false;
+
     getUserDataFromFirestore(uId)
-      .then(data => { if (!cancelled && isMounted.current) setCurrentUser(data); })
+      .then((data) => {
+        if (!cancelled && isMounted.current) setCurrentUser(data);
+      })
       .catch(() => {});
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [uId]);
 
   useEffect(() => {
     clearTimeout(smartReplyTimerRef.current);
-    if (!messages.length) return;
+
+    if (!messages.length) return undefined;
+
     const last = messages[messages.length - 1];
-    if (last?.type === 'image') { setSmartReplies([]); setSmartLoading(false); return; }
+
+    if (last?.type === 'image') {
+      setSmartReplies([]);
+      setSmartLoading(false);
+      return undefined;
+    }
+
     const isFromOther = last?.userid !== uId && last?.senderId !== uId;
-    if (!isFromOther) { setSmartReplies([]); setSmartLoading(false); return; }
-    const ctxKey = last._id || last.id;
-    if (lastSmartCtxRef.current === ctxKey) return;
+
+    if (!isFromOther || !last?.text) {
+      setSmartReplies([]);
+      setSmartLoading(false);
+      return undefined;
+    }
+
+    const ctxKey = getMessageId(last) || `${last.createdAt}-${last.text}`;
+
+    if (lastSmartCtxRef.current === ctxKey) return undefined;
+
     setSmartLoading(true);
+
     smartReplyTimerRef.current = setTimeout(async () => {
       if (!isMounted.current) return;
+
       lastSmartCtxRef.current = ctxKey;
+
       try {
-        const prompt = `Suggest exactly 3 very short (max 6 words each) natural chat reply options to: \`\`\`${(last.text || '').slice(0, 120)}\`\`\`. Return ONLY a JSON array of 3 strings.`;
-        const raw = await openAIChat(prompt, '');
+        const { data } = await api.post('/api/smart-replies', {
+          roomId: id,
+          text: String(last.text || '').slice(0, 160),
+        });
+
         if (!isMounted.current) return;
-        const parsed = JSON.parse(raw.replace(/`{3}json|`{3}/g, '').trim());
-        if (Array.isArray(parsed)) setSmartReplies(parsed.slice(0, 3).filter(s => typeof s === 'string'));
-      } catch { if (isMounted.current) setSmartReplies([]); }
-      finally { if (isMounted.current) setSmartLoading(false); }
+
+        const replies = Array.isArray(data?.replies) ? data.replies : [];
+
+        setSmartReplies(
+          replies
+            .filter((item) => typeof item === 'string')
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 3)
+        );
+      } catch {
+        if (isMounted.current) setSmartReplies([]);
+      } finally {
+        if (isMounted.current) setSmartLoading(false);
+      }
     }, SMART_REPLY_DELAY);
+
     return () => clearTimeout(smartReplyTimerRef.current);
-  }, [messages.length, uId]);
+  }, [messages, uId, id]);
 
   const uploadImage = useCallback(async (file) => {
-    const err = validateImage(file);
-    if (err) { alert(err); return; }
+    const error = validateImage(file);
+
+    if (error) {
+      alert(error);
+      return;
+    }
 
     const previewDataUrl = await fileToDataUrl(file);
     const uploadId = `img_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-    setUploads(p => [...p, { id: uploadId, name: file.name, preview: previewDataUrl, progress: 0 }]);
-
-    const localMsg = {
-      id: uploadId,
-      _id: uploadId,
-      type: 'image',
-      dataUrl: previewDataUrl,
-      userid: uId,
-      displayName: currentUser?.displayName,
-      photoURL: currentUser?.photoURL,
-      createdAt: new Date().toISOString(),
-      role: 'user',
-    };
-    
-    setMessages(p => [...p, localMsg]);
-    shownUploadsRef.current.add(uploadId);
-
-    const base64 = dataUrlToBase64(previewDataUrl);
-    const totalChunks = Math.ceil(base64.length / CHUNK_SIZE);
-
-    socket.emit('image-upload-start', {
-      uploadId,
-      roomId: id,
-      totalChunks,
-      meta: { mimeType: file.type, name: file.name, size: file.size },
-      sender: {
-        id: uId,
-        name: currentUser?.displayName || 'User',
-        photo: currentUser?.photoURL || '',
+    setUploads((prev) => [
+      ...prev,
+      {
+        id: uploadId,
+        name: file.name,
+        preview: previewDataUrl,
+        progress: 0,
       },
-    });
+    ]);
 
-    for (let i = 0; i < totalChunks; i++) {
-      const chunk = base64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      socket.emit('image-upload-chunk', { uploadId, roomId: id, index: i, data: chunk });
-      const progress = Math.round(((i + 1) / totalChunks) * 100);
-      setUploads(p => p.map(u => u.id === uploadId ? { ...u, progress } : u));
-      if (i % 10 === 9) await new Promise(r => setTimeout(r, 0));
+    try {
+      for (let progress = 0; progress <= 100; progress += 20) {
+        setUploads((prev) => (
+          prev.map((upload) => (
+            upload.id === uploadId ? { ...upload, progress } : upload
+          ))
+        ));
+
+        await new Promise((resolve) => setTimeout(resolve, 45));
+      }
+
+      const payload = {
+        id: uploadId,
+        _id: uploadId,
+        clientId: uploadId,
+        roomId: id,
+        type: 'image',
+        dataUrl: previewDataUrl,
+        userid: uId,
+        senderId: uId,
+        displayName: currentUser?.displayName || currentUser?.name || 'User',
+        senderName: currentUser?.displayName || currentUser?.name || 'User',
+        photoURL: currentUser?.photoURL || '',
+        createdAt: new Date().toISOString(),
+        role: 'user',
+      };
+
+      addLocalMessage(payload);
+      await addMessage(payload);
+    } catch (err) {
+      console.error('[Chat] image upload failed:', err);
+      alert('Image upload failed. Please try again.');
+    } finally {
+      setUploads((prev) => prev.filter((upload) => upload.id !== uploadId));
     }
-
-    socket.emit('image-upload-complete', {
-      uploadId,
-      roomId: id,
-      senderId: uId,
-      senderName: currentUser?.displayName || 'User',
-      senderPhoto: currentUser?.photoURL || '',
-      timestamp: new Date().toISOString(),
-    });
-
-    setUploads(p => p.filter(u => u.id !== uploadId));
-  }, [id, uId, currentUser]);
+  }, [id, uId, currentUser, addMessage, addLocalMessage]);
 
   const handleFileSelect = useCallback(async (files) => {
-    const arr = Array.from(files);
-    const seen = new Set(imagePreviews.map(p => p.name + p.size));
+    const arr = Array.from(files || []);
+    const seen = new Set(imagePreviews.map((preview) => `${preview.name}_${preview.size}`));
+
     for (const file of arr) {
-      const key = file.name + file.size;
+      const key = `${file.name}_${file.size}`;
+
       if (seen.has(key)) continue;
-      const err = validateImage(file);
-      if (err) { alert(err); continue; }
+
+      const error = validateImage(file);
+
+      if (error) {
+        alert(error);
+        continue;
+      }
+
       const dataUrl = await fileToDataUrl(file);
-      setImagePreviews(p => [...p, { id: `${Date.now()}_${Math.random()}`, dataUrl, name: file.name, size: file.size, file }]);
+
+      setImagePreviews((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          dataUrl,
+          name: file.name,
+          size: file.size,
+          file,
+        },
+      ]);
+
       seen.add(key);
     }
   }, [imagePreviews]);
 
-  const handleRemovePreview = useCallback(pid => {
-    setImagePreviews(p => p.filter(x => x.id !== pid));
+  const handleRemovePreview = useCallback((previewId) => {
+    setImagePreviews((prev) => prev.filter((preview) => preview.id !== previewId));
   }, []);
 
   const sendQueuedImages = useCallback(async () => {
-    for (const preview of imagePreviews) {
+    const queue = [...imagePreviews];
+
+    setImagePreviews([]);
+
+    for (const preview of queue) {
+      // eslint-disable-next-line no-await-in-loop
       await uploadImage(preview.file);
     }
-    setImagePreviews([]);
   }, [imagePreviews, uploadImage]);
 
-  const handleDrop = useCallback(e => {
-    e.preventDefault();
+  const handleDrop = useCallback((event) => {
+    event.preventDefault();
     setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
+    handleFileSelect(event.dataTransfer.files);
   }, [handleFileSelect]);
 
-  const handlePaste = useCallback(e => {
-    const items = Array.from(e.clipboardData?.items || []);
-    const imageItems = items.filter(item => item.kind === 'file' && ALLOWED_MIME.includes(item.type));
+  const handlePaste = useCallback((event) => {
+    const items = Array.from(event.clipboardData?.items || []);
+    const imageItems = items.filter((item) => (
+      item.kind === 'file' && ALLOWED_MIME.includes(item.type)
+    ));
+
     if (imageItems.length > 0) {
-      e.preventDefault();
-      handleFileSelect(imageItems.map(item => item.getAsFile()));
+      event.preventDefault();
+
+      handleFileSelect(
+        imageItems
+          .map((item) => item.getAsFile())
+          .filter(Boolean)
+      );
     }
   }, [handleFileSelect]);
 
-  const handleInputChange = useCallback(e => {
-    const val = e.target.value;
-    if (val.length > MAX_MSG_LENGTH) return;
-    setMessage(val);
-    socket.emit('typing-status', { isTyping: true, name: currentUser?.displayName || 'User' });
+  const emitStopTyping = useCallback(() => {
+    socket.emit('typing-status', {
+      roomId: id,
+      userId: uId,
+      isTyping: false,
+      name: currentUser?.displayName || currentUser?.name || 'User',
+    });
+  }, [id, uId, currentUser]);
+
+  const handleInputChange = useCallback((event) => {
+    const value = event.target.value;
+
+    if (value.length > MAX_MSG_LENGTH) return;
+
+    setMessage(value);
+
+    socket.emit('typing-status', {
+      roomId: id,
+      userId: uId,
+      isTyping: true,
+      name: currentUser?.displayName || currentUser?.name || 'User',
+    });
+
     clearTimeout(typingTimerRef.current);
+
     typingTimerRef.current = setTimeout(() => {
-      socket.emit('typing-status', { isTyping: false, name: currentUser?.displayName || 'User' });
+      emitStopTyping();
     }, TYPING_DEBOUNCE_MS);
-  }, [currentUser]);
+  }, [id, uId, currentUser, emitStopTyping]);
 
   const handleReact = useCallback((msgId, emoji) => {
-    setMsgReactions(p => ({ ...p, [msgId]: { ...(p[msgId] || {}), [uId]: emoji } }));
-    socket.emit('send-reaction', { roomId: id, msgId, emoji, userId: uId });
+    if (!msgId) return;
+
+    setMsgReactions((prev) => ({
+      ...prev,
+      [msgId]: {
+        ...(prev[msgId] || {}),
+        [uId]: emoji,
+      },
+    }));
+
+    socket.emit('send-reaction', {
+      roomId: id,
+      msgId,
+      emoji,
+      userId: uId,
+    });
   }, [id, uId]);
+
+  const handleDeleteMessage = useCallback((targetMsg) => {
+    const msgId = getMessageId(targetMsg);
+    if (!msgId) return;
+
+    removeMessageLocally(targetMsg);
+
+    socket.emit('delete-message', {
+      roomId: id,
+      msgId,
+      userId: uId,
+    });
+  }, [id, uId, removeMessageLocally]);
+
+  const buildTextPayload = useCallback((text, extra = {}) => {
+    const msgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    return {
+      id: msgId,
+      _id: msgId,
+      clientId: msgId,
+      roomId: id,
+      text,
+      role: 'user',
+      type: 'text',
+      userid: uId,
+      senderId: uId,
+      displayName: currentUser?.displayName || currentUser?.name || 'User',
+      senderName: currentUser?.displayName || currentUser?.name || 'User',
+      photoURL: currentUser?.photoURL || '',
+      createdAt: new Date().toISOString(),
+      ...extra,
+    };
+  }, [id, uId, currentUser]);
 
   const handleSend = useCallback(async () => {
     const hasImages = imagePreviews.length > 0;
-    const txt = message.trim();
-    if (!txt && !hasImages) return;
-    if (txt && txt.length > MAX_MSG_LENGTH) return;
+    const text = message.trim();
+
+    if (!text && !hasImages) return;
+    if (text && text.length > MAX_MSG_LENGTH) return;
+
     const now = Date.now();
+
     if (now - sendCooldownRef.current < SEND_COOLDOWN_MS) return;
+
     sendCooldownRef.current = now;
 
-    if (hasImages) await sendQueuedImages();
+    if (hasImages) {
+      await sendQueuedImages();
+    }
 
-    if (txt) {
+    if (text) {
       const replyData = replyingTo
-        ? { replyto: replyingTo.text, replytoName: replyingTo.role === 'bot' ? 'AI' : (replyingTo.displayName || replyingTo.senderName || 'User'), replytophoto: replyingTo.photoURL || null }
+        ? {
+          replyto: getReplyText(replyingTo),
+          replytoName: replyingTo.role === 'bot'
+            ? 'AI'
+            : (replyingTo.displayName || replyingTo.senderName || 'User'),
+          replytophoto: replyingTo.photoURL || null,
+        }
         : {};
-      
-      const msgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-      const messagePayload = {
-        id: msgId,
-        _id: msgId,
-        roomId: id,
-        text: txt,
-        role: 'user',
-        userid: uId,
-        displayName: currentUser?.displayName,
-        photoURL: currentUser?.photoURL,
-        createdAt: new Date().toISOString(),
-        ...replyData
-      };
+      const payload = buildTextPayload(text, replyData);
 
       setMessage('');
       setReplyingTo(null);
       setSmartReplies([]);
-      clearTimeout(typingTimerRef.current);
-      socket.emit('typing-status', { isTyping: false, name: currentUser?.displayName });
-      msgPopAudio.play().catch(() => {});
 
-      socket.emit('send-message', messagePayload);
-      setMessages(prev => [...prev, messagePayload]);
+      clearTimeout(typingTimerRef.current);
+      emitStopTyping();
+      playPop();
+
+      addLocalMessage(payload);
 
       try {
-        await addMessage(messagePayload);
+        await addMessage(payload);
       } catch (error) {
-        console.error("Failed to save message", error);
+        console.error('[Chat] failed to send message:', error);
       }
     } else {
       setMessage('');
       setReplyingTo(null);
     }
-  }, [message, imagePreviews, sendQueuedImages, addMessage, currentUser, uId, replyingTo, id]);
+  }, [
+    imagePreviews,
+    message,
+    sendQueuedImages,
+    replyingTo,
+    buildTextPayload,
+    emitStopTyping,
+    addLocalMessage,
+    addMessage,
+  ]);
 
   const handleBotMsg = useCallback(async () => {
-    const txt = message.trim();
-    if (!txt || txt.length > MAX_MSG_LENGTH) return;
+    const text = message.trim();
+
+    if (!text || text.length > MAX_MSG_LENGTH) return;
+
     const now = Date.now();
+
     if (now - botCooldownRef.current < BOT_COOLDOWN_MS) return;
+
     botCooldownRef.current = now;
 
-    const ctxText  = messages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n');
-    const replyExt = replyingTo ? `\n[Replying to: """${replyingTo.text}"""]` : '';
-    const replyData = replyingTo ? { replyto: replyingTo.text, replytoName: replyingTo.role === 'bot' ? 'AI' : (replyingTo.displayName || 'User') } : {};
+    const contextText = messages
+      .slice(-6)
+      .map((item) => `${item.role === 'bot' ? 'AI' : 'User'}: ${item.text || ''}`)
+      .join('\n');
 
-    const userMsgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const replyContext = replyingTo
+      ? `\n[Replying to: """${getReplyText(replyingTo)}"""]`
+      : '';
 
-    const userMessagePayload = {
-      id: userMsgId,
-      _id: userMsgId,
-      roomId: id,
-      text: txt,
-      role: 'user',
-      userid: uId,
-      displayName: currentUser?.displayName,
-      photoURL: currentUser?.photoURL,
-      createdAt: new Date().toISOString(),
-      ...replyData
-    };
+    const replyData = replyingTo
+      ? {
+        replyto: getReplyText(replyingTo),
+        replytoName: replyingTo.role === 'bot'
+          ? 'AI'
+          : (replyingTo.displayName || replyingTo.senderName || 'User'),
+      }
+      : {};
+
+    const userPayload = buildTextPayload(text, replyData);
 
     setMessage('');
     setReplyingTo(null);
     setSmartReplies([]);
     setIsAiTyping(true);
-    socket.emit('typing-status', { isTyping: false, name: currentUser?.displayName });
-    msgPopAudio.play().catch(() => {});
 
-    socket.emit('send-message', userMessagePayload);
-    setMessages(prev => [...prev, userMessagePayload]);
-    
+    clearTimeout(typingTimerRef.current);
+    emitStopTyping();
+    playPop();
+
+    addLocalMessage(userPayload);
+
     try {
-      await addMessage(userMessagePayload);
-    } catch (e) {
-      console.error(e);
+      await addMessage(userPayload);
+    } catch (error) {
+      console.error('[Chat] failed to send user bot prompt:', error);
     }
 
     try {
-      const reply = await openAIChat(txt, ctxText + replyExt);
-      if (reply && isMounted.current) {
-        const botMsgId = `bot_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const { data } = await api.post('/api/ai-reply', {
+        roomId: id,
+        prompt: text,
+        context: contextText + replyContext,
+      });
 
-        const botMessagePayload = {
-          id: botMsgId,
-          _id: botMsgId,
-          roomId: id,
-          text: reply,
-          role: 'bot',
-          userid: 'ai-bot',
-          displayName: 'AI Assistant',
-          replyto: txt,
-          replytoName: currentUser?.displayName,
-          createdAt: new Date().toISOString()
-        };
+      if (!data?.reply || !isMounted.current) return;
 
-        socket.emit('send-message', botMessagePayload);
-        setMessages(prev => [...prev, botMessagePayload]);
-        await addMessage(botMessagePayload);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally { 
-      if (isMounted.current) setIsAiTyping(false); 
+      const botId = `bot_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      const botPayload = {
+        id: botId,
+        _id: botId,
+        clientId: botId,
+        roomId: id,
+        text: data.reply,
+        type: 'text',
+        role: 'bot',
+        userid: 'ai-bot',
+        senderId: 'ai-bot',
+        displayName: 'AI Assistant',
+        senderName: 'AI Assistant',
+        photoURL: botimg,
+        replyto: text,
+        replytoName: currentUser?.displayName || currentUser?.name || 'You',
+        createdAt: new Date().toISOString(),
+      };
+
+      addLocalMessage(botPayload);
+      await addMessage(botPayload);
+    } catch (error) {
+      console.warn('[Chat] AI reply unavailable:', error?.message);
+    } finally {
+      if (isMounted.current) setIsAiTyping(false);
     }
-  }, [message, addMessage, currentUser, uId, messages, replyingTo, id]);
+  }, [
+    message,
+    messages,
+    replyingTo,
+    buildTextPayload,
+    emitStopTyping,
+    addLocalMessage,
+    addMessage,
+        id,
+    currentUser,
+  ]);
 
   const groupedMessages = useMemo(() => {
     const groups = [];
     let lastDate = null;
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i];
-      const sec = msg.createdAt ? new Date(msg.createdAt).getTime() / 1000 : msg.timestampField?.seconds;
-      if (sec) {
-        const label = new Date(sec * 1000).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-        if (label !== lastDate) { groups.push({ type: 'date', label, key: `date-${label}-${i}` }); lastDate = label; }
+
+    for (let index = 0; index < messages.length; index += 1) {
+      const msg = messages[index];
+
+      const timestampSeconds = msg.createdAt
+        ? new Date(msg.createdAt).getTime() / 1000
+        : msg.timestampField?.seconds;
+
+      if (timestampSeconds) {
+        const label = new Date(timestampSeconds * 1000).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+        });
+
+        if (label !== lastDate) {
+          groups.push({
+            type: 'date',
+            label,
+            key: `date-${label}-${index}`,
+          });
+
+          lastDate = label;
+        }
       }
-      groups.push({ type: 'msg', data: msg, key: msg._id || msg.id || i });
+
+      groups.push({
+        type: 'msg',
+        data: msg,
+        key: getMessageId(msg) || `fallback-${index}`,
+      });
     }
+
     return groups;
   }, [messages]);
 
-  const canSend  = message.trim().length > 0 || imagePreviews.length > 0;
-  const charCount  = message.length;
-  const charWarn   = charCount > 1800;
+  const canSend = message.trim().length > 0 || imagePreviews.length > 0;
+  const charCount = message.length;
+  const charWarn = charCount > 1800;
 
-  const handleKeyDown = useCallback(e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  const handleKeyDown = useCallback((event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
   }, [handleSend]);
 
-  const handleEmojiClick = useCallback(e => {
-    setMessage(p => { const next = p + e.emoji; return next.length <= MAX_MSG_LENGTH ? next : p; });
+  const handleEmojiClick = useCallback((emojiData) => {
+    setMessage((prev) => {
+      const next = prev + emojiData.emoji;
+      return next.length <= MAX_MSG_LENGTH ? next : prev;
+    });
+
     setIsOpenEmoji(false);
     inputRef.current?.focus();
   }, []);
 
-  const handleCloseSidebar = useCallback(() => { dispatch(toggleChatSidebar(false)); }, [dispatch]);
+  const handleCloseSidebar = useCallback(() => {
+    dispatch(toggleChatSidebar(false));
+  }, [dispatch]);
 
   return (
     <ChatErrorBoundary>
+      <PremiumChatStyles />
+
       <div
-        className="flex flex-col h-full bg-[#f8fafc] dark:bg-[#0B1120] font-sans transition-colors duration-300 overflow-hidden relative"
-        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        className="relative z-20 flex h-full min-w-0 flex-col overflow-hidden bg-[#050713] font-sans text-white"
+        onDragOver={(event) => {
+          event.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -right-24 -top-20 h-64 w-64 rounded-full bg-blue-600/15 blur-[90px]" />
+          <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-violet-600/15 blur-[100px]" />
+        </div>
+
         {dragOver && (
-          <div className="absolute inset-0 z-50 bg-blue-500/20 border-4 border-dashed border-blue-400 rounded-2xl flex items-center justify-center pointer-events-none">
-            <div className="flex flex-col items-center gap-3 text-blue-500 dark:text-blue-300">
-              <i className="fas fa-cloud-upload-alt text-4xl" />
-              <span className="font-bold text-lg">Drop images here</span>
+          <div className="absolute inset-3 z-50 flex items-center justify-center rounded-[2rem] border-4 border-dashed border-blue-400/70 bg-blue-500/20 backdrop-blur-md">
+            <div className="flex flex-col items-center gap-3 text-blue-100">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-white/10 shadow-2xl ring-1 ring-white/10">
+                <i className="fas fa-cloud-upload-alt text-3xl" />
+              </div>
+              <span className="text-lg font-black">Drop images here</span>
             </div>
           </div>
         )}
 
-        <div className="flex-shrink-0 h-16 px-5 flex items-center justify-between border-b border-gray-200/60 dark:border-gray-800 bg-white/80 dark:bg-[#0B1120]/80 backdrop-blur-md z-20 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-md">
-                <i className="fas fa-users text-white text-[15px]" />
+        <header className="relative z-20 shrink-0 border-b border-white/10 bg-white/[0.045] px-4 py-3 backdrop-blur-2xl shadow-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-500/20">
+                <i className="fas fa-comments text-white" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#080d1c] bg-emerald-400" />
               </div>
-              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-[#0B1120] rounded-full" />
-            </div>
-            <div>
-              <h2 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 leading-tight">Group Chat</h2>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">{messages.length} messages</p>
-            </div>
-          </div>
-          <button onClick={handleCloseSidebar} className="w-9 h-9 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors" aria-label="Close chat">
-            <i className="fas fa-times text-[16px]" />
-          </button>
-        </div>
 
-        <div
-          ref={chatBoxRef}
-          role="log"
-          aria-live="polite"
-          aria-label="Chat messages"
-          className="flex-1 overflow-y-auto px-4 md:px-5 py-4 min-h-0 relative"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(148,163,184,0.4) transparent' }}
-        >
-          {loading && (
-            <div className="w-full flex justify-center py-8">
-              <div className="w-6 h-6 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          {!loading && messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center my-8 p-6 bg-white dark:bg-[#1E2532] border border-gray-100 dark:border-gray-800/60 shadow-sm rounded-[24px] text-center max-w-sm mx-auto">
-              <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4 border border-blue-100 dark:border-blue-800/40">
-                <i className="fas fa-comments text-blue-500 dark:text-blue-400 text-2xl" />
-              </div>
-              <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">Start the conversation!</h3>
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">Send a message or share an image ✨</p>
-            </div>
-          )}
-
-         {groupedMessages.map(item =>
-          item.type === 'date'
-            ? <DateSeparator key={item.key} date={item.label} />
-            : <MessageCard 
-                key={item.key} 
-                uId={uId} 
-                msgData={item.data} 
-                onReply={setReplyingTo} 
-                onReact={handleReact} 
-                msgReactions={msgReactions[item.data._id || item.data.id]} 
-                onImageClick={setLightboxSrc} 
-              />
-          )}
-
-          {isAiTyping && (
-            <div className="flex items-end gap-2.5 px-2 py-2 mb-4 w-full justify-start">
-              <img src={botimg} className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 shadow-sm" alt="AI" />
-              <div className="bg-white dark:bg-[#1E2532] border border-gray-100 dark:border-gray-800 rounded-[22px] rounded-bl-[6px] px-4 py-3.5 flex gap-1.5 items-center shadow-sm">
-                {[0, 1, 2].map(i => <span key={i} className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
-              </div>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        <TypingIndicator typingUsers={typingUsers} />
-        <UploadProgress uploads={uploads} />
-
-        <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-transparent z-20 relative" onPaste={handlePaste}>
-          <div className="max-w-4xl mx-auto w-full relative">
-
-            {replyingTo && (
-              <div className="flex items-center justify-between bg-white dark:bg-[#1E2532] px-4 py-2.5 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 mb-3 ml-2 border-l-[4px] border-l-blue-500">
-                <div className="flex flex-col overflow-hidden">
-                  <span className="text-blue-500 dark:text-blue-400 font-bold text-[12px] flex items-center gap-1.5 mb-0.5">
-                    <i className="fas fa-reply text-[10px]" /> Replying to {replyingTo.role === 'bot' ? 'AI' : (replyingTo.displayName || 'User')}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="truncate text-[15px] font-black text-white">
+                    Meeting Chat
+                  </h2>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-blue-200">
+                    Live
                   </span>
-                  <span className="text-gray-500 dark:text-gray-400 text-[12px] truncate max-w-[250px]">{replyingTo.text}</span>
                 </div>
-                <button onClick={() => setReplyingTo(null)} className="w-7 h-7 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors ml-3" aria-label="Cancel reply">
+
+                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                  {messages.length} messages · Room #{id?.slice(0, 6)}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCloseSidebar}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/8 text-slate-300 ring-1 ring-white/10 transition hover:bg-red-500/15 hover:text-red-300"
+              aria-label="Close chat"
+            >
+              <i className="fas fa-times text-sm" />
+            </button>
+          </div>
+        </header>
+
+        <div className="relative z-10 min-h-0 flex-1  overflow-hidden">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-500 border-t-transparent" />
+            </div>
+          ) : messages.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <Virtuoso
+              style={{ height: '100%', overflowX: 'hidden' }}
+              className="premium-chat-scrollbar overflow-x-hidden px-3 py-4"
+              data={groupedMessages}
+              followOutput="smooth"
+              initialTopMostItemIndex={Math.max(0, groupedMessages.length - 1)}
+              increaseViewportBy={{ top: 700, bottom: 700 }}
+              itemContent={(index, item) => (
+                item.type === 'date' ? (
+                  <DateSeparator date={item.label} />
+                ) : (
+                  <MessageCard
+                    uId={uId}
+                    msgData={item.data}
+                    onOpenActions={setActionMessage}
+                    msgReactions={msgReactions[getMessageId(item.data)]}
+                    onImageClick={setLightboxSrc}
+                  />
+                )
+              )}
+              components={{
+                Footer: () => (
+                  isAiTyping ? (
+                    <div className="mb-5 flex w-full items-end justify-start gap-2.5 px-2 py-2">
+                      <img
+                        src={botimg}
+                        className="h-8 w-8 rounded-full border-2 border-white/10 object-cover shadow-lg"
+                        alt="AI"
+                      />
+
+                      <div className="flex items-center gap-1.5 rounded-[1.35rem] rounded-bl-md border border-white/10 bg-white/[0.075] px-4 py-3.5 shadow-xl backdrop-blur-xl">
+                        {[0, 1, 2].map((item) => (
+                          <span
+                            key={item}
+                            className="h-2 w-2 animate-bounce rounded-full bg-blue-300"
+                            style={{ animationDelay: `${item * 0.15}s` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null
+                ),
+              }}
+            />
+          )}
+        </div>
+
+        <div className="relative z-20">
+          <TypingIndicator typingUsers={typingUsers} />
+          <UploadProgress uploads={uploads} />
+        </div>
+
+        <footer className="relative z-20 shrink-0 border-t border-white/10 bg-[#050713]/80 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-2xl">
+          <div className="mx-auto w-full max-w-4xl">
+            {replyingTo && (
+              <div className="mb-2.5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] px-3.5 py-2.5 shadow-xl backdrop-blur-xl">
+                <div className="min-w-0">
+                  <span className="mb-0.5 flex items-center gap-1.5 text-[12px] font-black text-blue-300">
+                    <i className="fas fa-reply text-[10px]" />
+                    Replying to{' '}
+                    {replyingTo.role === 'bot'
+                      ? 'AI'
+                      : (replyingTo.displayName || replyingTo.senderName || 'User')}
+                  </span>
+
+                  <span className="block max-w-[250px] truncate text-[12px] font-medium text-slate-400">
+                    {getReplyText(replyingTo)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(null)}
+                  className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/8 text-slate-400 transition hover:bg-red-500/15 hover:text-red-300"
+                  aria-label="Cancel reply"
+                >
                   <i className="fas fa-times text-[12px]" />
                 </button>
               </div>
@@ -1008,68 +1662,139 @@ const Chat = ({ uId }) => {
 
             <ImagePreviews previews={imagePreviews} onRemove={handleRemovePreview} />
 
-            <SmartReplies 
-              replies={smartReplies} 
-              onSelect={r => { setMessage(r); setSmartReplies([]); requestAnimationFrame(() => inputRef.current?.focus()); }}
+            <SmartReplies
+              replies={smartReplies}
+              onSelect={(reply) => {
+                setMessage(reply);
+                setSmartReplies([]);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
               isLoading={smartLoading}
             />
 
             {isOpenEmoji && (
-              <div className="absolute bottom-full mb-2 left-0 z-50 shadow-2xl border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
-                <EmojiPicker theme="auto" height={320} onEmojiClick={handleEmojiClick} />
+              <div className="absolute bottom-full left-3 z-50 mb-2 overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
+                <EmojiPicker
+                  theme="dark"
+                  height={320}
+                  onEmojiClick={handleEmojiClick}
+                />
               </div>
             )}
 
-            <div className="flex items-end bg-white dark:bg-[#1E2532] rounded-[24px] shadow-sm border-2 border-transparent focus-within:border-blue-400 dark:focus-within:border-blue-600 focus-within:ring-4 ring-blue-50 dark:ring-blue-900/20 transition-all duration-300 min-h-[52px] py-2">
-              <button onClick={() => setIsOpenEmoji(v => !v)} className="self-end mb-0.5 w-[48px] h-[36px] text-gray-400 hover:text-yellow-500 transition-colors flex items-center justify-center flex-shrink-0" tabIndex={-1} aria-label="Emoji">
-                <i className="far fa-face-smile text-[20px]" />
-              </button>
-              <textarea
-                ref={inputCallbackRef}
-                value={message}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Message…"
-                rows={1}
-                aria-label="Message input"
-                className="flex-1 bg-transparent border-none outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-[15px] px-2 py-1 min-w-0 resize-none overflow-hidden leading-6"
-                style={{ maxHeight: '120px' }}
-              />
-              <div className="flex items-center gap-1.5 pr-2 flex-shrink-0 self-end mb-0.5">
-                <button onClick={() => fileInputRef.current?.click()} className="w-[36px] h-[36px] rounded-full flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all" title="Share images" tabIndex={-1} aria-label="Upload image">
-                  <i className="fas fa-image text-[15px]" />
+            <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.07] p-1.5 shadow-2xl backdrop-blur-2xl transition focus-within:border-blue-400/50 focus-within:ring-4 focus-within:ring-blue-500/10">
+              <div className="flex items-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsOpenEmoji((value) => !value)}
+                  className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white/10 hover:text-amber-300"
+                  tabIndex={-1}
+                  aria-label="Emoji"
+                >
+                  <i className="far fa-face-smile text-[18px]" />
                 </button>
-                <button onClick={handleBotMsg} disabled={!message.trim()} className={`w-[36px] h-[36px] rounded-full flex items-center justify-center transition-all ${message.trim() ? 'text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:scale-105' : 'text-gray-300 cursor-not-allowed'}`} tabIndex={-1} aria-label="Ask AI">
-                  <i className="fas fa-robot text-[15px]" />
-                </button>
-                <button onClick={handleSend} disabled={!canSend} className={`w-[36px] h-[36px] rounded-full flex items-center justify-center transition-all ${canSend ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-md hover:-translate-y-0.5' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'}`} aria-label="Send">
-                  <i className={`fas fa-paper-plane ${canSend ? 'text-[13px] -ml-0.5 mt-0.5' : 'text-[14px]'}`} />
-                </button>
+
+                <textarea
+                  ref={inputCallbackRef}
+                  value={message}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  onFocus={() => {
+                    if (!message && inputRef.current) inputRef.current.style.height = '40px';
+                  }}
+                  placeholder="Message..."
+                  rows={1}
+                  aria-label="Message input"
+                  className="min-h-[40px] min-w-0 flex-1 resize-none border-none bg-transparent px-1 py-2 text-[15px] leading-6 text-white outline-none placeholder:text-slate-500"
+                  style={{ height: '40px', maxHeight: '96px', overflowY: 'hidden' }}
+                />
+
+                <div className="mb-0.5 flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-blue-500/15 hover:text-blue-300"
+                    title="Share images"
+                    tabIndex={-1}
+                    aria-label="Upload image"
+                  >
+                    <i className="fas fa-image text-[14px]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleBotMsg}
+                    disabled={!message.trim()}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+                      message.trim()
+                        ? 'text-violet-300 hover:bg-violet-500/15 hover:scale-105'
+                        : 'cursor-not-allowed text-slate-600'
+                    }`}
+                    tabIndex={-1}
+                    aria-label="Ask AI"
+                  >
+                    <i className="fas fa-robot text-[14px]" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    disabled={!canSend}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${
+                      canSend
+                        ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-500/25 hover:-translate-y-0.5 hover:shadow-blue-500/35'
+                        : 'cursor-not-allowed bg-white/8 text-slate-600'
+                    }`}
+                    aria-label="Send"
+                  >
+                    <i className={`fas fa-paper-plane ${canSend ? 'text-[13px] -ml-0.5 mt-0.5' : 'text-[14px]'}`} />
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-between items-center mt-1.5 px-3">
-              <p className="text-[11px] text-gray-400 dark:text-gray-600 font-medium">
-                <i className="fab fa-markdown mr-1" /> Markdown · Shift+Enter for newline · Paste or drag images
+            <div className="mt-1.5 flex items-center justify-between gap-3 px-2">
+              <p className="truncate text-[10px] font-semibold text-slate-600">
+                <i className="fab fa-markdown mr-1" />
+                Markdown · Shift+Enter · Paste or drag images
               </p>
-              <p className={`text-[10px] font-medium ${charWarn ? 'text-amber-500' : 'text-gray-400 dark:text-gray-600'}`}>
+
+              <p
+                className={`shrink-0 text-[10px] font-black ${
+                  charWarn ? 'text-amber-300' : 'text-slate-600'
+                }`}
+              >
                 {charCount > 0 ? `${charCount} / ${MAX_MSG_LENGTH}` : ''}
               </p>
             </div>
           </div>
-        </div>
+        </footer>
 
-        <input 
-          ref={fileInputRef} 
-          type="file" 
-          accept="image/jpeg,image/png,image/gif,image/webp" 
-          multiple 
-          className="hidden" 
-          aria-hidden="true" 
-          onChange={e => { handleFileSelect(e.target.files); e.target.value = ''; }} 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
+          className="hidden"
+          aria-hidden="true"
+          onChange={(event) => {
+            handleFileSelect(event.target.files);
+            event.target.value = '';
+          }}
         />
 
-        {lightboxSrc && <ImageModal src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+        <MessageActionSheet
+          message={actionMessage}
+          currentUserId={uId}
+          onClose={() => setActionMessage(null)}
+          onReply={setReplyingTo}
+          onReact={handleReact}
+          onDelete={handleDeleteMessage}
+        />
+
+        {lightboxSrc && (
+          <ImageModal src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+        )}
       </div>
     </ChatErrorBoundary>
   );

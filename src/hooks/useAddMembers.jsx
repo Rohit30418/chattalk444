@@ -1,31 +1,28 @@
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../components/auth/AppWrapper';
 
 const useAddMembers = () => {
   const { user: userInfo } = useAuth();
 
   const addMember = async (roomID) => {
+    if (!roomID) {
+      throw new Error('Room id is missing.');
+    }
+
     if (!userInfo?.uid) {
-      console.warn("Cannot join room: No authenticated user found.");
-      return;
+      throw new Error('Please sign in before joining a room.');
     }
 
-    try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    const payload = {
+      uid: userInfo.uid,
+      name: userInfo.displayName || userInfo.email?.split('@')[0] || 'User',
+      photo: userInfo.photoURL || '',
+      isVideoEnabled: false,
+      isAudioEnabled: false,
+    };
 
-      // Hit the Express backend to update the MongoDB document
-      await axios.post(`${backendUrl}/api/rooms/${roomID}/join`, {
-        uid: userInfo.uid,
-        name: userInfo.displayName,
-        photo: userInfo.photoURL,
-        isVideoEnabled: false,
-        isAudioEnabled: false,
-      });
-
-      console.log("✅ User joined MongoDB room successfully!");
-    } catch (error) {
-      console.error("❌ Error adding member to MongoDB:", error.response?.data || error.message);
-    }
+    const { data } = await api.post(`/api/rooms/${roomID}/join`, payload);
+    return data;
   };
 
   return addMember;

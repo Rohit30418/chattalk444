@@ -1,6 +1,6 @@
 import {useEffect } from "react";
 import { useSelector } from 'react-redux';
-import { db } from '../../firebase';
+import { db } from '../services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 const useOnlineStatus = (status) => {

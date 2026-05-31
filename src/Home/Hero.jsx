@@ -113,7 +113,7 @@ const Hero = () => {
                         <i className="fa-solid fa-chevron-left text-[10px] sm:text-xs text-slate-500"></i>
                     </button>
                     <div className="flex -space-x-2">
-                         {[1,2,3].map(i => <div key={i} className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white dark:border-[#0f111a] bg-indigo-${i*100 + 300}`}></div>)}
+                         {['bg-indigo-300', 'bg-indigo-400', 'bg-indigo-500'].map((colorClass, i) => <div key={i} className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-white dark:border-[#0f111a] ${colorClass}`}></div>)}
                     </div>
                     <button className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center">
                         <i className="fa-solid fa-ellipsis text-[10px] sm:text-xs text-slate-500"></i>
