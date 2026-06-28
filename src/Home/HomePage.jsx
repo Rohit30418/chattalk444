@@ -4,6 +4,8 @@ import FeaturedLanguages from './FeaturedLanguages'
 import ActiveRooms from './ActiveRooms'
 import HowItWorks from './HowItWorks'
 import AiUnlockSection from './AiUnlockSection'
+import Testimonials from './Testimonials'
+import SupportedBy from './SupportedBy'
 const HomePage = () => {
   return (
     <div>        
@@ -12,6 +14,8 @@ const HomePage = () => {
       <ActiveRooms></ActiveRooms>
       <HowItWorks></HowItWorks>
       <AiUnlockSection></AiUnlockSection>
+      <Testimonials></Testimonials>
+      <SupportedBy></SupportedBy>
 
     </div>
   )

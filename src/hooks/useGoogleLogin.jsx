@@ -30,7 +30,7 @@ const useGoogleLogin = () => {
       dispatch(userInfo(user));
       dispatch(loginToggle(true));
 
-      // 🔥 MERN UPGRADE: Save to your custom MongoDB Database instead of Firestore
+
       const response = await fetch(`${backendUrl}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

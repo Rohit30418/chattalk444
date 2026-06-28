@@ -1439,7 +1439,7 @@ const Chat = ({ uId }) => {
     emitStopTyping,
     addLocalMessage,
     addMessage,
-        id,
+    id,
     currentUser,
   ]);
 

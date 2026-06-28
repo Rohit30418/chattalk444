@@ -1,91 +1,212 @@
 import React from "react";
 
-const steps = [
+const learners = [
   {
-    title: "Join a Room",
-    desc: "Browse dozens of active audio rooms. Filter by language or topic and jump into a conversation instantly.",
-    icon: "fa-solid fa-right-to-bracket",
-    color: "from-blue-500 to-cyan-400",
+    name: "Rohit",
+    location: "New Delhi, India",
+    country: "IN",
+    initial: "R",
+    wants: "English",
+    goal: "Improve English for interviews",
+    quote: "I get nervous in interviews. I want to sound confident.",
   },
   {
-    title: "Speak & Listen",
-    desc: "Unmute your mic to practice speaking, or just listen in. Connect with native speakers and learners alike.",
-    icon: "fa-solid fa-comments",
-    color: "from-indigo-500 to-purple-500",
-  },
-  {
-    title: "Level Up",
-    desc: "Build confidence through daily practice. Track your progress and become fluent naturally over time.",
-    icon: "fa-solid fa-chart-line",
-    color: "from-pink-500 to-rose-500",
+    name: "Sofia",
+    location: "Madrid, Spain",
+    country: "ES",
+    initial: "S",
+    wants: "Hindi",
+    goal: "Learn Hindi for travel",
+    quote: "I’m visiting India next month and want to greet locals.",
   },
 ];
 
 const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="py-16 sm:py-20 lg:py-24 bg-white dark:bg-slate-950 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+    <section
+      id="how-it-works"
+      className="relative overflow-hidden bg-[var(--color-bg)] px-4 py-16 text-[var(--color-text)] sm:px-6 lg:px-8 lg:py-24"
+    >
+      <style>{`
+        .human-story-card {
+          background:
+            linear-gradient(
+              180deg,
+              color-mix(in srgb, var(--color-surface) 98%, transparent),
+              color-mix(in srgb, var(--color-bg-lift, var(--color-bg-soft)) 38%, var(--color-surface))
+            );
+        }
+
+        .human-story-card:hover {
+          border-color: var(--color-border-strong);
+          box-shadow: var(--shadow-soft);
+          transform: translateY(-4px);
+        }
+
+        .human-avatar-ring {
+          box-shadow:
+            0 0 0 6px color-mix(in srgb, var(--color-primary) 10%, transparent),
+            var(--shadow-card);
+        }
+
+        .human-connector-line {
+          background: linear-gradient(
+            90deg,
+            transparent,
+            color-mix(in srgb, var(--color-primary) 24%, transparent),
+            transparent
+          );
+        }
+      `}</style>
+
+      {/* Background glows */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute left-[-12%] top-20 h-80 w-80 rounded-full bg-[var(--color-primary-soft)] blur-[100px]" />
+        <div className="absolute right-[-12%] bottom-20 h-96 w-96 rounded-full bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] blur-[110px]" />
+      </div>
+
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
-          <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-wider uppercase text-xs sm:text-sm mb-2 block">
-            Simple Process
+        <div className="mx-auto mb-12 max-w-4xl text-center lg:mb-16">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,transparent)] px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--color-primary-700)] [box-shadow:var(--shadow-card)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--color-success)] shadow-[0_0_0_6px_var(--color-primary-soft)]" />
+            Human First
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white mb-3 sm:mb-4">
-            Master a language in <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-400 dark:to-purple-400">3 simple steps</span>
+
+          <h2 className="mx-auto mt-5 max-w-4xl text-4xl font-black leading-[1.08] tracking-[-0.05em] text-[var(--color-text)] sm:text-5xl lg:text-6xl">
+            Vaani connects people through{" "}
+            <span className="bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] bg-clip-text text-transparent">
+              real conversations.
+            </span>
           </h2>
-          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 px-2 sm:px-0">
-            No complicated scheduling or lessons. Just real conversations with real people.
+
+          <p className="mx-auto mt-5 max-w-3xl text-base font-medium leading-8 text-[var(--color-muted)] sm:text-lg">
+            Two learners. Two goals. One room. Practice with real people and
+            grow together with Luna AI by your side.
           </p>
         </div>
 
-        {/* Steps Grid */}
-        <div className="grid md:grid-cols-3 gap-10 sm:gap-12 relative">
-          
-          {/* Connector Line (Desktop Only) */}
-          <div className="hidden md:block absolute top-10 lg:top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-gray-200 via-indigo-200 to-gray-200 dark:from-slate-800 dark:via-indigo-900 dark:to-slate-800 -z-0"></div>
+        {/* Story Cards */}
+        <div className="relative mx-auto grid max-w-6xl items-center gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-8">
+          <div className="human-connector-line absolute left-[18%] right-[18%] top-1/2 hidden h-px -translate-y-1/2 lg:block" />
 
-          {steps.map((step, idx) => (
-            <div key={idx} className="relative flex flex-col items-center text-center group z-10">
-              
-              {/* Icon Circle */}
-              <div className="mb-5 sm:mb-6 relative">
-                {/* Glow Effect */}
-                <div className={`absolute -inset-3 sm:-inset-4 bg-gradient-to-r ${step.color} opacity-0 group-hover:opacity-20 rounded-full blur-xl transition-opacity duration-500`}></div>
-                
-                {/* Icon Container */}
-                <div className={`relative w-20 h-20 lg:w-24 lg:h-24 rounded-2xl bg-gradient-to-br ${step.color} shadow-lg flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300`}>
-                  <i className={`${step.icon} text-2xl lg:text-3xl text-white`}></i>
-                  
-                  {/* Step Number Badge */}
-                  <div className="absolute -top-2 -right-2 lg:-top-3 lg:-right-3 w-6 h-6 lg:w-8 lg:h-8 rounded-full bg-white dark:bg-slate-900 border-2 border-gray-100 dark:border-slate-700 flex items-center justify-center font-bold text-xs lg:text-sm text-gray-900 dark:text-white shadow-sm z-20">
-                    {idx + 1}
-                  </div>
-                </div>
-              </div>
+          <LearnerCard learner={learners[0]} />
 
-              {/* Content */}
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                {step.title}
+          {/* Match Connector */}
+          <div className="relative z-10 flex flex-col items-center justify-center gap-3">
+            <div className="flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)] sm:h-20 sm:w-20 sm:rounded-[1.65rem]">
+              <HeartIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+            </div>
+
+            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-xs font-black text-[var(--color-text)] [box-shadow:var(--shadow-card)]">
+              Matched in Live Room
+            </span>
+          </div>
+
+          <LearnerCard learner={learners[1]} />
+        </div>
+
+        {/* Luna AI Support Card */}
+        <div className="mx-auto mt-8 max-w-3xl rounded-[2rem] border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_94%,transparent)] p-5 [box-shadow:var(--shadow-soft)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-border-strong)] sm:p-7 lg:mt-10">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]">
+              <SparkIcon className="h-7 w-7" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-black tracking-[-0.035em] text-[var(--color-text)] sm:text-2xl">
+                Practice with real people. Improve with{" "}
+                <span className="text-[var(--color-primary-700)]">
+                  Luna AI.
+                </span>
               </h3>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed max-w-xs mx-auto">
-                {step.desc}
+
+              <p className="mt-2 text-sm font-medium leading-7 text-[var(--color-muted)] sm:text-base">
+                Live feedback on pronunciation, grammar, and fluency — while
+                you’re still speaking.
               </p>
             </div>
-          ))}
+          </div>
         </div>
-
-        {/* CTA */}
-        <div className="mt-12 sm:mt-16 lg:mt-20 text-center">
-          <button className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 sm:px-8 py-3 sm:py-4 rounded-full text-sm sm:text-base font-bold shadow-lg hover:transform hover:-translate-y-1 transition-all duration-300">
-            Start Speaking Now
-            <i className="fa-solid fa-arrow-right text-xs sm:text-sm"></i>
-          </button>
-        </div>
-
       </div>
     </section>
   );
 };
+
+const LearnerCard = ({ learner }) => {
+  return (
+    <article className="human-story-card relative z-10 rounded-[2rem] border border-[var(--color-border)] p-5 [box-shadow:var(--shadow-card)] backdrop-blur-xl transition-all duration-300 sm:p-7">
+      <div className="flex items-start gap-4">
+        <div className="human-avatar-ring flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-xl font-black text-[var(--color-on-primary)]">
+          {learner.initial}
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-xl font-black tracking-[-0.03em] text-[var(--color-text)]">
+              {learner.name}
+            </h3>
+            <span className="h-2 w-2 rounded-full bg-[var(--color-success)]" />
+          </div>
+
+          <p className="mt-1 text-sm font-semibold text-[var(--color-muted)]">
+            {learner.location}{" "}
+            <span className="text-[10px] font-black uppercase text-[var(--color-soft)]">
+              {learner.country}
+            </span>
+          </p>
+
+          <span className="mt-2 inline-flex rounded-full bg-[var(--color-primary-soft)] px-3 py-1 text-xs font-black text-[var(--color-primary-700)]">
+            Wants: {learner.wants}
+          </span>
+        </div>
+      </div>
+
+      <h4 className="mt-6 text-base font-black leading-snug text-[var(--color-text)] sm:text-lg">
+        {learner.goal}
+      </h4>
+
+      <div className="mt-4 rounded-[1.5rem] bg-[var(--color-bg-soft)] px-5 py-4">
+        <p className="text-sm font-semibold italic leading-7 text-[var(--color-muted)] sm:text-base">
+          “{learner.quote}”
+        </p>
+      </div>
+    </article>
+  );
+};
+
+const HeartIcon = ({ className = "" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M20.8 8.6C20.8 13.4 12 20 12 20C12 20 3.2 13.4 3.2 8.6C3.2 5.9 5.25 4 7.75 4C9.2 4 10.55 4.7 11.35 5.8C11.55 6.05 11.9 6.05 12.1 5.8C12.9 4.7 14.25 4 15.7 4C18.75 4 20.8 5.9 20.8 8.6Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const SparkIcon = ({ className = "" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M19 15L19.8 17.2L22 18L19.8 18.8L19 21L18.2 18.8L16 18L18.2 17.2L19 15Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M5 14L5.7 15.8L7.5 16.5L5.7 17.2L5 19L4.3 17.2L2.5 16.5L4.3 15.8L5 14Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export default HowItWorks;

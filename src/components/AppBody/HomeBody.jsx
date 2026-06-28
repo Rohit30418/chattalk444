@@ -157,8 +157,8 @@ const HomeBody = () => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[136px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[144px]">
-      <div className="container-app">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[136px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[144px] max-w-8xl mx-5">
+      <div>
         <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
@@ -312,7 +312,7 @@ const HomeBody = () => {
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-2xl backdrop-blur-xl">
                     <i className="fa-solid fa-plus" />
                   </div>
-                  <h3 className="text-2xl font-black">Host a focused room</h3>
+                  <h3 className="text-2xl text-white">Host a focused room</h3>
                   <p className="mt-2 text-sm font-semibold leading-6 text-white/80">Create a safe topic, invite your friends, and lead a better live practice session.</p>
                   <button
                     type="button"

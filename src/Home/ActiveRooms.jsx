@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom"; // Assuming react-router is used
+import { Link } from "react-router-dom";
 
 const rooms = [
   {
@@ -7,191 +7,298 @@ const rooms = [
     title: "🦥 Procrastinators Assemble #6",
     language: "Portuguese",
     flag: "https://flagsapi.com/PT/flat/64.png",
-    level: "#intermediate",
-    color: "rgb(153, 188, 133)",
+    level: "Intermediate",
+    accent: "var(--color-primary)",
     participants: ["Fatima1", "Sara2", "Jake3", "Fatima4", "Extra1"],
-    full: true,
+    host: "Fatima",
+    seats: 5,
+    capacity: 6,
+    status: "open",
   },
   {
     id: 2,
     title: "🫠 Socially Awkward Club #5",
     language: "Urdu",
     flag: "https://flagsapi.com/PK/flat/64.png",
-    level: "#advanced",
-    color: "rgb(255, 180, 160)",
+    level: "Advanced",
+    accent: "var(--color-warning)",
     participants: ["Ahmed1", "Zuri2", "Camille3"],
-    full: true,
+    host: "Ahmed",
+    seats: 3,
+    capacity: 5,
+    status: "open",
   },
   {
     id: 3,
     title: "🎤 Mic Check for No Reason #6",
     language: "Hindi",
     flag: "https://flagsapi.com/IN/flat/64.png",
-    level: "#upper-intermediate",
-    color: "rgb(67, 170, 139)",
+    level: "Upper Intermediate",
+    accent: "var(--color-success)",
     participants: ["Jean1", "Jake2", "Rohit3", "Valentina4"],
-    full: true,
+    host: "Rohit",
+    seats: 6,
+    capacity: 6,
+    status: "full",
   },
   {
     id: 4,
     title: "🎮 Gamers Who Rage Quit #5",
     language: "German",
     flag: "https://flagsapi.com/DE/flat/64.png",
-    level: "#upper-intermediate",
-    color: "rgb(255, 199, 95)",
+    level: "Upper Intermediate",
+    accent: "var(--color-secondary)",
     participants: ["Sara1", "Sara2"],
-    full: true,
+    host: "Sara",
+    seats: 2,
+    capacity: 6,
+    status: "open",
   },
   {
     id: 5,
     title: "🎵 Singing Like No One’s Judging #4",
     language: "English",
     flag: "https://flagsapi.com/GB/flat/64.png",
-    level: "#beginner",
-    color: "rgb(255, 111, 145)",
+    level: "Beginner",
+    accent: "var(--color-accent)",
     participants: ["Neha1", "Layla2", "Omar3", "Hiro4", "Camille5", "Rohit6"],
-    full: true, // Marked as full for demonstration
+    host: "Neha",
+    seats: 6,
+    capacity: 6,
+    status: "full",
   },
   {
     id: 6,
     title: "🚪 People Who Just Left Zoom Calls #4",
     language: "Mandarin",
     flag: "https://flagsapi.com/CN/flat/64.png",
-    level: "#beginner",
-    color: "rgb(100, 200, 255)",
+    level: "Beginner",
+    accent: "var(--color-primary-600)",
     participants: ["Mateo1", "Hiro2", "Jean3", "Mateo4", "Omar5"],
-    full: true,
+    host: "Mateo",
+    seats: 5,
+    capacity: 8,
+    status: "open",
   },
 ];
 
 export default function ActiveRoomsSection() {
   return (
-    <section className="py-12 sm:py-16 lg:py-20 bg-gray-50 px-4 sm:px-6 lg:px-8 dark:bg-slate-950 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* --- Heading --- */}
-        <div className="text-center mb-10 sm:mb-12 lg:mb-16">
-          <span className="inline-block py-1 px-2.5 sm:px-3 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-[10px] sm:text-xs font-bold uppercase tracking-wide mb-3 border border-indigo-100 dark:border-indigo-800">
+    <section className="relative overflow-hidden bg-[var(--color-bg-soft)] px-4 py-16 text-[var(--color-text)] transition-colors duration-300 sm:px-6 lg:px-8 lg:py-24">
+      <style>{`
+        .active-room-card::before {
+          content: "";
+          position: absolute;
+          inset: auto -72px -72px auto;
+          width: 190px;
+          height: 190px;
+          border-radius: 999px;
+          background: radial-gradient(
+            circle,
+            color-mix(in srgb, var(--room-accent) 22%, transparent),
+            transparent 70%
+          );
+          filter: blur(22px);
+          opacity: 0.72;
+          transition: opacity 240ms ease, transform 240ms ease;
+        }
+
+        .active-room-card:hover::before {
+          opacity: 1;
+          transform: scale(1.08);
+        }
+
+        .seat-progress {
+          background:
+            linear-gradient(
+              90deg,
+              var(--room-accent) var(--seat-fill),
+              color-mix(in srgb, var(--color-border) 70%, transparent) var(--seat-fill)
+            );
+        }
+      `}</style>
+
+      <div className="mx-auto max-w-7xl">
+        {/* Heading */}
+        <div className="mx-auto mb-12 max-w-3xl text-center lg:mb-16">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,transparent)] px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[var(--color-primary-700)] [box-shadow:var(--shadow-card)]">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--color-success)] opacity-70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--color-success)]" />
+            </span>
             Live Now
           </span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-3 sm:mb-4">
-            Active <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">Voice Rooms</span>
+
+          <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-[var(--color-text)] sm:text-4xl md:text-5xl">
+            Active{" "}
+            <span className="bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] bg-clip-text text-transparent">
+              Voice Rooms
+            </span>
           </h2>
-          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Jump into live conversations happening right now. No scheduling required.
+
+          <p className="mx-auto mt-4 max-w-2xl text-base font-medium leading-7 text-[var(--color-muted)] sm:text-lg">
+            Jump into live conversations happening right now. Practice with real
+            learners or get support from Luna AI.
           </p>
         </div>
 
-        {/* --- Grid --- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
+        {/* Grid */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-8">
           {rooms.map((room) => (
-            <div key={room.id} className="h-full">
-              <div
-                className="group relative w-full min-h-[280px] sm:h-[320px] flex flex-col justify-between rounded-2xl sm:rounded-3xl p-5 sm:p-6 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-              >
-                {/* 1. Ambient Glow (Derived from room color) */}
-                <div 
-                  className="absolute -top-16 -right-16 sm:-top-20 sm:-right-20 w-48 h-48 sm:w-64 sm:h-64 rounded-full blur-[60px] sm:blur-[80px] opacity-10 dark:opacity-20 transition-opacity duration-500 group-hover:opacity-25"
-                  style={{ backgroundColor: room.color }}
-                />
-
-                {/* Settings Icon */}
-                <button className="absolute top-4 right-4 sm:top-5 sm:right-5 z-20 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
-                  <i className="fa fa-cog text-base sm:text-lg"></i>
-                </button>
-
-                {/* --- CARD TOP: Tags & Title --- */}
-                <div className="relative z-10">
-                  <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4 pr-6 sm:pr-8">
-                    {/* Language Tag */}
-                    <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-[10px] sm:text-xs font-bold text-gray-700 dark:text-gray-300">
-                      <img
-                        src={room.flag}
-                        alt={room.language}
-                        className="w-3 h-3 sm:w-4 sm:h-4 object-contain"
-                      />
-                      {room.language}
-                    </div>
-                    {/* Level Tag */}
-                    <div 
-                      className="px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold text-white shadow-sm"
-                      style={{ backgroundColor: room.color }}
-                    >
-                      {room.level}
-                    </div>
-                  </div>
-
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight line-clamp-2">
-                    {room.title}
-                  </h3>
-                </div>
-
-                {/* --- CARD BOTTOM: Participants & Button --- */}
-                <div className="relative z-10 mt-6 sm:mt-auto pt-4 sm:pt-6">
-                  
-                  {/* Avatar Stack */}
-                  <div className="flex items-center justify-between mb-4 sm:mb-5">
-                    <div className="flex items-center -space-x-2 sm:-space-x-3 pl-1">
-                      {room.participants.slice(0, 5).map((seed, i) => (
-                        <div key={i} className="relative transition-transform duration-300 hover:z-10 hover:scale-110">
-                          <img
-                            src={`https://api.dicebear.com/7.x/notionists/svg?seed=${seed}`}
-                            alt="User"
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white dark:border-slate-900 bg-gray-100 dark:bg-slate-800"
-                          />
-                        </div>
-                      ))}
-                      {/* Overflow Counter */}
-                      {room.participants.length > 5 && (
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] sm:text-xs font-bold text-gray-600 dark:text-gray-300 z-0">
-                          +{room.participants.length - 5}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Live Indicator or "Full" Text */}
-                    {!room.full ? (
-                       <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 sm:py-1 rounded-lg">
-                          <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-green-500"></span>
-                          </span>
-                          Live
-                       </div>
-                    ) : (
-                      <span className="text-[10px] sm:text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 sm:py-1 rounded-lg">
-                        Full
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Action Button */}
-                  <button 
-                    disabled={room.full}
-                    className={`w-full relative overflow-hidden group/btn font-bold py-2.5 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm rounded-xl shadow-md transition-all duration-300 flex items-center justify-center gap-2
-                    ${room.full 
-                      ? "bg-gray-100 dark:bg-slate-800 text-gray-400 cursor-not-allowed" 
-                      : "bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-200 text-white dark:text-gray-900 hover:shadow-lg hover:-translate-y-0.5"
-                    }`}
-                  >
-                    {room.full ? "Room at Capacity" : "Join Conversation"}
-                    {!room.full && <i className="fa-solid fa-arrow-right text-[10px] sm:text-sm transition-transform group-hover/btn:translate-x-1"></i>}
-                  </button>
-
-                </div>
-              </div>
-            </div>
+            <RoomCard key={room.id} room={room} />
           ))}
         </div>
 
         {/* View All Link */}
-        <div className="text-center mt-8 sm:mt-10 lg:mt-12">
-          <Link to="/rooms" className="inline-flex items-center gap-2 text-sm sm:text-base text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
-            View all active rooms <i className="fa-solid fa-arrow-right text-xs sm:text-sm"></i>
+        <div className="mt-10 text-center lg:mt-12">
+          <Link
+            to="/rooms"
+            className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_90%,transparent)] px-5 py-3 text-sm font-black text-[var(--color-primary-700)] [box-shadow:var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-border-strong)] hover:bg-[var(--color-surface)]"
+          >
+            View all active rooms
+            <ArrowIcon className="h-4 w-4" />
           </Link>
         </div>
-        
       </div>
     </section>
   );
 }
+
+const RoomCard = ({ room }) => {
+  const isFull = room.status === "full";
+  const seatFill = `${Math.min((room.seats / room.capacity) * 100, 100)}%`;
+  const openSeats = Math.max(room.capacity - room.seats, 0);
+
+  return (
+    <article
+      className="active-room-card group relative flex min-h-[300px] flex-col justify-between overflow-hidden rounded-[1.75rem] border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_94%,transparent)] p-5 [box-shadow:var(--shadow-card)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-border-strong)] hover:[box-shadow:var(--shadow-soft)] sm:min-h-[320px] sm:p-6"
+      style={{
+        "--room-accent": room.accent,
+        "--seat-fill": seatFill,
+      }}
+    >
+      {/* Top */}
+      <div className="relative z-10">
+        <div className="mb-4 flex flex-wrap items-center gap-2 pr-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1 text-xs font-black text-[var(--color-muted)]">
+            <img
+              src={room.flag}
+              alt={room.language}
+              className="h-4 w-4 object-contain"
+              loading="lazy"
+            />
+            {room.language}
+          </div>
+
+          <div className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--room-accent)_26%,transparent)] bg-[color-mix(in_srgb,var(--room-accent)_10%,transparent)] px-3 py-1 text-xs font-black text-[var(--color-text)]">
+            {room.level}
+          </div>
+
+          <div
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black ${
+              isFull
+                ? "border-[color-mix(in_srgb,var(--color-warning)_28%,transparent)] bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
+                : "border-[color-mix(in_srgb,var(--color-success)_24%,transparent)] bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] text-[var(--color-success)]"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                isFull ? "bg-[var(--color-warning)]" : "bg-[var(--color-success)]"
+              }`}
+            />
+            {isFull ? "Full" : "Live"}
+          </div>
+        </div>
+
+        <h3 className="line-clamp-2 text-lg font-black leading-tight tracking-[-0.03em] text-[var(--color-text)] sm:text-xl">
+          {room.title}
+        </h3>
+
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--color-muted)]">
+          Hosted by {room.host}. Practice naturally with learners in a friendly
+          live room.
+        </p>
+      </div>
+
+      {/* Bottom */}
+      <div className="relative z-10 mt-6">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="flex items-center -space-x-3 pl-1">
+            {room.participants.slice(0, 5).map((seed, index) => (
+              <div
+                key={seed}
+                className="relative transition-transform duration-300 hover:z-10 hover:scale-110"
+                style={{ zIndex: 10 - index }}
+              >
+                <img
+                  src={`https://api.dicebear.com/7.x/notionists/svg?seed=${seed}`}
+                  alt="Participant"
+                  className="h-10 w-10 rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-surface-2)] object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+
+            {room.participants.length > 5 && (
+              <div className="relative z-0 flex h-10 w-10 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-surface-2)] text-xs font-black text-[var(--color-muted)]">
+                +{room.participants.length - 5}
+              </div>
+            )}
+          </div>
+
+          <div className="text-right">
+            <p className="text-xs font-black text-[var(--color-text)]">
+              {room.seats}/{room.capacity} speaking
+            </p>
+            <p
+              className={`mt-0.5 text-[11px] font-bold ${
+                isFull
+                  ? "text-[var(--color-warning)]"
+                  : "text-[var(--color-success)]"
+              }`}
+            >
+              {isFull ? "No seats left" : `${openSeats} seats left`}
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-2)]">
+          <div className="seat-progress h-full rounded-full" />
+        </div>
+
+        <button
+          type="button"
+          disabled={isFull}
+          className={`group/btn flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all duration-300 ${
+            isFull
+              ? "border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-soft)]"
+              : "bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)] hover:-translate-y-0.5"
+          }`}
+        >
+          {isFull ? "Notify Me" : "Join Room"}
+
+          {!isFull && (
+            <ArrowIcon className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
+          )}
+        </button>
+      </div>
+    </article>
+  );
+};
+
+const ArrowIcon = ({ className = "" }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M5 12H19M13 6L19 12L13 18"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
