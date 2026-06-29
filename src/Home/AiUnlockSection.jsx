@@ -77,7 +77,7 @@ const trustBadges = [
 
 const AiUnlockSection = () => {
   return (
-    <section className="relative overflow-hidden bg-[var(--color-bg)] px-4 py-16 text-[var(--color-text)] transition-colors duration-300 sm:px-6 lg:px-8 lg:py-24">
+    <section id="pricing" className="relative overflow-hidden bg-[var(--color-bg)] px-4 py-16 text-[var(--color-text)] transition-colors duration-300 sm:px-6 lg:px-8 lg:py-24">
       <style>{`
         .pricing-shell {
           background:

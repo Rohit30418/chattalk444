@@ -2,24 +2,58 @@ import React from "react";
 
 const GradientSpinner = () => {
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm transition-colors duration-300">
-      
-      {/* Spinner Container */}
-      <div className="relative w-16 h-16 flex items-center justify-center">
-        
-        {/* Ambient Glow */}
-        <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-xl animate-pulse"></div>
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[var(--color-bg)]/80 backdrop-blur-xl">
 
-        {/* Background Track (Static) */}
-        <div className="absolute w-full h-full border-4 border-gray-100 dark:border-slate-800 rounded-full"></div>
-        
-        {/* Active Spinner (Gradient Effect) */}
-        {/* Using border-t and border-r with specific colors creates a gradient-like arc */}
-        <div className="absolute w-full h-full border-4 border-transparent border-t-indigo-600 border-r-purple-500 dark:border-t-indigo-400 dark:border-r-purple-400 rounded-full animate-spin"></div>
+      <div className="relative flex items-center justify-center">
 
-        {/* Center Pulsing Dot */}
-        <div className="absolute w-2 h-2 bg-indigo-600 dark:bg-indigo-400 rounded-full animate-ping"></div>
-        
+        {/* Outer Glow */}
+        <div
+          className="absolute w-28 h-28 rounded-full blur-3xl animate-pulse"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(15,118,110,.25), rgba(2,132,199,.15), transparent 70%)",
+          }}
+        />
+
+        {/* Spinner */}
+        <div className="relative w-16 h-16">
+
+          {/* Track */}
+          <div
+            className="absolute inset-0 rounded-full border-[3px]"
+            style={{
+              borderColor: "var(--color-border)",
+            }}
+          />
+
+          {/* Animated Arc */}
+          <div
+            className="absolute inset-0 rounded-full border-[3px] border-transparent animate-spin"
+            style={{
+              borderTopColor: "var(--color-primary)",
+              borderRightColor: "var(--color-secondary)",
+            }}
+          />
+
+          {/* Inner Ring */}
+          <div
+            className="absolute inset-2 rounded-full border"
+            style={{
+              borderColor: "rgba(52,211,153,.25)",
+            }}
+          />
+
+          {/* Center Core */}
+          <div
+            className="absolute top-1/2 left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full animate-pulse"
+            style={{
+              background:
+                "linear-gradient(135deg,var(--color-primary),var(--color-accent))",
+              boxShadow:
+                "0 0 20px rgba(15,118,110,.45), 0 0 40px rgba(52,211,153,.25)",
+            }}
+          />
+        </div>
       </div>
     </div>
   );

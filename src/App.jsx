@@ -11,6 +11,7 @@ import { store } from './store';
 import { AuthProvider } from './components/auth/AppWrapper';
 import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
+import ErrorBoundary from './ErrorBoundary';
 
 // Lazy-loaded pages
 const HomePage = lazy(() => import('./Home/HomePage'));
@@ -18,30 +19,20 @@ const Mainbody = lazy(() => import('./components/AppBody/Mainbody'));
 const Room = lazy(() => import('./room/Room'));
 const MyProfile = lazy(() => import('./components/AppBody/MyProfile'));
 const AiCharacter = lazy(() => import('./components/ai/AiCharacter'));
-
+const NotFound=lazy(()=>import('./NotFound'));
 const SuspenseLayout = ({ children }) => (
   <Suspense fallback={<GradientSpinner />}>
     {children}
   </Suspense>
 );
 
-const NotFound = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white px-6 text-center">
-    <h1 className="text-4xl font-black mb-3">404</h1>
-    <p className="text-slate-400 mb-6">Page not found</p>
-    <a
-      href="/"
-      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors"
-    >
-      Go Home
-    </a>
-  </div>
-);
+
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
+    errorElement:<ErrorBoundary/>,
     children: [
       {
         index: true,
@@ -126,8 +117,12 @@ const router = createBrowserRouter([
 
 function App() {
   return (
+
+   
     <Provider store={store}>
+  
       <AuthProvider>
+          
         <ToastContainer
           theme="colored"
           position="top-right"
@@ -143,6 +138,7 @@ function App() {
 
       </AuthProvider>
     </Provider>
+
   );
 }
 

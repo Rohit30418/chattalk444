@@ -1,5 +1,9 @@
 import React, { memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+
+// Make sure to adjust this path to where your AppWrapper is actually located
+import { useAuth } from '../../components/auth/AppWrapper'; 
 
 const FLAG_MAP = {
   english: 'US',
@@ -128,6 +132,9 @@ const AvatarStack = memo(({ roomId, participants, activeCount }) => {
 });
 
 const RoomCard = ({ roomdata }) => {
+  const { user } = useAuth(); // Hook to get current user
+  const loginStatus = Boolean(user); // Check if logged in
+
   const room = roomdata || {};
   const roomId = getRoomId(room);
 
@@ -157,6 +164,14 @@ const RoomCard = ({ roomdata }) => {
   const capacityPercent = Math.min(100, Math.round((activeCount / maxPeople) * 100));
 
   if (!roomId) return null;
+
+  // Intercept the click event
+  const handleJoinClick = (e) => {
+    if (!loginStatus) {
+      e.preventDefault(); // Prevents React Router from navigating
+      toast.error('Please sign in to join a room');
+    }
+  };
 
   return (
     <article className="group relative flex min-h-[236px] flex-col overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl dark:border-white/10 dark:bg-[#101626] dark:hover:border-indigo-400/35">
@@ -245,6 +260,7 @@ const RoomCard = ({ roomdata }) => {
         ) : (
           <Link
             to={`/room/${roomId}`}
+            onClick={handleJoinClick}
             className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:bg-white dark:text-slate-950 dark:hover:bg-indigo-50"
             aria-label={`Join ${title}`}
           >

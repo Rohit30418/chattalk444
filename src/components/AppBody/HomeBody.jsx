@@ -37,15 +37,15 @@ const getMaxPeople = (room) => Number(room?.MaximumPeople || room?.maxPeople || 
 const getParticipants = (room) => Number(room?.participantsCount || room?.activeCount || room?.memberCount || 0) || 0;
 
 const MetricCard = ({ icon, label, value, hint }) => (
-  <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.045]">
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
-        <p className="mt-1 text-2xl font-black text-slate-950 dark:text-white">{value}</p>
-        <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{hint}</p>
+  <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 p-3 sm:p-4 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.045]">
+    <div className="flex items-start justify-between gap-2 sm:gap-4">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
+        <p className="mt-1 truncate text-xl sm:text-2xl font-black text-slate-950 dark:text-white">{value}</p>
+        <p className="mt-1 truncate text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">{hint}</p>
       </div>
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-        <i className={`fa-solid ${icon}`} />
+      <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+        <i className={`fa-solid ${icon} text-sm sm:text-base`} />
       </div>
     </div>
   </div>
@@ -159,7 +159,9 @@ const HomeBody = () => {
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[136px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[144px] max-w-8xl mx-5">
       <div>
-        <section className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
+        
+        {/* HERO SECTION - Hidden on mobile (hidden md:block) */}
+        <section className="hidden md:block relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
 
@@ -205,7 +207,8 @@ const HomeBody = () => {
           </div>
         </section>
 
-        <section className="mt-10">
+        {/* TRENDING NOW */}
+        <section className="mt-4 md:mt-10">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Trending now</p>
@@ -215,6 +218,7 @@ const HomeBody = () => {
           <FeaturedEvents />
         </section>
 
+        {/* ROOMS GRID */}
         <section id="rooms-grid" className="mt-10">
           <div className="sticky top-[116px] z-30 mb-6 rounded-[1.7rem] border border-slate-200 bg-white/88 p-3 shadow-lg shadow-slate-200/60 backdrop-blur-2xl dark:border-white/10 dark:bg-[#0b1120]/88 dark:shadow-black/20 sm:p-4">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -328,14 +332,16 @@ const HomeBody = () => {
           </div>
         </section>
 
+        {/* Floating Action Button (Mobile & Tablet Only) */}
+        {/* Ensures users always have a way to create rooms when sidebar/hero isn't visible */}
         <div className="xl:hidden">
           <button
             type="button"
             onClick={handleAddRoomClick}
-            className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-2xl shadow-indigo-500/35 transition hover:scale-105 active:scale-95"
+            className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-2xl shadow-indigo-500/35 transition hover:scale-105 active:scale-95"
             aria-label="Create room"
           >
-            <i className="fa fa-plus text-xl" />
+            <i className="fa-solid fa-plus text-xl" />
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import Swal from "sweetalert2";
 
@@ -7,137 +7,67 @@ import { loginToggle } from "../../redux/action";
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import { useAuth } from "../auth/AppWrapper";
 
+// 1. UPDATED NAV ITEMS - Luna AI now correctly points to /rooms#ai-bot
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
-  { label: "Luna AI", to: "/ai-bot" },
-  { label: "Pricing", to: "/pricing" },
+  { label: "Luna AI", to: "/rooms#ai-bot" }, 
+  { label: "Pricing", to: "/#pricing" },
 ];
 
-
 /* Inline SVG Icons */
-
 const SunIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M12 17A5 5 0 1 0 12 7A5 5 0 0 0 12 17Z"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
-    <path
-      d="M12 1.75V4M12 20V22.25M4.75 4.75L6.35 6.35M17.65 17.65L19.25 19.25M1.75 12H4M20 12H22.25M4.75 19.25L6.35 17.65M17.65 6.35L19.25 4.75"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
+    <path d="M12 17A5 5 0 1 0 12 7A5 5 0 0 0 12 17Z" stroke="currentColor" strokeWidth="2" />
+    <path d="M12 1.75V4M12 20V22.25M4.75 4.75L6.35 6.35M17.65 17.65L19.25 19.25M1.75 12H4M20 12H22.25M4.75 19.25L6.35 17.65M17.65 6.35L19.25 4.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
 const MoonIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M21 14.2C19.9 18.05 16.35 20.75 12.25 20.75C7.28 20.75 3.25 16.72 3.25 11.75C3.25 7.65 5.95 4.1 9.8 3C9.45 4.05 9.25 5.15 9.25 6.3C9.25 11 13 14.75 17.7 14.75C18.85 14.75 19.95 14.55 21 14.2Z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinejoin="round"
-    />
+    <path d="M21 14.2C19.9 18.05 16.35 20.75 12.25 20.75C7.28 20.75 3.25 16.72 3.25 11.75C3.25 7.65 5.95 4.1 9.8 3C9.45 4.05 9.25 5.15 9.25 6.3C9.25 11 13 14.75 17.7 14.75C18.85 14.75 19.95 14.55 21 14.2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
   </svg>
 );
 
 const MenuIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M4 7H20M4 12H20M4 17H20"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-    />
+    <path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
   </svg>
 );
 
 const CloseIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M6 6L18 18M18 6L6 18"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-    />
+    <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
   </svg>
 );
 
 const ChevronDownIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M6 9L12 15L18 9"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const ArrowRightIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M5 12H19M13 6L19 12L13 18"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const UserIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M20 21C20 17.7 16.4 15 12 15C7.6 15 4 17.7 4 21"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <path
-      d="M12 12A4 4 0 1 0 12 4A4 4 0 0 0 12 12Z"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
+    <path d="M20 21C20 17.7 16.4 15 12 15C7.6 15 4 17.7 4 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M12 12A4 4 0 1 0 12 4A4 4 0 0 0 12 12Z" stroke="currentColor" strokeWidth="2" />
   </svg>
 );
 
 const LogoutIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path
-      d="M15 17L20 12L15 7"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M20 12H9"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-    />
-    <path
-      d="M12 21H6C4.9 21 4 20.1 4 19V5C4 3.9 4.9 3 6 3H12"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-    />
+    <path d="M15 17L20 12L15 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M20 12H9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M12 21H6C4.9 21 4 20.1 4 19V5C4 3.9 4.9 3 6 3H12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
   </svg>
 );
 
-const GoogleIcon = ({ className = "" }) => (
-  <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      fill="currentColor"
-      d="M21.35 11.1H12v2.9h5.35C16.8 16.75 14.55 18 12 18C8.7 18 6 15.3 6 12S8.7 6 12 6C13.5 6 14.85 6.55 15.9 7.45L18.05 5.3C16.45 3.85 14.35 3 12 3C7.05 3 3 7.05 3 12S7.05 21 12 21C16.5 21 21 17.75 21 12C21 11.7 20.95 11.4 20.9 11.1H21.35Z"
-    />
-  </svg>
-);
 const getInitialTheme = () => {
   if (typeof window === "undefined") return "light";
 
@@ -169,9 +99,9 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-const isRoomsPage = location.pathname === '/rooms';
-const containerWidth = isRoomsPage ? 'max-w-8xl' : 'max-w-7xl';
-const loginStatus = Boolean(user);
+  const isRoomsPage = location.pathname === "/rooms";
+  const containerWidth = isRoomsPage ? "max-w-8xl" : "max-w-7xl";
+  const loginStatus = Boolean(user);
 
   const displayName = useMemo(
     () => user?.displayName || user?.email?.split("@")[0] || "Learner",
@@ -199,7 +129,7 @@ const loginStatus = Boolean(user);
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsProfileOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
@@ -233,19 +163,61 @@ const loginStatus = Boolean(user);
     });
   };
 
-  const navClass = ({ isActive }) =>
-    `inline-flex items-center rounded-full px-5 py-2.5 text-sm font-black transition-all duration-200 ${
+  // --- FINAL BULLETPROOF ACTIVE STATE LOGIC ---
+  const checkIsActive = (itemTo) => {
+    const currentPath = location.pathname;
+    const currentHash = location.hash;
+    const currentFullPath = currentPath + currentHash;
+
+    // 1. If the user clicked "Talk Now" and went to /ai-bot directly
+    if (currentPath === "/ai-bot" || currentPath === "/aiBot") {
+      if (itemTo.includes("ai-bot")) return true; // Keep Luna AI lit
+      return false; 
+    }
+
+    // 2. Exact match (e.g., "/rooms#ai-bot" matches exactly) -> GLOW
+    if (itemTo === currentFullPath) return true;
+
+    // 3. If this nav item has a hash, but didn't match exactly above -> NO GLOW
+    if (itemTo.includes("#")) return false;
+
+    // 4. Prevent "Home" (/) from glowing on other pages -> NO GLOW
+    if (itemTo === "/") return currentPath === "/" && !currentHash;
+
+    // 5. Handle parent pages (like "/rooms")
+    if (currentPath.startsWith(itemTo)) {
+      // If another tab is an EXACT match for the current URL, suppress this parent tab
+      const isAnotherTabExactlyActive = navItems.some(
+        (nav) => nav.to === currentFullPath
+      );
+      
+      if (isAnotherTabExactlyActive) {
+        return false; 
+      }
+
+      return true;
+    }
+
+    return false;
+  };
+
+  const getNavClass = (itemTo) => {
+    const isActive = checkIsActive(itemTo);
+    return `inline-flex items-center rounded-full px-5 py-2.5 text-sm font-black transition-all duration-200 ${
       isActive
         ? "bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]"
         : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
     }`;
+  };
 
-  const mobileNavClass = ({ isActive }) =>
-    `flex items-center justify-between rounded-2xl px-4 py-4 text-sm font-black transition-all duration-200 ${
+  const getMobileNavClass = (itemTo) => {
+    const isActive = checkIsActive(itemTo);
+    return `flex items-center justify-between rounded-2xl px-4 py-4 text-sm font-black transition-all duration-200 ${
       isActive
         ? "bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]"
         : "bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]"
     }`;
+  };
 
   return (
     <>
@@ -256,8 +228,9 @@ const loginStatus = Boolean(user);
             : "border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_88%,transparent)]"
         }`}
       >
-        {/* Change this line: */}
-<div className={`relative mx-auto flex h-[68px] ${containerWidth} items-center justify-between gap-3 px-5  lg:h-[82px] `}>
+        <div
+          className={`relative mx-auto flex h-[68px] ${containerWidth} items-center justify-between gap-3 px-5  lg:h-[82px] `}
+        >
           {/* Logo */}
           <Link
             to="/"
@@ -265,26 +238,26 @@ const loginStatus = Boolean(user);
             aria-label="Vaani home"
           >
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]">
-            <svg
-  className="h-5 w-5"
-  viewBox="0 0 24 24"
-  fill="none"
-  aria-hidden="true"
->
-  <path
-    d="M7.5 18.5H7C4.8 18.5 3 16.7 3 14.5V8C3 5.8 4.8 4 7 4H17C19.2 4 21 5.8 21 8V14.5C21 16.7 19.2 18.5 17 18.5H12.8L8.8 21.2C8.2 21.6 7.5 21.2 7.5 20.5V18.5Z"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  />
-  <path
-    d="M8 10H16M8 14H13"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-  />
-</svg>
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M7.5 18.5H7C4.8 18.5 3 16.7 3 14.5V8C3 5.8 4.8 4 7 4H17C19.2 4 21 5.8 21 8V14.5C21 16.7 19.2 18.5 17 18.5H12.8L8.8 21.2C8.2 21.6 7.5 21.2 7.5 20.5V18.5Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8 10H16M8 14H13"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
             </span>
 
             <span className="min-w-0 leading-tight">
@@ -300,9 +273,9 @@ const loginStatus = Boolean(user);
           {/* Desktop Nav */}
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_88%,transparent)] p-1 [box-shadow:var(--shadow-card)] lg:flex">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} className={navClass}>
+              <Link key={item.to} to={item.to} className={getNavClass(item.to)}>
                 {item.label}
-              </NavLink>
+              </Link>
             ))}
           </nav>
 
@@ -390,23 +363,13 @@ const loginStatus = Boolean(user);
                 )}
               </div>
             ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={signInWithGoogle}
-                  className="hidden px-3 py-2 text-sm font-black text-[var(--color-muted)] transition hover:text-[var(--color-primary-700)] sm:inline-flex"
-                >
-                  Login
-                </button>
-
-                <button
-                  type="button"
-                  onClick={signInWithGoogle}
-                  className="hidden rounded-2xl bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] px-5 py-3 text-sm font-black text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)] transition-all duration-200 hover:-translate-y-0.5 sm:inline-flex"
-                >
-                  Start Practicing
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-black text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)] transition-all duration-200 hover:-translate-y-0.5"
+              >
+                Login
+              </button>
             )}
 
             {/* Mobile Menu Button */}
@@ -431,34 +394,20 @@ const loginStatus = Boolean(user);
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 bg-[var(--color-overlay)] pt-[76px] lg:hidden">
           <div className="mx-3 overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 [box-shadow:var(--shadow-soft)]">
-            <div className="mb-3 rounded-[1.5rem] bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] p-4 text-[var(--color-on-primary)]">
-              <p className="text-sm font-black">Vaani App</p>
-              <p className="mt-1 text-xs font-semibold opacity-80">
-                Join rooms, practice speaking, and learn with Luna AI.
-              </p>
-            </div>
-
             <nav className="grid gap-2">
               {navItems.map((item) => (
-                <NavLink key={item.to} to={item.to} className={mobileNavClass}>
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={getMobileNavClass(item.to)}
+                >
                   <span>{item.label}</span>
                   <ArrowRightIcon className="h-4 w-4 opacity-60" />
-                </NavLink>
+                </Link>
               ))}
             </nav>
 
             <div className="mt-3 grid gap-2">
-              {!loginStatus && (
-                <button
-                  type="button"
-                  onClick={signInWithGoogle}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] px-4 py-3 text-sm font-black text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]"
-                >
-                  <GoogleIcon className="h-4 w-4" />
-                  Start Practicing
-                </button>
-              )}
-
               <button
                 type="button"
                 onClick={toggleTheme}

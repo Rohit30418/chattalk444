@@ -1,25 +1,64 @@
-import React from 'react';
+import React from "react";
 
 const Loading = () => {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm transition-all duration-300">
-      
-      <div className="flex flex-col items-center gap-4">
-        {/* Animated Spinner */}
-        <div className="relative w-12 h-12">
-          {/* Background Ring */}
-          <div className="absolute inset-0 border-4 border-gray-200 dark:border-slate-700 rounded-full"></div>
-          
-          {/* Spinning Ring (Brand Color) */}
-          <div className="absolute inset-0 border-4 border-indigo-600 dark:border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-[var(--color-bg)]/80 backdrop-blur-xl">
+
+      {/* Ambient Glow */}
+      <div className="absolute w-80 h-80 rounded-full bg-teal-500/10 blur-3xl animate-pulse"></div>
+      <div className="absolute w-72 h-72 rounded-full bg-sky-500/10 blur-3xl animate-pulse"></div>
+
+      <div className="relative flex flex-col items-center gap-5">
+
+        {/* Premium Spinner */}
+        <div className="relative w-20 h-20">
+
+          {/* Glass Ring */}
+          <div className="absolute inset-0 rounded-full border border-[var(--color-border)]"></div>
+
+          {/* Rotating Ring */}
+          <div className="absolute inset-0 animate-spin">
+            <div
+              className="w-full h-full rounded-full border-[3px] border-transparent"
+              style={{
+                borderTopColor: "var(--color-primary)",
+                borderRightColor: "var(--color-secondary)",
+                borderBottomColor: "var(--color-accent)",
+              }}
+            />
+          </div>
+
+          {/* Center Orb */}
+          <div
+            className="absolute inset-4 rounded-full animate-pulse"
+            style={{
+              background:
+                "linear-gradient(135deg,var(--color-primary),var(--color-secondary),var(--color-accent))",
+              boxShadow:
+                "0 0 40px rgba(15,118,110,.35)",
+            }}
+          />
         </div>
 
-        {/* Optional Loading Text */}
-        <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 animate-pulse tracking-wider">
-          Loading...
-        </span>
-      </div>
+        {/* Brand Text */}
+        <div className="text-center">
+          <h3
+            className="font-black text-lg tracking-tight"
+            style={{
+              background:
+                "linear-gradient(90deg,var(--color-primary),var(--color-secondary),var(--color-accent))",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            VAANI
+          </h3>
 
+          <p className="text-xs uppercase tracking-[0.3em] text-[var(--color-soft)] mt-1">
+            Preparing Experience
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

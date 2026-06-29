@@ -1,114 +1,61 @@
 import { memo } from 'react';
-import ControlButton from './ControlButton';
 
-const ControlDock = memo(({
-  isAudioEnabled,
-  isVideoEnabled,
-  isScreenSharing,
-  showReactionPicker,
-  subtitlesEnabled,
-  raisedHand,
-  isChatOpen,
-  unreadCount,
-  totalCount,
-  onToggleAudio,
-  onToggleVideo,
-  onToggleScreenShare,
-  onToggleReactions,
-  onToggleRaiseHand,
-  onToggleSubtitles,
-  onToggleParticipants,
-  onToggleChat,
-  onLeave,
-}) => (
-  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-    <div className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-center gap-1.5 overflow-x-auto rounded-[1.6rem] border border-white/10 bg-[#050713]/80 p-2 shadow-2xl shadow-black/40 backdrop-blur-2xl sm:gap-2 sm:p-2.5" style={{ scrollbarWidth: 'none' }}>
-      <ControlButton
-        active={isAudioEnabled}
-        onClick={onToggleAudio}
-        icon={isAudioEnabled ? 'fa-microphone' : 'fa-microphone-slash'}
-        label={isAudioEnabled ? 'Mute' : 'Unmute'}
-        danger={!isAudioEnabled}
-      />
+const ControlButton = memo(({
+  active,
+  onClick,
+  icon,
+  label,
+  danger,
+  disabled,
+  accent,
+  badge,
+  compact
+}) => {
+  // Determine base colors based on props
+  let bgClass = 'bg-white/8 hover:bg-white/12 text-slate-200 ring-1 ring-white/10';
+  
+  if (active) {
+    if (danger) {
+      bgClass = 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30';
+    } else if (accent === 'blue') {
+      bgClass = 'bg-blue-500 text-white shadow-lg shadow-blue-500/25';
+    } else if (accent === 'yellow') {
+      bgClass = 'bg-amber-500 text-white shadow-lg shadow-amber-500/25';
+    } else if (accent === 'indigo') {
+      bgClass = 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25';
+    } else {
+      bgClass = 'bg-white/20 text-white ring-1 ring-white/30';
+    }
+  }
 
-      <ControlButton
-        active={isVideoEnabled}
-        onClick={onToggleVideo}
-        icon={isVideoEnabled ? 'fa-video' : 'fa-video-slash'}
-        label={isVideoEnabled ? 'Cam Off' : 'Cam On'}
-        danger={!isVideoEnabled}
-        disabled={isScreenSharing}
-      />
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      aria-pressed={active}
+      className={`relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none
+        ${compact ? 'h-10 min-w-10 px-2 sm:h-12 sm:min-w-12 sm:px-3' : 'h-12 min-w-12 px-3 sm:h-14 sm:min-w-14 sm:px-4'}
+        ${bgClass}
+      `}
+    >
+      <i className={`fa-solid ${icon} ${compact ? 'text-sm sm:text-base' : 'text-lg sm:text-xl'}`} />
+      
+      {!compact && (
+        <span className="mt-1 hidden text-[10px] font-bold leading-none sm:block">
+          {label}
+        </span>
+      )}
 
-      <ControlButton
-        active={isScreenSharing}
-        onClick={onToggleScreenShare}
-        icon={isScreenSharing ? 'fa-stop' : 'fa-display'}
-        label={isScreenSharing ? 'Stop' : 'Share'}
-        accent="blue"
-      />
+      {/* The Red Notification Badge */}
+      {badge > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-lg ring-2 ring-[#050713]">
+          {badge > 9 ? '9+' : badge}
+        </span>
+      )}
+    </button>
+  );
+});
 
-      <ControlButton
-        active={showReactionPicker}
-        onClick={onToggleReactions}
-        icon="fa-face-smile"
-        label="React"
-        accent="yellow"
-      />
-
-      <button
-        type="button"
-        onClick={onToggleRaiseHand}
-        aria-label={raisedHand ? 'Lower hand' : 'Raise hand'}
-        aria-pressed={raisedHand}
-        className={`flex h-12 min-w-12 flex-col items-center justify-center rounded-2xl px-3 transition-all duration-200 active:scale-95 sm:h-14 sm:min-w-14 sm:px-4 ${
-          raisedHand
-            ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25'
-            : 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12'
-        }`}
-      >
-        <span className="text-lg sm:text-xl">✋</span>
-        <span className="mt-1 hidden text-[10px] font-bold leading-none sm:block">{raisedHand ? 'Lower' : 'Raise'}</span>
-      </button>
-
-      <ControlButton
-        active={subtitlesEnabled}
-        onClick={onToggleSubtitles}
-        icon="fa-closed-captioning"
-        label="CC"
-        accent="indigo"
-      />
-
-      <ControlButton
-        active={false}
-        onClick={onToggleParticipants}
-        icon="fa-users"
-        label={`${totalCount}`}
-        compact
-      />
-
-      <ControlButton
-        active={isChatOpen}
-        onClick={onToggleChat}
-        icon="fa-comment-dots"
-        label="Chat"
-        accent="indigo"
-        badge={unreadCount}
-      />
-
-      <div className="mx-1 h-9 w-px shrink-0 bg-white/10" />
-
-      <button
-        type="button"
-        onClick={onLeave}
-        className="flex h-12 min-w-[4.2rem] flex-col items-center justify-center rounded-2xl bg-red-500 px-4 text-white shadow-lg shadow-red-500/30 transition-all duration-200 hover:bg-red-600 active:scale-95 sm:h-14 sm:min-w-[5rem]"
-        aria-label="Leave meeting"
-      >
-        <i className="fas fa-phone-slash text-base sm:text-lg" style={{ transform: 'rotate(135deg)' }} />
-        <span className="mt-1 hidden text-[10px] font-black leading-none sm:block">Leave</span>
-      </button>
-    </div>
-  </div>
-));
-
-export default ControlDock;
+export default ControlButton;
