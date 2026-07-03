@@ -1,5 +1,5 @@
 
-# 🚀 Vanni
+# 🚀 Vaani
 
 **Vanni** is a real-time, peer-to-peer language exchange and video conferencing platform built with a strong focus on low-latency WebRTC multiplayer rooms and an interactive 3D AI language tutor driven by real-time audio analysis.
 
@@ -37,15 +37,21 @@ It enables users to practice languages with real people or an autonomous AI, giv
 
 ## 🛠️ Tech Stack
 
-| Category | Technology |
-| -------- | ---------------------------- |
-| Frontend | React + Vite |
-| Styling | Tailwind CSS |
-| Backend | Firebase (Auth + Firestore) |
-| State | Redux Toolkit |
-| Real-Time| PeerJS (WebRTC), Web Audio API|
-| 3D & UI | React Three Fiber (R3F), Drei |
-| AI / LLM | OpenAI API / Puter.js SDK |
+| Category                | Technology                                                               |
+| ----------------------- | ------------------------------------------------------------------------ |
+| Frontend                | React, Vite                                                              |
+| Styling                 | Tailwind CSS                                                             |
+| Backend                 | Node.js, Express.js                                                      |
+| Database                | MongoDB, Firebase Firestore                                              |
+| Authentication          | Firebase Authentication                                                  |
+| State Management        | Redux Toolkit                                                            |
+| Real-Time Communication | Socket.IO, PeerJS (WebRTC), Web Audio API                                |
+| 3D Graphics             | React Three Fiber (R3F), Drei, Three.js                                  |
+| AI Integration          | OpenAI API / Puter.js SDK                                                |
+| APIs                    | REST API                                                                 |
+| Version Control         | Git, GitHub                                                              |
+| Deployment              | Vercel, Render, MongoDB Atlas
+
 
 ## 📂 Project Structure
 
