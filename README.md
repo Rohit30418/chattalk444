@@ -1,7 +1,7 @@
 
 # 🚀 Vaani
 
-**Vanni** is a real-time, peer-to-peer language exchange and video conferencing platform built with a strong focus on low-latency WebRTC multiplayer rooms and an interactive 3D AI language tutor driven by real-time audio analysis.
+**Vaani** is a real-time, peer-to-peer language exchange and video conferencing platform built with a strong focus on low-latency WebRTC multiplayer rooms and an interactive 3D AI language tutor driven by real-time audio analysis.
 
 It enables users to practice languages with real people or an autonomous AI, giving users powerful tools like a **3D Avatar with Lip-Sync**, **AI Content Moderation**, and **Mesh-Topology Video Rooms**.
 
