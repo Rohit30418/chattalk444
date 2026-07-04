@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import Swal from "sweetalert2";
@@ -7,7 +7,7 @@ import { loginToggle } from "../../redux/action";
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import { useAuth } from "../auth/AppWrapper";
 
-// 1. UPDATED NAV ITEMS - Luna AI now correctly points to /rooms#ai-bot
+// 1. UPDATED NAV ITEMS
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
@@ -81,7 +81,6 @@ const getInitialTheme = () => {
 
 const getCssVar = (name, fallback = "") => {
   if (typeof window === "undefined") return fallback;
-
   return (
     getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
     fallback
@@ -112,38 +111,53 @@ const Header = () => {
     return (displayName || "Learner").trim().charAt(0).toUpperCase();
   }, [displayName]);
 
+  // Sync Theme to HTML
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // OPTIMIZATION: Throttled Scroll Listener using requestAnimationFrame
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 6);
+    let ticking = false;
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 6);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    // Run once on mount to get initial position
     onScroll();
 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Reset menus on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsProfileOpen(false);
   }, [location.pathname, location.hash]);
 
+  // Handle body scroll locking
   useEffect(() => {
     document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
-
     return () => {
       document.body.style.overflow = "";
     };
   }, [isMobileMenuOpen]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     Swal.fire({
       title: "Sign out?",
       text: "Your active session will be closed on this device.",
@@ -161,32 +175,24 @@ const Header = () => {
       dispatch(loginToggle(false));
       setIsProfileOpen(false);
     });
-  };
+  }, [dispatch, logout]);
 
-  // --- FINAL BULLETPROOF ACTIVE STATE LOGIC ---
-  const checkIsActive = (itemTo) => {
+  // OPTIMIZATION: Memoized Active Check
+  const checkIsActive = useCallback((itemTo) => {
     const currentPath = location.pathname;
     const currentHash = location.hash;
     const currentFullPath = currentPath + currentHash;
 
-    // 1. If the user clicked "Talk Now" and went to /ai-bot directly
     if (currentPath === "/ai-bot" || currentPath === "/aiBot") {
-      if (itemTo.includes("ai-bot")) return true; // Keep Luna AI lit
+      if (itemTo.includes("ai-bot")) return true; 
       return false; 
     }
 
-    // 2. Exact match (e.g., "/rooms#ai-bot" matches exactly) -> GLOW
     if (itemTo === currentFullPath) return true;
-
-    // 3. If this nav item has a hash, but didn't match exactly above -> NO GLOW
     if (itemTo.includes("#")) return false;
-
-    // 4. Prevent "Home" (/) from glowing on other pages -> NO GLOW
     if (itemTo === "/") return currentPath === "/" && !currentHash;
 
-    // 5. Handle parent pages (like "/rooms")
     if (currentPath.startsWith(itemTo)) {
-      // If another tab is an EXACT match for the current URL, suppress this parent tab
       const isAnotherTabExactlyActive = navItems.some(
         (nav) => nav.to === currentFullPath
       );
@@ -194,42 +200,43 @@ const Header = () => {
       if (isAnotherTabExactlyActive) {
         return false; 
       }
-
       return true;
     }
 
     return false;
-  };
+  }, [location.pathname, location.hash]);
 
-  const getNavClass = (itemTo) => {
+  // OPTIMIZATION: Memoized Nav Classes
+  const getNavClass = useCallback((itemTo) => {
     const isActive = checkIsActive(itemTo);
-    return `inline-flex items-center rounded-full px-5 py-2.5 text-sm font-black transition-all duration-200 ${
+    return `inline-flex items-center rounded-full px-5 py-2.5 text-sm font-black transition-colors duration-200 ${
       isActive
         ? "bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]"
         : "text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
     }`;
-  };
+  }, [checkIsActive]);
 
-  const getMobileNavClass = (itemTo) => {
+  const getMobileNavClass = useCallback((itemTo) => {
     const isActive = checkIsActive(itemTo);
-    return `flex items-center justify-between rounded-2xl px-4 py-4 text-sm font-black transition-all duration-200 ${
+    return `flex items-center justify-between rounded-2xl px-4 py-4 text-sm font-black transition-colors duration-200 ${
       isActive
         ? "bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]"
         : "bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]"
     }`;
-  };
+  }, [checkIsActive]);
 
   return (
     <>
+      {/* OPTIMIZATION: Removed transition-all, replaced with targeted transitions to save GPU */}
       <header
-        className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-all duration-200 ${
+        className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-200 ${
           scrolled || isMobileMenuOpen
             ? "border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_94%,transparent)] [box-shadow:var(--shadow-card)]"
             : "border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_88%,transparent)]"
         }`}
       >
         <div
-          className={`relative mx-auto flex h-[68px] ${containerWidth} items-center justify-between gap-3 px-5  lg:h-[82px] `}
+          className={`relative mx-auto flex h-[68px] ${containerWidth} items-center justify-between gap-3 px-5 lg:h-[82px]`}
         >
           {/* Logo */}
           <Link
@@ -285,7 +292,7 @@ const Header = () => {
             <button
               type="button"
               onClick={toggleTheme}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 sm:h-11 sm:w-11 ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-200 sm:h-11 sm:w-11 ${
                 theme === "dark"
                   ? "border-[var(--color-warning-border)] bg-[var(--color-warning-soft)] text-[var(--color-warning)] hover:bg-[var(--color-warning-soft)]"
                   : "border-[var(--color-border)] bg-[var(--color-primary-soft)] text-[var(--color-primary-700)] hover:border-[var(--color-border-strong)] hover:bg-[var(--color-bg-soft)]"
@@ -309,7 +316,7 @@ const Header = () => {
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen((value) => !value)}
-                  className="flex h-10 items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1 pr-1 transition-all duration-200 hover:border-[var(--color-border-strong)] sm:h-11 sm:pr-3"
+                  className="flex h-10 items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1 pr-1 transition-colors duration-200 hover:border-[var(--color-border-strong)] sm:h-11 sm:pr-3"
                   aria-expanded={isProfileOpen}
                 >
                   {user?.photoURL ? (
@@ -345,7 +352,7 @@ const Header = () => {
 
                     <Link
                       to={`/profile/${user?.uid}`}
-                      className="mt-2 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold text-[var(--color-muted)] transition hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+                      className="mt-2 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-bold text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
                     >
                       <UserIcon className="h-4 w-4 text-[var(--color-primary)]" />
                       View profile
@@ -354,7 +361,7 @@ const Header = () => {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-[var(--color-danger)] transition hover:bg-[var(--color-danger-soft)]"
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger-soft)]"
                     >
                       <LogoutIcon className="h-4 w-4" />
                       Sign out
@@ -366,7 +373,7 @@ const Header = () => {
               <button
                 type="button"
                 onClick={signInWithGoogle}
-                className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-black text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)] transition-all duration-200 hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] px-4 py-2 sm:px-5 sm:py-2.5 text-sm font-black text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)] transition-transform duration-200 hover:-translate-y-0.5"
               >
                 Login
               </button>
@@ -376,7 +383,7 @@ const Header = () => {
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((value) => !value)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition hover:border-[var(--color-border-strong)] hover:text-[var(--color-primary-700)] sm:h-11 sm:w-11 lg:hidden"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-primary-700)] sm:h-11 sm:w-11 lg:hidden"
               aria-label="Toggle menu"
               aria-expanded={isMobileMenuOpen}
             >
@@ -411,7 +418,7 @@ const Header = () => {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black transition ${
+                className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-black transition-colors ${
                   theme === "dark"
                     ? "border-[var(--color-warning-border)] bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
                     : "border-[var(--color-border)] bg-[var(--color-primary-soft)] text-[var(--color-primary-700)]"

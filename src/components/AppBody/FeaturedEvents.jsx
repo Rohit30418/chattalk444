@@ -1,5 +1,6 @@
-import React, { useRef } from "react";
+import React, { useRef, useCallback, memo } from "react";
 
+// Static data kept outside to prevent recreation on re-renders.
 const events = [
   {
     title: "Freestyle Rap Battle",
@@ -86,14 +87,14 @@ const events = [
 const FeaturedEvents = () => {
   const scrollRef = useRef(null);
 
-  const scroll = (direction) => {
+  const scroll = useCallback((direction) => {
     if (!scrollRef.current) return;
 
     scrollRef.current.scrollBy({
       left: direction === "left" ? -320 : 320,
       behavior: "smooth",
     });
-  };
+  }, []);
 
   return (
     <div className="group relative w-full">
@@ -101,13 +102,7 @@ const FeaturedEvents = () => {
         .featured-events-scroll {
           scrollbar-width: none;
           -ms-overflow-style: none;
-          mask-image: linear-gradient(
-            90deg,
-            transparent 0%,
-            black 5%,
-            black 95%,
-            transparent 100%
-          );
+          -webkit-overflow-scrolling: touch; 
         }
 
         .featured-events-scroll::-webkit-scrollbar {
@@ -115,10 +110,11 @@ const FeaturedEvents = () => {
         }
 
         .featured-event-card {
+          contain: layout paint style; 
           background:
             radial-gradient(
               circle at 84% 18%,
-              color-mix(in srgb, var(--color-on-primary) 22%, transparent),
+              rgba(255, 255, 255, 0.22),
               transparent 30%
             ),
             linear-gradient(135deg, var(--event-accent), var(--event-accent-2));
@@ -131,23 +127,28 @@ const FeaturedEvents = () => {
           width: 150px;
           height: 150px;
           border-radius: 999px;
-          background: color-mix(in srgb, var(--color-on-primary) 16%, transparent);
-          filter: blur(26px);
+          background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, transparent 70%);
           transition: transform 300ms ease, opacity 300ms ease;
           opacity: 0.75;
         }
+        
+        /* Subtle glare adjustment for dark mode */
+        .dark .featured-event-card::before {
+          background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+        }
 
         .featured-event-card:hover::before {
-          transform: scale(1.18);
+          transform: scale(1.18) translateZ(0);
           opacity: 1;
         }
       `}</style>
 
       {/* Left Button */}
+      {/* Optimization: Swapped var() colors for explicit Tailwind light/dark variants */}
       <button
         type="button"
         onClick={() => scroll("left")}
-        className="absolute left-0 top-1/2 z-20 -ml-3 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_74%,transparent)] text-[var(--color-text)] opacity-0 [box-shadow:var(--shadow-card)] backdrop-blur-xl transition-all duration-300 hover:scale-110 hover:border-[var(--color-border-strong)] group-hover:opacity-100"
+        className="absolute left-0 top-1/2 z-20 -ml-3 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-700 opacity-0 shadow-md transition-all duration-300 hover:scale-110 hover:border-slate-300 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900/95 dark:text-slate-300 dark:hover:border-slate-500"
         aria-label="Scroll left"
       >
         <ChevronIcon direction="left" className="h-5 w-5" />
@@ -157,7 +158,7 @@ const FeaturedEvents = () => {
       <button
         type="button"
         onClick={() => scroll("right")}
-        className="absolute right-0 top-1/2 z-20 -mr-3 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_74%,transparent)] text-[var(--color-text)] opacity-0 [box-shadow:var(--shadow-card)] backdrop-blur-xl transition-all duration-300 hover:scale-110 hover:border-[var(--color-border-strong)] group-hover:opacity-100"
+        className="absolute right-0 top-1/2 z-20 -mr-3 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-700 opacity-0 shadow-md transition-all duration-300 hover:scale-110 hover:border-slate-300 group-hover:opacity-100 dark:border-white/10 dark:bg-slate-900/95 dark:text-slate-300 dark:hover:border-slate-500"
         aria-label="Scroll right"
       >
         <ChevronIcon direction="right" className="h-5 w-5" />
@@ -166,7 +167,7 @@ const FeaturedEvents = () => {
       {/* Scroll Container */}
       <div
         ref={scrollRef}
-        className="featured-events-scroll -mx-2 flex snap-x gap-5 overflow-x-auto scroll-smooth px-2 py-4"
+        className="featured-events-scroll -mx-2 flex snap-x gap-5 overflow-x-auto scroll-smooth px-2 py-4 transform-gpu"
       >
         {events.map((event) => (
           <EventCard key={event.title} event={event} />
@@ -176,47 +177,49 @@ const FeaturedEvents = () => {
   );
 };
 
-const EventCard = ({ event }) => {
+const EventCard = memo(({ event }) => {
   return (
     <article
-      className="featured-event-card group/card relative h-[165px] min-w-[280px] cursor-pointer snap-start overflow-hidden rounded-[2rem] p-6 text-[var(--color-on-primary)] [box-shadow:var(--shadow-card)] transition-all duration-300 hover:scale-[1.02] hover:[box-shadow:var(--shadow-soft)] sm:min-w-[310px]"
+      /* Light/Dark optimization: Added conditional borders and deep shadows for dark mode */
+      className="featured-event-card group/card relative h-[165px] min-w-[280px] cursor-pointer snap-start overflow-hidden rounded-[2rem] border border-black/5 p-6 text-[var(--color-on-primary)] shadow-md transition-transform duration-300 hover:scale-[1.02] sm:min-w-[310px] transform-gpu dark:border-white/10 dark:shadow-xl dark:shadow-black/40"
       style={{
         "--event-accent": event.accent,
         "--event-accent-2": event.accent2,
       }}
     >
-      {/* Big faded icon */}
-      <div className="absolute right-4 top-4 opacity-15 transition-opacity duration-300 group-hover/card:opacity-25">
+      {/* Big faded icon - adjusted opacity for dark mode balance */}
+      <div className="absolute right-4 top-4 text-white opacity-[0.15] transition-opacity duration-300 group-hover/card:opacity-25 dark:opacity-20 dark:group-hover/card:opacity-30">
         <EventIcon type={event.icon} className="h-16 w-16" />
       </div>
 
       <div className="relative z-10 flex h-full flex-col justify-between">
         <div className="flex items-start justify-between gap-4">
-          <span className="rounded-xl border border-[color-mix(in_srgb,var(--color-on-primary)_16%,transparent)] bg-[color-mix(in_srgb,var(--color-text)_20%,transparent)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] backdrop-blur-md">
+          {/* Note: Explicitly styled text-white here since the badge background stays dark on the colorful gradient */}
+          <span className="rounded-xl border border-white/30 bg-black/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
             {event.tag}
           </span>
-
-          {/* <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--color-on-primary)_14%,transparent)] backdrop-blur-md">
-            <EventIcon type={event.icon} className="h-4.5 w-4.5" />
-          </span> */}
         </div>
 
         <div>
-          <h3 className="mb-1 text-xl text-white leading-tight tracking-[-0.035em] drop-shadow-sm">
+          {/* Note: Explicit text-white so it doesn't accidentally turn black in Light Mode */}
+          <h3 className="mb-1 text-xl leading-tight tracking-[-0.035em] text-white">
             {event.title}
           </h3>
 
-          <p className="flex items-center text-white gap-2 text-sm font-bold opacity-90">
+          <p className="flex items-center gap-2 text-sm font-bold text-white opacity-90">
             {event.subtitle}
-            <ArrowIcon className="h-3.5 w-3.5 -translate-x-2 opacity-0 transition-all duration-300 group-hover/card:translate-x-0 group-hover/card:opacity-100" />
+            <ArrowIcon className="h-3.5 w-3.5 -translate-x-2 opacity-0 transition-all duration-300 transform-gpu group-hover/card:translate-x-0 group-hover/card:opacity-100" />
           </p>
         </div>
       </div>
     </article>
   );
-};
+});
 
-const ChevronIcon = ({ direction = "right", className = "" }) => (
+EventCard.displayName = "EventCard";
+
+// Memoized Icons
+const ChevronIcon = memo(({ direction = "right", className = "" }) => (
   <svg
     className={className}
     viewBox="0 0 24 24"
@@ -241,9 +244,10 @@ const ChevronIcon = ({ direction = "right", className = "" }) => (
       />
     )}
   </svg>
-);
+));
+ChevronIcon.displayName = "ChevronIcon";
 
-const ArrowIcon = ({ className = "" }) => (
+const ArrowIcon = memo(({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none">
     <path
       d="M5 12H19M13 6L19 12L13 18"
@@ -253,9 +257,10 @@ const ArrowIcon = ({ className = "" }) => (
       strokeLinejoin="round"
     />
   </svg>
-);
+));
+ArrowIcon.displayName = "ArrowIcon";
 
-const EventIcon = ({ type, className = "" }) => {
+const EventIcon = memo(({ type, className = "" }) => {
   if (type === "mic") {
     return (
       <svg className={className} viewBox="0 0 24 24" fill="none">
@@ -348,6 +353,7 @@ const EventIcon = ({ type, className = "" }) => {
       <path d="M8 14V17M6.5 15.5H9.5M16 15H16.01M18.5 16.5H18.51" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
-};
+});
+EventIcon.displayName = "EventIcon";
 
 export default FeaturedEvents;
