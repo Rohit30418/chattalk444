@@ -47,6 +47,7 @@ const useAddRoom = () => {
     const response = await api.post('/api/rooms', payload);
 
     const createdRoom = normalizeCreatedRoom(response?.data);
+    
     const roomId = getRoomId(createdRoom);
 
     socket.emit('request-dashboard-sync');

@@ -36,21 +36,6 @@ const normalizeLanguage = (value) => {
 const getMaxPeople = (room) => Number(room?.MaximumPeople || room?.maxPeople || room?.capacity || 5) || 5;
 const getParticipants = (room) => Number(room?.participantsCount || room?.activeCount || room?.memberCount || 0) || 0;
 
-// const MetricCard = ({ icon, label, value, hint }) => (
-//   <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 p-3 sm:p-4 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.045]">
-//     <div className="flex items-start justify-between gap-2 sm:gap-4">
-//       <div className="min-w-0 flex-1">
-//         <p className="truncate text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
-//         <p className="mt-1 truncate text-xl sm:text-2xl font-black text-slate-950 dark:text-white">{value}</p>
-//         <p className="mt-1 truncate text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">{hint}</p>
-//       </div>
-//       <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-//         <i className={`fa-solid ${icon} text-sm sm:text-base`} />
-//       </div>
-//     </div>
-//   </div>
-// );
-
 const HomeBody = () => {
   const dispatch = useDispatch();
   const modalToggle = useSelector((state) => state.toggleModal);
@@ -87,7 +72,8 @@ const HomeBody = () => {
 
   const allRooms = useMemo(() => {
     const realData = Array.isArray(rooms) ? rooms.filter(Boolean) : [];
-    return realData.length ? realData : DUMMY_ROOMS;
+    // This merges both your newly added rooms AND the dummy rooms into one list
+    return [...realData, ...DUMMY_ROOMS];
   }, [rooms]);
 
   const languageList = useMemo(() => {
@@ -117,18 +103,6 @@ const HomeBody = () => {
 
   const paginatedRooms = useMemo(() => filteredRooms.slice(0, PAGE_SIZE * page), [filteredRooms, page]);
 
-  const metrics = useMemo(() => {
-    const active = allRooms.length;
-    const learners = allRooms.reduce((sum, room) => sum + getParticipants(room), 0);
-    const seats = allRooms.reduce((sum, room) => Math.max(sum + getMaxPeople(room) - getParticipants(room), 0), 0);
-    return [
-      { icon: 'fa-signal', label: 'Live rooms', value: active, hint: 'available now' },
-      { icon: 'fa-users', label: 'Learners', value: learners || '24+', hint: 'currently practicing' },
-      { icon: 'fa-language', label: 'Languages', value: languageList.length, hint: 'active communities' },
-      { icon: 'fa-chair', label: 'Open seats', value: seats, hint: 'ready to join' },
-    ];
-  }, [allRooms, languageList.length]);
-
   const handleAcceptPrivacy = () => {
     localStorage.setItem('privacy_policy_accepted', 'true');
     setShowPrivacyNotice(false);
@@ -157,81 +131,26 @@ const HomeBody = () => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[120px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[120px] max-w-8xl mx-5">
-      <div>
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[50px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[80px]">
+      
+      {/* Outer wrapper to fix centering and background overflow bugs */}
+      <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8">
         
-        {/* HERO SECTION - Hidden on mobile (hidden md:block) */}
-        {/* <section className="hidden md:block relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
-
-          <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-            <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-indigo-700 dark:border-indigo-400/20 dark:bg-indigo-500/10 dark:text-indigo-300">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                Live discovery
-              </div>
-
-              <h1 className="max-w-4xl text-4xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
-                Find the right room and start speaking with confidence.
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-base font-medium leading-8 text-slate-500 dark:text-slate-400 sm:text-lg">
-                Browse real-time language rooms, join open seats, or host a focused practice session with a cleaner, production-ready interface.
-              </p>
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleAddRoomClick}
-                  className="btn-primary px-5 py-3.5 text-sm"
-                >
-                  <i className="fa-solid fa-plus" />
-                  Create room
-                </button>
-                <a href="#rooms-grid" className="btn-secondary px-5 py-3.5 text-sm">
-                  Explore rooms
-                  <i className="fa-solid fa-arrow-down text-xs" />
-                </a>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {metrics.map((metric) => (
-                <MetricCard key={metric.label} {...metric} />
-              ))}
-            </div>
-          </div>
-        </section> */}
-
-        {/* TRENDING NOW */}
-        <section className="mt-4 md:mt-10">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Trending now</p>
-              <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Featured practice themes</h2>
-            </div>
-          </div>
-          <FeaturedEvents />
-        </section>
-
         {/* ROOMS GRID */}
-        <section id="rooms-grid" className="mt-10">
-          <div className="sticky top-[116px] z-30 mb-6 rounded-[1.7rem] border border-slate-200 bg-white/88 p-3 shadow-lg shadow-slate-200/60 backdrop-blur-2xl dark:border-white/10 dark:bg-[#0b1120]/88 dark:shadow-black/20 sm:p-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <section id="rooms-grid" className="mt-8">
+          <div className="relative z-30 mb-8 rounded-[1.7rem] border border-slate-200 bg-white/90 p-4 shadow-lg shadow-slate-200/50 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90 dark:shadow-black/20 sm:p-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-                  Public Rooms <span className="text-indigo-600 dark:text-indigo-300">.</span>
+                  Public Rooms <span className="text-indigo-600 dark:text-indigo-400">.</span>
                 </h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
                   Showing {filteredRooms.length} room{filteredRooms.length === 1 ? '' : 's'} {selectedLanguage ? `in ${selectedLanguage}` : 'across all languages'}
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-[220px_1fr] xl:w-[560px]">
+              {/* Fixed the giant mt-20 bug here */}
+              <div className="mt-4 grid gap-3 sm:grid-cols-[220px_1fr] xl:mt-0 xl:w-[560px]">
                 <div className="relative">
                   <select
                     value={selectedLanguage}
@@ -263,7 +182,9 @@ const HomeBody = () => {
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="min-w-0">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
-                <div className="md:col-span-2">
+                
+                {/* Fixed column spanning so it aligns nicely on larger screens */}
+                <div className="md:col-span-2 2xl:col-span-3">
                   <AiCard 
                     pageName="AI Voice Room"
                     title="Luna — AI Friend"
@@ -301,7 +222,7 @@ const HomeBody = () => {
                     className="btn-secondary px-6 py-3 text-sm"
                   >
                     Load more rooms
-                    <i className="fa-solid fa-arrow-down text-xs" />
+                    <i className="fa-solid fa-arrow-down ml-2 text-xs" />
                   </button>
                 </div>
               )}
@@ -309,47 +230,38 @@ const HomeBody = () => {
 
             <aside className="hidden space-y-5 xl:block">
               <LiveActivityFeed />
-<div
-      /* Optimization 1: Added CSS containment to isolate layout and paint calculations.
-         This stops the browser from recalculating the whole page if something inside this card updates. */
-      style={{ contain: 'layout paint style' }}
-      className="relative overflow-hidden rounded-[2rem] border border-indigo-400/20 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-6 text-white shadow-xl shadow-indigo-500/20 transform-gpu"
-    >
-      {/* Optimization 2: Replaced the heavily expensive `blur-2xl` with a hardware-friendly radial-gradient. 
-          Removed will-change-transform as it causes memory bloat in lists, relying on transform-gpu natively. 
-          Added pointer-events-none so it doesn't accidentally block clicks. */}
-      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.25)_0%,transparent_70%)] transform-gpu" />
-      
-      <div className="relative z-10">
-        {/* Optimization 3: Kept backdrop-blur removed as you correctly noted. 
-            Using a solid translucent background achieves the glass look with zero GPU tax. */}
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-2xl shadow-sm">
-          <i className="fa-solid fa-plus" />
-        </div>
-        
-        <h3 className="text-2xl font-bold text-white tracking-tight">Host a focused room</h3>
-        <p className="mt-2 text-sm font-semibold leading-6 text-white/80">
-          Create a safe topic, invite your friends, and lead a better live practice session.
-        </p>
-        
-        <button
-          type="button"
-          onClick={handleAddRoomClick}
-          /* Optimization 4: Replaced Y-axis translation with scaling for a smoother button press effect, 
-             ensuring all hover transitions rely exclusively on transforms to prevent layout thrashing. */
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-indigo-700 shadow-md transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] transform-gpu"
-        >
-          Create Room
-          <i className="fa-solid fa-arrow-right text-xs transform-gpu transition-transform duration-300 group-hover:translate-x-1" />
-        </button>
-      </div>
-    </div>
+              
+              <div
+                style={{ contain: 'layout paint style' }}
+                className="relative overflow-hidden rounded-[2rem] border border-indigo-400/20 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-6 text-white shadow-xl shadow-indigo-500/20 transform-gpu"
+              >
+                <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.25)_0%,transparent_70%)] transform-gpu" />
+                
+                <div className="relative z-10">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-2xl shadow-sm">
+                    <i className="fa-solid fa-plus" />
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold text-white tracking-tight">Host a focused room</h3>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-white/80">
+                    Create a safe topic, invite your friends, and lead a better live practice session.
+                  </p>
+                  
+                  <button
+                    type="button"
+                    onClick={handleAddRoomClick}
+                    className="group mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-indigo-700 shadow-md transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] transform-gpu"
+                  >
+                    Create Room
+                    <i className="fa-solid fa-arrow-right text-xs transform-gpu transition-transform duration-300 group-hover:translate-x-1" />
+                  </button>
+                </div>
+              </div>
             </aside>
           </div>
         </section>
 
         {/* Floating Action Button (Mobile & Tablet Only) */}
-        {/* Ensures users always have a way to create rooms when sidebar/hero isn't visible */}
         <div className="xl:hidden">
           <button
             type="button"
