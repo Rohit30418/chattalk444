@@ -36,20 +36,20 @@ const normalizeLanguage = (value) => {
 const getMaxPeople = (room) => Number(room?.MaximumPeople || room?.maxPeople || room?.capacity || 5) || 5;
 const getParticipants = (room) => Number(room?.participantsCount || room?.activeCount || room?.memberCount || 0) || 0;
 
-const MetricCard = ({ icon, label, value, hint }) => (
-  <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 p-3 sm:p-4 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.045]">
-    <div className="flex items-start justify-between gap-2 sm:gap-4">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
-        <p className="mt-1 truncate text-xl sm:text-2xl font-black text-slate-950 dark:text-white">{value}</p>
-        <p className="mt-1 truncate text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">{hint}</p>
-      </div>
-      <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-        <i className={`fa-solid ${icon} text-sm sm:text-base`} />
-      </div>
-    </div>
-  </div>
-);
+// const MetricCard = ({ icon, label, value, hint }) => (
+//   <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 p-3 sm:p-4 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.045]">
+//     <div className="flex items-start justify-between gap-2 sm:gap-4">
+//       <div className="min-w-0 flex-1">
+//         <p className="truncate text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
+//         <p className="mt-1 truncate text-xl sm:text-2xl font-black text-slate-950 dark:text-white">{value}</p>
+//         <p className="mt-1 truncate text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">{hint}</p>
+//       </div>
+//       <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+//         <i className={`fa-solid ${icon} text-sm sm:text-base`} />
+//       </div>
+//     </div>
+//   </div>
+// );
 
 const HomeBody = () => {
   const dispatch = useDispatch();
@@ -157,11 +157,11 @@ const HomeBody = () => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[136px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[144px] max-w-8xl mx-5">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[120px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[120px] max-w-8xl mx-5">
       <div>
         
         {/* HERO SECTION - Hidden on mobile (hidden md:block) */}
-        <section className="hidden md:block relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
+        {/* <section className="hidden md:block relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-black/20 sm:rounded-[2.5rem] sm:p-8 lg:p-10">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl" />
 
@@ -205,7 +205,7 @@ const HomeBody = () => {
               ))}
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* TRENDING NOW */}
         <section className="mt-4 md:mt-10">
@@ -264,7 +264,7 @@ const HomeBody = () => {
             <div className="min-w-0">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
                 <div className="md:col-span-2">
-                  <AiCard
+                  <AiCard 
                     pageName="AI Voice Room"
                     title="Luna — AI Friend"
                     description="Practice pronunciation, ask for replies, and keep speaking even when no one is online."
@@ -309,25 +309,41 @@ const HomeBody = () => {
 
             <aside className="hidden space-y-5 xl:block">
               <LiveActivityFeed />
-
-              <div className="relative overflow-hidden rounded-[2rem] border border-indigo-400/20 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-6 text-white shadow-xl shadow-indigo-500/20">
-                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
-                <div className="relative">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-2xl backdrop-blur-xl">
-                    <i className="fa-solid fa-plus" />
-                  </div>
-                  <h3 className="text-2xl text-white">Host a focused room</h3>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-white/80">Create a safe topic, invite your friends, and lead a better live practice session.</p>
-                  <button
-                    type="button"
-                    onClick={handleAddRoomClick}
-                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-indigo-700 shadow-lg transition hover:-translate-y-0.5"
-                  >
-                    Create Room
-                    <i className="fa-solid fa-arrow-right text-xs" />
-                  </button>
-                </div>
-              </div>
+<div
+      /* Optimization 1: Added CSS containment to isolate layout and paint calculations.
+         This stops the browser from recalculating the whole page if something inside this card updates. */
+      style={{ contain: 'layout paint style' }}
+      className="relative overflow-hidden rounded-[2rem] border border-indigo-400/20 bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-6 text-white shadow-xl shadow-indigo-500/20 transform-gpu"
+    >
+      {/* Optimization 2: Replaced the heavily expensive `blur-2xl` with a hardware-friendly radial-gradient. 
+          Removed will-change-transform as it causes memory bloat in lists, relying on transform-gpu natively. 
+          Added pointer-events-none so it doesn't accidentally block clicks. */}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.25)_0%,transparent_70%)] transform-gpu" />
+      
+      <div className="relative z-10">
+        {/* Optimization 3: Kept backdrop-blur removed as you correctly noted. 
+            Using a solid translucent background achieves the glass look with zero GPU tax. */}
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-2xl shadow-sm">
+          <i className="fa-solid fa-plus" />
+        </div>
+        
+        <h3 className="text-2xl font-bold text-white tracking-tight">Host a focused room</h3>
+        <p className="mt-2 text-sm font-semibold leading-6 text-white/80">
+          Create a safe topic, invite your friends, and lead a better live practice session.
+        </p>
+        
+        <button
+          type="button"
+          onClick={handleAddRoomClick}
+          /* Optimization 4: Replaced Y-axis translation with scaling for a smoother button press effect, 
+             ensuring all hover transitions rely exclusively on transforms to prevent layout thrashing. */
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-indigo-700 shadow-md transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] transform-gpu"
+        >
+          Create Room
+          <i className="fa-solid fa-arrow-right text-xs transform-gpu transition-transform duration-300 group-hover:translate-x-1" />
+        </button>
+      </div>
+    </div>
             </aside>
           </div>
         </section>

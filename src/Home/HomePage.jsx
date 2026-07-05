@@ -16,7 +16,6 @@ const HomePage = () => {
       <AiUnlockSection></AiUnlockSection>
       <Testimonials></Testimonials>
       <SupportedBy></SupportedBy>
-
     </div>
   )
 }
