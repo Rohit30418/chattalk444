@@ -179,10 +179,10 @@ const LiveActivityFeed = () => {
 const ActivityItem = memo(({ item, index }) => {
   return (
     <div
-      /* Optimization 7: Added contain layout to isolate individual item repaints */
+      /* Optimization 7 FIX: Removed 'paint' from contain layout to stop clipping the absolutely positioned icons out of bounds */
       style={{ 
         "--activity-accent": item.action.accent,
-        contain: 'layout paint style' 
+        contain: 'layout style' 
       }}
       className={`group relative pl-11 transition-transform duration-500 transform-gpu ${
         item.isNew ? "activity-item-new" : ""
