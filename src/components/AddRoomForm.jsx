@@ -14,7 +14,6 @@ import useAddRoom from "../hooks/useAddRoom";
 import openAIChat from "../hooks/openAIChat";
 import { useAuth } from "./auth/AppWrapper";
 
-// Data kept outside to prevent reallocation
 const INITIAL_ROOM_DATA = {
   Title: "",
   Language: "",
@@ -71,17 +70,17 @@ const withTimeout = (promise, ms = 3500) =>
     }),
   ]);
 
+// Optimization: Removed transform-gpu and changed transition-all to transition-colors.
 const topicInputClass = (hasError) => `
-  w-full rounded-2xl border px-4 py-3.5 pl-11 pr-16 text-sm font-semibold outline-none transition-all duration-200 transform-gpu
+  w-full rounded-2xl border px-4 py-3.5 pl-11 pr-16 text-sm font-semibold outline-none transition-colors duration-200
   bg-[var(--color-surface-2)] text-[var(--color-text)] placeholder:text-[var(--color-soft)]
   ${
     hasError
       ? "border-[var(--color-danger)] focus:border-[var(--color-danger)] focus:ring-4 focus:ring-[var(--color-danger-soft)]"
-      : "border-[var(--color-border)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--color-primary)_12%,transparent)]"
+      : "border-[var(--color-border)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:ring-4 focus:ring-[var(--color-primary-soft)]"
   }
 `;
 
-// Optimization 1: Memoized the error component so it doesn't re-render unless the specific error message changes.
 const FieldError = memo(({ message }) => {
   if (!message) return null;
 
@@ -94,8 +93,7 @@ const FieldError = memo(({ message }) => {
 });
 FieldError.displayName = "FieldError";
 
-// Optimization 2: Extracted and memoized the Level buttons. 
-// Previously, typing in the title input re-rendered all these buttons and their SVGs every keystroke.
+// Optimization: Removed transform-gpu and isolated transitions.
 const LevelButton = memo(({ option, selected, onSelect, disabled }) => {
   const handleClick = useCallback(() => onSelect("Level", option.value), [onSelect, option.value]);
 
@@ -105,13 +103,11 @@ const LevelButton = memo(({ option, selected, onSelect, disabled }) => {
       onClick={handleClick}
       disabled={disabled}
       style={{ "--level-accent": option.accent }}
-      /* Optimization 3: Simplified the color-mix logic visually using standard Opacity/RGBA if needed, 
-         but keeping it hardware accelerated to avoid paint costs during state toggles. */
       className={`
-        rounded-2xl border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 transform-gpu
+        rounded-2xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50
         ${
           selected
-            ? "border-[color-mix(in_srgb,var(--level-accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--level-accent)_10%,transparent)] text-[var(--level-accent)] ring-2 ring-[color-mix(in_srgb,var(--level-accent)_12%,transparent)]"
+            ? "border-[var(--level-accent)] bg-[var(--color-bg-soft)] text-[var(--level-accent)] ring-2 ring-[var(--color-primary-soft)]"
             : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-bg-soft)]"
         }
       `}
@@ -131,7 +127,6 @@ const LevelButton = memo(({ option, selected, onSelect, disabled }) => {
 });
 LevelButton.displayName = "LevelButton";
 
-// Optimization 4: Extracted and memoized the Seat buttons for the same reason (typing performance).
 const SeatButton = memo(({ count, selected, onSelect, disabled }) => {
   const handleClick = useCallback(() => onSelect("MaximumPeople", String(count)), [onSelect, count]);
 
@@ -141,10 +136,10 @@ const SeatButton = memo(({ count, selected, onSelect, disabled }) => {
       disabled={disabled}
       onClick={handleClick}
       className={`
-        rounded-2xl border px-3 py-3 text-center transition-all disabled:cursor-not-allowed disabled:opacity-50 transform-gpu
+        rounded-2xl border px-3 py-3 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-50
         ${
           selected
-            ? "border-[var(--color-border-strong)] bg-[var(--color-primary-soft)] text-[var(--color-primary-700)] ring-2 ring-[color-mix(in_srgb,var(--color-primary)_12%,transparent)]"
+            ? "border-[var(--color-border-strong)] bg-[var(--color-primary-soft)] text-[var(--color-primary-700)] ring-2 ring-[var(--color-primary-soft)]"
             : "border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-bg-soft)]"
         }
       `}
@@ -155,7 +150,6 @@ const SeatButton = memo(({ count, selected, onSelect, disabled }) => {
   );
 });
 SeatButton.displayName = "SeatButton";
-
 
 const AddRoomForm = ({ data = [] }) => {
   const dispatch = useDispatch();
@@ -352,32 +346,27 @@ const AddRoomForm = ({ data = [] }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center px-3 py-0 sm:items-center sm:px-5 sm:py-5">
+      {/* Optimization: Removed transform-gpu from the static overlay */}
       <button
         type="button"
         aria-label="Close modal"
         onClick={closeModal}
-        /* Optimization 5: Removed backdrop-blur-md on the overlay. 
-           It is a massive performance sink during mount/unmount animations. 
-           Used a 90% opacity solid fill to achieve the focus effect efficiently. */
-        className="absolute inset-0 bg-[var(--color-overlay)]/90 transform-gpu"
+        className="absolute inset-0 bg-[var(--color-overlay)]/90 cursor-default"
       />
 
       <section 
-        /* Optimization 6: Added CSS containment (layout paint style) to isolate the modal. 
-           This prevents typing in the input field from triggering layout recalculations in the background page. */
         style={{ contain: 'layout paint style' }}
+        /* Kept transform-gpu ONLY on the main container just in case you add entry/exit animations later */
         className="relative z-10 flex max-h-[94dvh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[30px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] [box-shadow:var(--shadow-soft)] sm:rounded-[30px] transform-gpu"
       >
-        {/* Optimization 7: Replaced wildly expensive `blur-3xl` with hardware-friendly radial gradients. 
-            CSS Blurs require multi-pass pixel processing which causes frame drops on modal pop-in. */}
-        <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,var(--color-primary-soft)_0%,transparent_70%)] opacity-80 transform-gpu" />
-        <div className="pointer-events-none absolute -bottom-24 -left-24 h-52 w-52 rounded-full bg-[radial-gradient(circle,var(--color-accent)_0%,transparent_70%)] opacity-20 transform-gpu" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,var(--color-primary-soft)_0%,transparent_70%)] opacity-80" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 h-52 w-52 rounded-full bg-[radial-gradient(circle,var(--color-accent)_0%,transparent_70%)] opacity-20" />
 
         <header className="relative border-b border-[var(--color-border)] bg-[var(--color-bg-soft)]/75 px-5 py-4 sm:px-6 sm:py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-primary-soft)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--color-primary-700)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)] transform-gpu" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
                 New room
               </div>
               <h2 className="text-xl font-black tracking-tight text-[var(--color-text)] sm:text-2xl">
@@ -392,7 +381,7 @@ const AddRoomForm = ({ data = [] }) => {
               type="button"
               onClick={closeModal}
               disabled={isValidating}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-surface-2)] text-[var(--color-soft)] transition-colors hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-50 transform-gpu"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-surface-2)] text-[var(--color-soft)] transition-colors hover:bg-[var(--color-danger-soft)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Close"
             >
               <i className="fa-solid fa-xmark" />
@@ -419,7 +408,7 @@ const AddRoomForm = ({ data = [] }) => {
               <button
                 type="button"
                 onClick={closeModal}
-                className="mt-6 w-full rounded-2xl bg-[var(--color-text)] px-4 py-3 text-sm font-black text-[var(--color-surface)] transition-opacity hover:opacity-90 transform-gpu"
+                className="mt-6 w-full rounded-2xl bg-[var(--color-text)] px-4 py-3 text-sm font-black text-[var(--color-surface)] transition-opacity hover:opacity-90"
               >
                 Okay, got it
               </button>
@@ -453,7 +442,7 @@ const AddRoomForm = ({ data = [] }) => {
                   />
                   {isValidating && (
                     <span className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1.5 text-xs font-bold text-[var(--color-primary-700)]">
-                      <i className="fa-solid fa-circle-notch fa-spin transform-gpu" />
+                      <i className="fa-solid fa-circle-notch fa-spin" />
                       Checking
                     </span>
                   )}
@@ -474,7 +463,6 @@ const AddRoomForm = ({ data = [] }) => {
                   Difficulty level
                 </label>
                 <div className="grid gap-2 sm:grid-cols-3">
-                  {/* Utilized the extracted & memoized LevelButton to prevent layout thrashing while typing */}
                   {LEVEL_OPTIONS.map((option) => (
                     <LevelButton 
                       key={option.value}
@@ -493,7 +481,6 @@ const AddRoomForm = ({ data = [] }) => {
                   Room size
                 </label>
                 <div className="grid grid-cols-4 gap-2">
-                  {/* Utilized the extracted & memoized SeatButton to prevent layout thrashing while typing */}
                   {SEAT_OPTIONS.map((count) => (
                     <SeatButton 
                       key={count}
@@ -510,10 +497,9 @@ const AddRoomForm = ({ data = [] }) => {
               <button
                 type="submit"
                 disabled={isValidating}
-                /* Optimization 8: Ensure translation uses transform-gpu and isolated transitions to keep interactions off the main thread. */
                 className={`
                   flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-black
-                  transition-transform duration-200 transform-gpu
+                  transition-transform duration-200
                   ${
                     isValidating
                       ? "cursor-not-allowed border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-soft)]"
@@ -523,7 +509,7 @@ const AddRoomForm = ({ data = [] }) => {
               >
                 {isValidating ? (
                   <>
-                    <i className="fa-solid fa-shield-halved animate-pulse transform-gpu" />
+                    <i className="fa-solid fa-shield-halved animate-pulse" />
                     Creating room...
                   </>
                 ) : (
