@@ -146,7 +146,7 @@ const LiveActivityFeed = () => {
 
       {/* Header */}
       <div className="relative z-10 mb-8 flex items-center justify-between">
-        <div>
+      <div>
           <h3 className="flex items-center gap-2 text-lg font-black tracking-[-0.03em] text-[var(--color-text)]">
             Happening Now
           </h3>
@@ -189,7 +189,7 @@ const ActivityItem = memo(({ item, index }) => {
       }`}
     >
       {/* Optimization 8: Simplified the hover effect. Removed unnecessary will-change-transform, using transform-gpu safely instead. */}
-      <div className="absolute -left-1 top-0 z-10 flex h-8 w-8 items-center justify-center rounded-full border-4 border-[var(--color-surface)] bg-[var(--activity-accent)] text-[var(--color-on-primary)] shadow-sm transition-transform duration-300 group-hover:scale-110 transform-gpu">
+      <div className="absolute -left-2 top-0 z-10 flex h-8 w-8 items-center justify-center rounded-full border-4 border-[var(--color-surface)] bg-[var(--activity-accent)] text-[var(--color-on-primary)] shadow-sm transition-transform duration-300 group-hover:scale-110 transform-gpu">
         <ActionIcon type={item.action.icon} className="h-3.5 w-3.5" />
       </div>
 

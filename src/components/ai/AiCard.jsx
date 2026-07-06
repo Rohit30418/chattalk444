@@ -14,7 +14,6 @@ const getTheme = () => {
   };
 };
 
-// Optimization 1: Wrapped the entire card in React.memo to prevent unnecessary re-renders
 const AiCard = memo(({
   pageName = 'AI Voice Room',
   title = 'Vanni — AI Friend',
@@ -22,9 +21,16 @@ const AiCard = memo(({
 }) => {
   const navigate = useNavigate();
 
-  // Optimization 2: Memoized the click handler so it maintains a stable reference across renders
-  const handleTalkNow = useCallback(async () => {
-    const accessCode = import.meta.env.VITE_AI_ACCESS_CODE || '';
+  // THE FIX: Added 'e' (event) here to block the ghost click from breaking the HomeBody layout
+  const handleTalkNow = useCallback(async (e) => {
+    // 1. Stop the button click from bubbling up and breaking the page
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // 2. Safely grab the environment variable and strip invisible spaces
+    const accessCode = String(import.meta.env.VITE_AI_ACCESS_CODE || '').trim();
 
     if (!accessCode) {
       navigate('/ai-bot');
@@ -53,7 +59,8 @@ const AiCard = memo(({
 
     if (!password) return;
 
-    if (password === accessCode) {
+    // 3. Trim user input to prevent accidental spaces from failing the check
+    if (password.trim() === accessCode) {
       navigate('/ai-bot');
       return;
     }
@@ -72,18 +79,11 @@ const AiCard = memo(({
 
   return (
     <section 
-      /* Optimization 3: Added CSS containment (contain: layout paint style). 
-         This isolates the card from the rest of the DOM, meaning internal animations 
-         won't trigger document-wide layout recalculations during scrolling. */
       style={{ contain: 'layout paint style' }}
       className="group relative h-full min-h-[230px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#070b18] p-5 shadow-xl transition-transform duration-300 hover:-translate-y-0.5 sm:min-h-[260px] sm:p-6 lg:p-7 transform-gpu"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0b1020] to-indigo-950 pointer-events-none" />
       
-      {/* Optimization 4: Replaced wildly expensive `blur-3xl` with native CSS radial-gradients.
-          CSS filter:blur() forces the browser to do heavy multi-pass pixel calculations. 
-          Radial gradients achieve the exact same glowing orb look for nearly zero GPU cost. 
-          Removed will-change-transform to prevent memory bloat, using transform-gpu instead. */}
       <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.25)_0%,transparent_70%)] transition-opacity duration-500 group-hover:opacity-90 transform-gpu pointer-events-none" />
       <div className="absolute -bottom-28 -left-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.20)_0%,transparent_70%)] transform-gpu pointer-events-none" />
 
@@ -114,7 +114,6 @@ const AiCard = memo(({
           <button
             type="button"
             onClick={handleTalkNow}
-            /* Optimization 5: Simplified the button shadow transitions and ensured scaling utilizes the GPU natively. */
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-indigo-700 shadow-md transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] sm:px-5 sm:py-3 transform-gpu"
           >
             Talk Now
@@ -132,8 +131,6 @@ const AiCard = memo(({
         alt="AI avatar"
         loading="lazy"
         referrerPolicy="no-referrer"
-        /* Optimization 6: Hardened the hover animation by explicitly declaring transform properties 
-           to avoid accidental layout shifts when rotating/scaling. */
         className="pointer-events-none absolute bottom-0 right-0 z-20 w-[42%] max-w-[180px] object-contain transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1 sm:max-w-[230px] lg:max-w-[260px] transform-gpu"
       />
 

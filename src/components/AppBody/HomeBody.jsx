@@ -131,11 +131,9 @@ const HomeBody = () => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[50px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[80px]">
-      
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 pt-[50px] transition-colors duration-300 dark:bg-[#050713] sm:pt-[80px]">      
       {/* Outer wrapper to fix centering and background overflow bugs */}
-      <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8">
-        
+      <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8">       
         {/* ROOMS GRID */}
         <section id="rooms-grid" className="mt-8">
           <div className="relative z-30 mb-8 rounded-[1.7rem] border border-slate-200 bg-white/90 p-4 shadow-lg shadow-slate-200/50 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/90 dark:shadow-black/20 sm:p-5">
@@ -166,14 +164,15 @@ const HomeBody = () => {
                 </div>
 
                 <div className="relative">
-                  <i className="fa-solid fa-search pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+                  <i className="fa-solid fa-search pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />                 
                   <input
+                    autoComplete='off'
                     type="search"
                     value={searchText}
                     onChange={(event) => setSearchText(event.target.value)}
                     placeholder="Search topic, level, host..."
                     className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-bold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/10"
-                  />
+                  />              
                 </div>
               </div>
             </div>
