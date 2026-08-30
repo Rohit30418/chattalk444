@@ -2,20 +2,20 @@ import { memo } from 'react';
 
 const accentMap = {
   blue: {
-    active: 'bg-blue-500 text-white shadow-lg shadow-blue-500/30',
-    idle: 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12',
+    active: 'bg-[var(--color-secondary)] text-[var(--color-on-primary)] border-[var(--color-secondary)]',
+    idle: 'bg-[var(--color-surface-2)] text-[var(--color-muted)] border-[var(--color-border)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]',
   },
   yellow: {
-    active: 'bg-amber-500 text-white shadow-lg shadow-amber-500/25',
-    idle: 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12',
+    active: 'bg-amber-500 text-white border-amber-500',
+    idle: 'bg-[var(--color-surface-2)] text-[var(--color-muted)] border-[var(--color-border)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]',
   },
   indigo: {
-    active: 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30',
-    idle: 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12',
+    active: 'bg-indigo-500 text-white border-indigo-500',
+    idle: 'bg-[var(--color-surface-2)] text-[var(--color-muted)] border-[var(--color-border)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]',
   },
   green: {
-    active: 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25',
-    idle: 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12',
+    active: 'bg-emerald-500 text-white border-emerald-500',
+    idle: 'bg-[var(--color-surface-2)] text-[var(--color-muted)] border-[var(--color-border)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]',
   },
 };
 
@@ -30,22 +30,22 @@ const ControlButton = memo(({
   badge = 0,
   compact = false,
 }) => {
-  let classes = 'relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 active:scale-95 ';
+  let classes = 'relative flex flex-col items-center justify-center rounded-xl border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)] active:scale-95 ';
 
   classes += compact
     ? 'h-11 min-w-11 px-3 '
     : 'h-12 min-w-12 px-3 sm:h-14 sm:min-w-14 sm:px-4 ';
 
   if (disabled) {
-    classes += 'cursor-not-allowed bg-white/5 text-slate-500 ring-1 ring-white/5 ';
+    classes += 'cursor-not-allowed border-[var(--color-border)] bg-[var(--color-bg-soft)] text-[var(--color-soft)] ';
   } else if (danger && !active) {
-    classes += 'bg-red-500 text-white shadow-lg shadow-red-500/25 ';
+    classes += 'border-red-500 bg-red-500 text-white ';
   } else if (accent) {
     classes += `${active ? accentMap[accent].active : accentMap[accent].idle} `;
   } else {
     classes += active
-      ? 'bg-white/15 text-white ring-1 ring-white/15 '
-      : 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12 ';
+      ? 'border-[var(--color-border-strong)] bg-[var(--color-primary-soft)] text-[var(--color-primary-700)] '
+      : 'border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)] ';
   }
 
   return (
@@ -59,7 +59,7 @@ const ControlButton = memo(({
       className={classes}
     >
       {badge > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#050713] bg-red-500 px-1 text-[9px] font-black text-white">
+        <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-red-500 px-1 text-[9px] font-black text-white">
           {badge > 99 ? '99+' : badge}
         </span>
       )}
