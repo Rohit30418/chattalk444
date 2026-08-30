@@ -14,8 +14,17 @@
   backdrop-filter: none !important;
 }
 
-.vaani-room [class*="blur-"],
-.vaani-chat-shell [class*="blur-"] {
+/* Hide only large decorative glow elements, never functional controls. */
+.vaani-room [class*="blur-[90px]"],
+.vaani-room [class*="blur-[100px]"],
+.vaani-room [class*="blur-[120px]"],
+.vaani-room [class*="blur-[140px]"],
+.vaani-room [class*="blur-[150px]"],
+.vaani-chat-shell [class*="blur-[90px]"],
+.vaani-chat-shell [class*="blur-[100px]"],
+.vaani-chat-shell [class*="blur-[120px]"],
+.vaani-chat-shell [class*="blur-[140px]"],
+.vaani-chat-shell [class*="blur-[150px]"] {
   display: none !important;
 }
 
