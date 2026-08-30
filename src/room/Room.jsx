@@ -23,7 +23,7 @@ const Room = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-bg)]">
         <Loading />
       </div>
     );
@@ -33,7 +33,13 @@ const Room = () => {
     return <Navigate to="/rooms" replace state={{ authRequired: true, roomId: id }} />;
   }
 
-  return tooglePrescreenRoom ? <ScreenBeforeJoin /> : <RoomMain uId={user.uid} user={user} />;
+  if (tooglePrescreenRoom) return <ScreenBeforeJoin />;
+
+  return (
+    <div className="vaani-room">
+      <RoomMain uId={user.uid} user={user} />
+    </div>
+  );
 };
 
 export default Room;
