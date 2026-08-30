@@ -1,16 +1,22 @@
 /* Lightweight meeting-room theme layer.
    Keeps the room UI aligned with the global Vaani light/dark tokens
-   and avoids GPU-heavy blur/shadow effects inside the live meeting UI. */
+   and avoids GPU-heavy effects inside the live meeting experience. */
 
 .vaani-room,
 .vaani-room * {
   box-sizing: border-box;
 }
 
+/* Remove glass/blur/shadow effects inside live calls. */
 .vaani-room [class*="backdrop-blur"],
 .vaani-chat-shell [class*="backdrop-blur"] {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
+}
+
+.vaani-room [class*="blur-"],
+.vaani-chat-shell [class*="blur-"] {
+  display: none !important;
 }
 
 .vaani-room [class*="shadow-2xl"],
@@ -22,6 +28,11 @@
   box-shadow: none !important;
 }
 
+.vaani-chat-shell [style*="chatShine"] {
+  display: none !important;
+}
+
+/* Light theme: translate legacy dark room surfaces to shared design tokens. */
 html:not(.dark) .vaani-room [class*="bg-[#050713]"],
 html:not(.dark) .vaani-room [class*="bg-[#080d1c]"],
 html:not(.dark) .vaani-room [class*="bg-[#0b1120]"],
@@ -56,6 +67,7 @@ html:not(.dark) .vaani-chat-shell [class*="text-slate-400"] {
   color: var(--color-muted) !important;
 }
 
+/* Chat shell and received messages. Own gradient messages keep white text. */
 html:not(.dark) .vaani-chat-shell > div {
   background: var(--color-surface) !important;
   color: var(--color-text) !important;
@@ -97,6 +109,7 @@ html:not(.dark) .vaani-chat-shell [class*="bg-white/10"] {
   background: var(--color-surface-2) !important;
 }
 
+/* Actual media surfaces stay black for predictable video contrast. */
 .vaani-room video {
   background: #000;
 }
