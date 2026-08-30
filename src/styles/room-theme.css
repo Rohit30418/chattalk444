@@ -149,13 +149,15 @@ html:not(.dark) .vaani-chat-shell [class*="bg-white/10"] {
   background: color-mix(in srgb, var(--color-primary) 86%, #000 14%) !important;
 }
 
-/* Meeting Chat header badge follows the same Vaani theme accent. */
-.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"] {
+/* One brand color for the Meeting Chat icon and enabled Send button. */
+.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"],
+.vaani-chat-shell button[aria-label="Send"][class*="from-blue-600"][class*="to-violet-600"] {
   background: var(--color-primary) !important;
   color: var(--color-on-primary) !important;
 }
 
-.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"] > i {
+.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"] > i,
+.vaani-chat-shell button[aria-label="Send"][class*="from-blue-600"][class*="to-violet-600"] > i {
   color: var(--color-on-primary) !important;
 }
 
