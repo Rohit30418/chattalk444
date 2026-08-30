@@ -18,13 +18,13 @@ const ScreenStreamVideo = memo(({ stream, muted = false }) => {
 
   if (!stream) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.16),transparent_42%),linear-gradient(135deg,#0f172a,#020617)] text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/20">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-[var(--color-surface-2)] text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-primary-soft)] text-[var(--color-secondary)]">
           <i className="fa-solid fa-display text-2xl" />
         </div>
         <div>
-          <p className="text-sm font-black text-white">Waiting for presentation stream…</p>
-          <p className="mt-1 text-xs text-slate-500">The screen share will appear here in a moment.</p>
+          <p className="text-sm font-black text-[var(--color-text)]">Waiting for presentation stream…</p>
+          <p className="mt-1 text-xs text-[var(--color-soft)]">The screen share will appear here in a moment.</p>
         </div>
       </div>
     );
@@ -40,9 +40,9 @@ const ScreenShareCard = memo(({ activeScreenShare, stream }) => {
   const name = isLocal ? 'You' : (activeScreenShare.name || 'Someone');
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-hidden rounded-[1.65rem] bg-black shadow-2xl ring-1 ring-white/10">
+    <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-black">
       <ScreenStreamVideo stream={stream} muted={isLocal} />
-      <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full bg-blue-500/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-md">
+      <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full bg-[var(--color-secondary)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white">
         <i className="fa-solid fa-display" />
         {isLocal ? 'You are presenting' : `${name} is presenting`}
       </div>
@@ -103,7 +103,7 @@ const VideoStage = memo(({
       <div className="flex h-full w-full flex-col gap-3 p-3">
         <div className="relative min-h-0 flex-1">
           {isLocalFullscreen ? local : fullscreenParticipant ? getRemoteTile(fullscreenParticipant) : local}
-          <button type="button" onClick={onExitFullscreen} className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md ring-1 ring-white/10 hover:bg-black/70" aria-label="Exit fullscreen">
+          <button type="button" onClick={onExitFullscreen} className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/70" aria-label="Exit fullscreen">
             <i className="fa-solid fa-compress text-sm" />
           </button>
         </div>
