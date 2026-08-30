@@ -76,6 +76,12 @@ html:not(.dark) .vaani-chat-shell [class*="text-slate-400"] {
   color: var(--color-muted) !important;
 }
 
+html:not(.dark) .vaani-chat-shell [class*="text-slate-100"],
+html:not(.dark) .vaani-chat-shell [class*="text-slate-200"],
+html:not(.dark) .vaani-chat-shell [class*="text-slate-300"] {
+  color: var(--color-text) !important;
+}
+
 /* Chat shell and received messages. Own gradient messages keep white text. */
 html:not(.dark) .vaani-chat-shell > div {
   background: var(--color-surface) !important;
@@ -88,9 +94,9 @@ html:not(.dark) .vaani-chat-shell footer {
   border-color: var(--color-border) !important;
 }
 
-html:not(.dark) .vaani-chat-shell header h2,
-html:not(.dark) .vaani-chat-shell footer textarea,
-html:not(.dark) .vaani-chat-shell .premium-chat-scrollbar h3 {
+html:not(.dark) .vaani-chat-shell h2,
+html:not(.dark) .vaani-chat-shell h3,
+html:not(.dark) .vaani-chat-shell footer textarea {
   color: var(--color-text) !important;
 }
 
@@ -109,6 +115,11 @@ html:not(.dark) .vaani-chat-shell [class*="rounded-bl-md"][class*="bg-white"] [c
   color: var(--color-text) !important;
 }
 
+html:not(.dark) .vaani-chat-shell [class*="bg-[#0b1120]"] [class*="text-white"],
+html:not(.dark) .vaani-chat-shell [class*="bg-[#050713]"] [class*="text-white"] {
+  color: var(--color-text) !important;
+}
+
 html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.06]"],
 html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.07]"],
 html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.075]"],
@@ -116,6 +127,16 @@ html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.08]"],
 html:not(.dark) .vaani-chat-shell [class*="bg-white/8"],
 html:not(.dark) .vaani-chat-shell [class*="bg-white/10"] {
   background: var(--color-surface-2) !important;
+}
+
+html:not(.dark) .vaani-chat-shell .EmojiPickerReact {
+  --epr-bg-color: var(--color-surface);
+  --epr-category-label-bg-color: var(--color-surface);
+  --epr-text-color: var(--color-text);
+  --epr-hover-bg-color: var(--color-surface-2);
+  --epr-focus-bg-color: var(--color-primary-soft);
+  --epr-search-input-bg-color: var(--color-surface-2);
+  --epr-search-border-color: var(--color-border);
 }
 
 /* Actual media surfaces stay black for predictable video contrast. */
