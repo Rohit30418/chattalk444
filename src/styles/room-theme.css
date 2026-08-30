@@ -1,0 +1,112 @@
+/* Lightweight meeting-room theme layer.
+   Keeps the room UI aligned with the global Vaani light/dark tokens
+   and avoids GPU-heavy blur/shadow effects inside the live meeting UI. */
+
+.vaani-room,
+.vaani-room * {
+  box-sizing: border-box;
+}
+
+.vaani-room [class*="backdrop-blur"],
+.vaani-chat-shell [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.vaani-room [class*="shadow-2xl"],
+.vaani-room [class*="shadow-xl"],
+.vaani-room [class*="shadow-lg"],
+.vaani-chat-shell [class*="shadow-2xl"],
+.vaani-chat-shell [class*="shadow-xl"],
+.vaani-chat-shell [class*="shadow-lg"] {
+  box-shadow: none !important;
+}
+
+html:not(.dark) .vaani-room [class*="bg-[#050713]"],
+html:not(.dark) .vaani-room [class*="bg-[#080d1c]"],
+html:not(.dark) .vaani-room [class*="bg-[#0b1120]"],
+html:not(.dark) .vaani-room [class*="bg-[#10172a]"],
+html:not(.dark) .vaani-room [class*="bg-slate-950"],
+html:not(.dark) .vaani-chat-shell [class*="bg-[#050713]"],
+html:not(.dark) .vaani-chat-shell [class*="bg-[#080d1c]"],
+html:not(.dark) .vaani-chat-shell [class*="bg-[#0b1120]"] {
+  background: var(--color-surface) !important;
+}
+
+html:not(.dark) .vaani-room [class*="linear-gradient(135deg,#0f172a,#020617)"] {
+  background: var(--color-surface-2) !important;
+}
+
+html:not(.dark) .vaani-room [class*="border-white"],
+html:not(.dark) .vaani-chat-shell [class*="border-white"] {
+  border-color: var(--color-border) !important;
+}
+
+html:not(.dark) .vaani-room [class*="ring-white"],
+html:not(.dark) .vaani-chat-shell [class*="ring-white"] {
+  --tw-ring-color: var(--color-border) !important;
+}
+
+html:not(.dark) .vaani-room [class*="text-slate-600"],
+html:not(.dark) .vaani-room [class*="text-slate-500"],
+html:not(.dark) .vaani-room [class*="text-slate-400"],
+html:not(.dark) .vaani-chat-shell [class*="text-slate-600"],
+html:not(.dark) .vaani-chat-shell [class*="text-slate-500"],
+html:not(.dark) .vaani-chat-shell [class*="text-slate-400"] {
+  color: var(--color-muted) !important;
+}
+
+html:not(.dark) .vaani-chat-shell > div {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+
+html:not(.dark) .vaani-chat-shell header,
+html:not(.dark) .vaani-chat-shell footer {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html:not(.dark) .vaani-chat-shell header h2,
+html:not(.dark) .vaani-chat-shell footer textarea,
+html:not(.dark) .vaani-chat-shell .premium-chat-scrollbar h3 {
+  color: var(--color-text) !important;
+}
+
+html:not(.dark) .vaani-chat-shell footer textarea::placeholder {
+  color: var(--color-soft) !important;
+}
+
+html:not(.dark) .vaani-chat-shell [class*="rounded-bl-md"][class*="bg-white"] {
+  background: var(--color-surface-2) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+html:not(.dark) .vaani-chat-shell [class*="rounded-bl-md"][class*="bg-white"] [class*="text-slate-100"],
+html:not(.dark) .vaani-chat-shell [class*="rounded-bl-md"][class*="bg-white"] [class*="text-white"] {
+  color: var(--color-text) !important;
+}
+
+html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.06]"],
+html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.07]"],
+html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.075]"],
+html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.08]"],
+html:not(.dark) .vaani-chat-shell [class*="bg-white/8"],
+html:not(.dark) .vaani-chat-shell [class*="bg-white/10"] {
+  background: var(--color-surface-2) !important;
+}
+
+.vaani-room video {
+  background: #000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vaani-room *,
+  .vaani-chat-shell * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
