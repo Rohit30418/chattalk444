@@ -149,6 +149,20 @@ html:not(.dark) .vaani-chat-shell [class*="bg-white/10"] {
   background: color-mix(in srgb, var(--color-primary) 86%, #000 14%) !important;
 }
 
+/* Meeting Chat header badge follows the same Vaani theme accent. */
+.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"] {
+  background: var(--color-primary) !important;
+  color: var(--color-on-primary) !important;
+}
+
+.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"] > i {
+  color: var(--color-on-primary) !important;
+}
+
+.vaani-chat-shell header [class*="from-blue-500"][class*="to-violet-600"] > span {
+  border-color: var(--color-surface) !important;
+}
+
 html:not(.dark) .vaani-chat-shell .EmojiPickerReact {
   --epr-bg-color: var(--color-surface);
   --epr-category-label-bg-color: var(--color-surface);
