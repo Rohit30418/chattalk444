@@ -22,7 +22,10 @@ const ControlDock = memo(({
   onLeave,
 }) => (
   <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-    <div className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-center gap-1.5 overflow-x-auto rounded-[1.6rem] border border-white/10 bg-[#050713]/80 p-2 shadow-2xl shadow-black/40 backdrop-blur-2xl sm:gap-2 sm:p-2.5" style={{ scrollbarWidth: 'none' }}>
+    <div
+      className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-center gap-1.5 overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 sm:gap-2 sm:p-2.5"
+      style={{ scrollbarWidth: 'none' }}
+    >
       <ControlButton
         active={isAudioEnabled}
         onClick={onToggleAudio}
@@ -40,13 +43,15 @@ const ControlDock = memo(({
         disabled={isScreenSharing}
       />
 
-      <ControlButton
-        active={isScreenSharing}
-        onClick={onToggleScreenShare}
-        icon={isScreenSharing ? 'fa-stop' : 'fa-display'}
-        label={isScreenSharing ? 'Stop' : 'Share'}
-        accent="blue"
-      />
+      <div className="hidden sm:block">
+        <ControlButton
+          active={isScreenSharing}
+          onClick={onToggleScreenShare}
+          icon={isScreenSharing ? 'fa-stop' : 'fa-display'}
+          label={isScreenSharing ? 'Stop' : 'Share'}
+          accent="blue"
+        />
+      </div>
 
       <ControlButton
         active={showReactionPicker}
@@ -61,14 +66,16 @@ const ControlDock = memo(({
         onClick={onToggleRaiseHand}
         aria-label={raisedHand ? 'Lower hand' : 'Raise hand'}
         aria-pressed={raisedHand}
-        className={`flex h-12 min-w-12 flex-col items-center justify-center rounded-2xl px-3 transition-all duration-200 active:scale-95 sm:h-14 sm:min-w-14 sm:px-4 ${
+        className={`flex h-12 min-w-12 flex-col items-center justify-center rounded-xl border px-3 transition-colors duration-150 active:scale-95 sm:h-14 sm:min-w-14 sm:px-4 ${
           raisedHand
-            ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25'
-            : 'bg-white/8 text-slate-200 ring-1 ring-white/10 hover:bg-white/12'
+            ? 'border-amber-500 bg-amber-500 text-white'
+            : 'border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]'
         }`}
       >
         <span className="text-lg sm:text-xl">✋</span>
-        <span className="mt-1 hidden text-[10px] font-bold leading-none sm:block">{raisedHand ? 'Lower' : 'Raise'}</span>
+        <span className="mt-1 hidden text-[10px] font-bold leading-none sm:block">
+          {raisedHand ? 'Lower' : 'Raise'}
+        </span>
       </button>
 
       <ControlButton
@@ -96,12 +103,12 @@ const ControlDock = memo(({
         badge={unreadCount}
       />
 
-      <div className="mx-1 h-9 w-px shrink-0 bg-white/10" />
+      <div className="mx-1 h-9 w-px shrink-0 bg-[var(--color-border)]" />
 
       <button
         type="button"
         onClick={onLeave}
-        className="flex h-12 min-w-[4.2rem] flex-col items-center justify-center rounded-2xl bg-red-500 px-4 text-white shadow-lg shadow-red-500/30 transition-all duration-200 hover:bg-red-600 active:scale-95 sm:h-14 sm:min-w-[5rem]"
+        className="flex h-12 min-w-[4.2rem] flex-col items-center justify-center rounded-xl bg-red-500 px-4 text-white transition-colors duration-150 hover:bg-red-600 active:scale-95 sm:h-14 sm:min-w-[5rem]"
         aria-label="Leave meeting"
       >
         <i className="fas fa-phone-slash text-base sm:text-lg" style={{ transform: 'rotate(135deg)' }} />
