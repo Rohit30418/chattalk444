@@ -82,7 +82,7 @@ html:not(.dark) .vaani-chat-shell [class*="text-slate-300"] {
   color: var(--color-text) !important;
 }
 
-/* Chat shell and received messages. Own gradient messages keep white text. */
+/* Chat shell and received messages. */
 html:not(.dark) .vaani-chat-shell > div {
   background: var(--color-surface) !important;
   color: var(--color-text) !important;
@@ -127,6 +127,26 @@ html:not(.dark) .vaani-chat-shell [class*="bg-white/[0.08]"],
 html:not(.dark) .vaani-chat-shell [class*="bg-white/8"],
 html:not(.dark) .vaani-chat-shell [class*="bg-white/10"] {
   background: var(--color-surface-2) !important;
+}
+
+/* Sent messages use the global theme accent instead of fixed blue/purple. */
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] {
+  background: var(--color-primary) !important;
+  color: var(--color-on-primary) !important;
+}
+
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] p,
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] strong,
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] em,
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] del,
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] a,
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] span,
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] code {
+  color: var(--color-on-primary) !important;
+}
+
+.vaani-chat-shell [class*="from-blue-600"][class*="via-indigo-600"][class*="to-violet-600"] [class*="bg-blue-600/80"] {
+  background: color-mix(in srgb, var(--color-primary) 86%, #000 14%) !important;
 }
 
 html:not(.dark) .vaani-chat-shell .EmojiPickerReact {
