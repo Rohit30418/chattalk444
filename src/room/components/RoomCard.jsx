@@ -21,6 +21,13 @@ const FLAG_MAP = {
   global: 'US',
 };
 
+const PLACEHOLDER_AVATAR_CLASSES = [
+  'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300',
+  'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
+  'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300',
+  'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+];
+
 const cleanText = (value, fallback = '') => (
   typeof value === 'string' && value.trim() ? value.trim() : fallback
 );
@@ -66,28 +73,45 @@ const getParticipantName = (participant, index) => (
   || participant?.name
   || participant?.username
   || participant?.email
-  || `User ${index + 1}`
+  || `Participant ${index + 1}`
 );
 
 const getParticipantPhoto = (participant) => (
   participant?.photoURL || participant?.photo || participant?.avatar || ''
 );
 
-const getInitial = (name, index) => {
+const getInitial = (name) => {
   const cleaned = cleanText(name);
-  if (cleaned) return cleaned.charAt(0).toUpperCase();
-  return String((index % 9) + 1);
+  return cleaned ? cleaned.charAt(0).toUpperCase() : '?';
 };
 
-const AvatarStack = memo(({ roomId, participants, activeCount }) => {
-  const visibleCount = Math.min(Math.max(activeCount, 0), 4);
-  const visible = participants.length
-    ? participants.slice(0, 4)
-    : Array.from({ length: visibleCount }, (_, index) => ({
-        __placeholder: true,
-        id: `${roomId}-${index}`,
-      }));
+const PlaceholderAvatarStack = memo(({ roomId, activeCount }) => {
+  const visibleCount = Math.min(activeCount, 4);
 
+  return (
+    <div className="flex -space-x-2" aria-label={`${activeCount} active participants`}>
+      {Array.from({ length: visibleCount }, (_, index) => (
+        <div
+          key={`${roomId}-placeholder-${index}`}
+          className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[11px] dark:border-[#101626] ${PLACEHOLDER_AVATAR_CLASSES[index % PLACEHOLDER_AVATAR_CLASSES.length]}`}
+          aria-hidden="true"
+        >
+          <i className="fa-solid fa-user text-[10px]" />
+        </div>
+      ))}
+
+      {activeCount > 4 && (
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200">
+          +{activeCount - 4}
+        </div>
+      )}
+    </div>
+  );
+});
+
+PlaceholderAvatarStack.displayName = 'PlaceholderAvatarStack';
+
+const AvatarStack = memo(({ roomId, participants, activeCount }) => {
   if (activeCount <= 0) {
     return (
       <div className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500">
@@ -96,12 +120,18 @@ const AvatarStack = memo(({ roomId, participants, activeCount }) => {
     );
   }
 
+  if (!participants.length) {
+    return <PlaceholderAvatarStack roomId={roomId} activeCount={activeCount} />;
+  }
+
+  const visible = participants.slice(0, 4);
+
   return (
     <div className="flex -space-x-2">
       {visible.map((participant, index) => {
         const key = participant?.uid || participant?.userId || participant?._id || participant?.id || `${roomId}-${index}`;
         const name = getParticipantName(participant, index);
-        const photo = participant?.__placeholder ? '' : getParticipantPhoto(participant);
+        const photo = getParticipantPhoto(participant);
 
         if (photo) {
           return (
@@ -121,9 +151,9 @@ const AvatarStack = memo(({ roomId, participants, activeCount }) => {
           <div
             key={key}
             title={name}
-            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[11px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200"
+            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[11px] font-black dark:border-[#101626] ${PLACEHOLDER_AVATAR_CLASSES[index % PLACEHOLDER_AVATAR_CLASSES.length]}`}
           >
-            {getInitial(name, index)}
+            {getInitial(name)}
           </div>
         );
       })}
