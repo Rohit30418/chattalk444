@@ -1,8 +1,7 @@
-import React, { useCallback, memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-// Static data kept outside the component to prevent memory reallocation
 const AVATAR_URL =
   'https://static.vecteezy.com/system/resources/previews/034/599/439/non_2x/ai-generated-3d-cute-cartoon-woman-character-in-blue-suit-on-transparent-background-png.png';
 
@@ -16,20 +15,15 @@ const getTheme = () => {
 
 const AiCard = memo(({
   pageName = 'AI Voice Room',
-  title = 'Vanni — AI Friend',
+  title = 'Vaani — AI Friend',
   description = 'Practice speaking without pressure. Talk, listen, improve pronunciation, and build confidence.',
 }) => {
   const navigate = useNavigate();
 
-  // THE FIX: Added 'e' (event) here to block the ghost click from breaking the HomeBody layout
-  const handleTalkNow = useCallback(async (e) => {
-    // 1. Stop the button click from bubbling up and breaking the page
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  const handleTalkNow = useCallback(async (event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
 
-    // 2. Safely grab the environment variable and strip invisible spaces
     const accessCode = String(import.meta.env.VITE_AI_ACCESS_CODE || '').trim();
 
     if (!accessCode) {
@@ -38,7 +32,6 @@ const AiCard = memo(({
     }
 
     const theme = getTheme();
-
     const { value: password } = await Swal.fire({
       title: 'Unlock AI Room',
       text: 'Enter your access code to continue.',
@@ -46,7 +39,7 @@ const AiCard = memo(({
       inputPlaceholder: 'Access code',
       showCancelButton: true,
       confirmButtonText: 'Continue',
-      confirmButtonColor: '#4f46e5',
+      confirmButtonColor: '#0f766e',
       cancelButtonColor: '#ef4444',
       background: theme.background,
       color: theme.color,
@@ -59,7 +52,6 @@ const AiCard = memo(({
 
     if (!password) return;
 
-    // 3. Trim user input to prevent accidental spaces from failing the check
     if (password.trim() === accessCode) {
       navigate('/ai-bot');
       return;
@@ -78,34 +70,24 @@ const AiCard = memo(({
   }, [navigate]);
 
   return (
-    <section 
-      style={{ contain: 'layout paint style' }}
-      className="group relative h-full min-h-[230px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#070b18] p-5 shadow-xl transition-transform duration-300 hover:-translate-y-0.5 sm:min-h-[260px] sm:p-6 lg:p-7 transform-gpu"
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0b1020] to-indigo-950 pointer-events-none" />
-      
-      <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.25)_0%,transparent_70%)] transition-opacity duration-500 group-hover:opacity-90 transform-gpu pointer-events-none" />
-      <div className="absolute -bottom-28 -left-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(139,92,246,0.20)_0%,transparent_70%)] transform-gpu pointer-events-none" />
-
-      <div className="relative z-10 flex h-full min-h-[200px] flex-col justify-between gap-6 pr-[34%] sm:pr-[38%]">
+    <section className="relative min-h-[230px] overflow-hidden rounded-[1.6rem] border border-slate-800 bg-[#07111f] p-5 shadow-sm sm:min-h-[250px] sm:p-6 lg:p-7">
+      <div className="relative z-10 flex min-h-[190px] flex-col justify-between gap-6 pr-[35%] sm:pr-[38%]">
         <div>
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">
-              <i className="fa-solid fa-robot text-blue-300" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">
+              <i className="fa-solid fa-robot text-teal-300" aria-hidden="true" />
               {pageName}
             </span>
-
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               24/7
             </span>
           </div>
 
-          <h3 className="max-w-[16rem] text-xl font-black leading-tight tracking-tight text-white sm:text-2xl lg:text-3xl">
+          <h3 className="max-w-[17rem] text-xl font-black leading-tight tracking-tight text-white sm:text-2xl lg:text-3xl">
             {title}
           </h3>
-
-          <p className="mt-2 max-w-[19rem] text-xs font-medium leading-5 text-slate-300 sm:text-sm sm:leading-6">
+          <p className="mt-2 max-w-[20rem] text-xs font-medium leading-5 text-slate-300 sm:text-sm sm:leading-6">
             {description}
           </p>
         </div>
@@ -114,12 +96,11 @@ const AiCard = memo(({
           <button
             type="button"
             onClick={handleTalkNow}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-indigo-700 shadow-md transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] sm:px-5 sm:py-3 transform-gpu"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-teal-700 shadow-sm transition-colors hover:bg-slate-100 sm:px-5 sm:py-3"
           >
             Talk Now
-            <i className="fa-solid fa-microphone-lines text-xs" />
+            <i className="fa-solid fa-microphone-lines text-xs" aria-hidden="true" />
           </button>
-
           <span className="hidden text-[11px] font-semibold text-slate-500 sm:inline">
             Voice + 3D avatar
           </span>
@@ -130,11 +111,11 @@ const AiCard = memo(({
         src={AVATAR_URL}
         alt="AI avatar"
         loading="lazy"
+        decoding="async"
+        fetchPriority="low"
         referrerPolicy="no-referrer"
-        className="pointer-events-none absolute bottom-0 right-0 z-20 w-[42%] max-w-[180px] object-contain transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-1 sm:max-w-[230px] lg:max-w-[260px] transform-gpu"
+        className="pointer-events-none absolute bottom-0 right-0 z-10 w-[40%] max-w-[175px] object-contain sm:max-w-[220px] lg:max-w-[250px]"
       />
-
-      <div className="pointer-events-none absolute inset-0 rounded-[1.6rem] ring-1 ring-inset ring-white/10" />
     </section>
   );
 });
