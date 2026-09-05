@@ -1,49 +1,35 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-const SkeletonLoader = () => {
+const SkeletonLoader = memo(() => {
   return (
-    <div className="w-full h-full">
-      <div className="relative w-full h-[300px] flex flex-col justify-between rounded-3xl p-6 bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
-        
-        {/* Shimmer Effect Overlay (Optional, adds a moving shine) */}
-        <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/20 dark:via-slate-700/10 to-transparent z-10"></div>
-
-        {/* --- Top Section: Tags --- */}
-        <div className="flex items-center gap-2 mb-4 animate-pulse">
-          {/* Tag 1 */}
-          <div className="w-16 h-6 bg-gray-200 dark:bg-slate-800 rounded-lg"></div>
-          {/* Tag 2 */}
-          <div className="w-20 h-6 bg-gray-200 dark:bg-slate-800 rounded-lg"></div>
+    <div className="h-full w-full">
+      <div className="flex h-[260px] w-full flex-col justify-between rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#101626]">
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-16 rounded-md bg-slate-100 dark:bg-white/[0.06]" />
+          <div className="h-5 w-20 rounded-md bg-slate-100 dark:bg-white/[0.06]" />
         </div>
 
-        {/* --- Middle Section: Title --- */}
-        <div className="space-y-3 animate-pulse">
-          {/* Title Line 1 */}
-          <div className="w-3/4 h-7 bg-gray-200 dark:bg-slate-800 rounded-md"></div>
-          {/* Title Line 2 */}
-          <div className="w-1/2 h-7 bg-gray-200 dark:bg-slate-800 rounded-md"></div>
+        <div className="space-y-3">
+          <div className="h-6 w-3/4 rounded-md bg-slate-100 dark:bg-white/[0.06]" />
+          <div className="h-6 w-1/2 rounded-md bg-slate-100 dark:bg-white/[0.06]" />
         </div>
 
-        {/* --- Bottom Section: Avatars & Button --- */}
-        <div className="flex flex-col gap-4 mt-auto">
-          
-          {/* Stacked Avatars Skeleton */}
-          <div className="flex items-center -space-x-3 pl-1 animate-pulse">
-             {[1, 2, 3, 4].map((i) => (
-                <div 
-                  key={i} 
-                  className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-800 border-4 border-white dark:border-slate-900"
-                ></div>
-             ))}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex -space-x-2">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="h-9 w-9 rounded-full border-2 border-white bg-slate-100 dark:border-[#101626] dark:bg-white/[0.06]"
+              />
+            ))}
           </div>
-
-          {/* Join Button Skeleton */}
-          <div className="w-full h-12 bg-gray-200 dark:bg-slate-800 rounded-xl animate-pulse"></div>
+          <div className="h-9 w-20 rounded-xl bg-slate-100 dark:bg-white/[0.06]" />
         </div>
-
       </div>
     </div>
   );
-};
+});
+
+SkeletonLoader.displayName = 'SkeletonLoader';
 
 export default SkeletonLoader;
