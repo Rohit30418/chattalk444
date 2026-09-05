@@ -1,11 +1,8 @@
-import React, { memo, useMemo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../components/auth/AppWrapper';
 
-// Make sure to adjust this path to where your AppWrapper is actually located
-import { useAuth } from '../../components/auth/AppWrapper'; 
-
-// Static data kept outside the component
 const FLAG_MAP = {
   english: 'US',
   hindi: 'IN',
@@ -44,12 +41,9 @@ const getParticipants = (room) => {
 
 const getFlagCode = (language) => {
   const key = cleanText(language, 'global').toLowerCase();
-  return FLAG_MAP[key] || roomFlagFallback(language);
-};
-
-const roomFlagFallback = (language) => {
-  const value = cleanText(language, 'global').slice(0, 2).toUpperCase();
-  return /^[A-Z]{2}$/.test(value) ? value : 'US';
+  if (FLAG_MAP[key]) return FLAG_MAP[key];
+  const fallback = cleanText(language, 'global').slice(0, 2).toUpperCase();
+  return /^[A-Z]{2}$/.test(fallback) ? fallback : 'US';
 };
 
 const getLevelClasses = (level) => {
@@ -58,26 +52,16 @@ const getLevelClasses = (level) => {
   if (value.includes('advanced')) {
     return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300';
   }
-
   if (value.includes('intermediate')) {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300';
   }
-
   if (value.includes('beginner')) {
     return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300';
   }
-
   return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
 };
 
-const getAvatarSrc = (participant, fallbackSeed) => (
-  participant?.photoURL
-  || participant?.photo
-  || participant?.avatar
-  || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(fallbackSeed)}`
-);
-
-const getAvatarName = (participant, index) => (
+const getParticipantName = (participant, index) => (
   participant?.displayName
   || participant?.name
   || participant?.username
@@ -85,47 +69,67 @@ const getAvatarName = (participant, index) => (
   || `User ${index + 1}`
 );
 
-const AvatarStack = memo(({ roomId, participants, activeCount }) => {
-  const realParticipants = participants.slice(0, 4);
-  const placeholderCount = Math.min(activeCount, 4);
+const getParticipantPhoto = (participant) => (
+  participant?.photoURL || participant?.photo || participant?.avatar || ''
+);
 
-  const visible = realParticipants.length
-    ? realParticipants
-    : Array.from({ length: placeholderCount }, (_, index) => ({
-      __placeholder: true,
-      index,
-    }));
+const getInitial = (name, index) => {
+  const cleaned = cleanText(name);
+  if (cleaned) return cleaned.charAt(0).toUpperCase();
+  return String((index % 9) + 1);
+};
+
+const AvatarStack = memo(({ roomId, participants, activeCount }) => {
+  const visibleCount = Math.min(Math.max(activeCount, 0), 4);
+  const visible = participants.length
+    ? participants.slice(0, 4)
+    : Array.from({ length: visibleCount }, (_, index) => ({
+        __placeholder: true,
+        id: `${roomId}-${index}`,
+      }));
 
   if (activeCount <= 0) {
     return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500">
-        <i className="fa-solid fa-user-plus text-[11px]" aria-hidden="true" />
+      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500">
+        <i className="fa-solid fa-user-plus text-[10px]" aria-hidden="true" />
       </div>
     );
   }
 
   return (
-    <div className="flex -space-x-2.5">
+    <div className="flex -space-x-2">
       {visible.map((participant, index) => {
-        const seed = participant?.uid || participant?.userId || participant?._id || `${roomId}-${index}`;
-        const src = getAvatarSrc(participant, seed);
-        const name = getAvatarName(participant, index);
+        const key = participant?.uid || participant?.userId || participant?._id || participant?.id || `${roomId}-${index}`;
+        const name = getParticipantName(participant, index);
+        const photo = participant?.__placeholder ? '' : getParticipantPhoto(participant);
+
+        if (photo) {
+          return (
+            <img
+              key={key}
+              src={photo}
+              alt={name}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="h-9 w-9 rounded-full border-2 border-white bg-slate-100 object-cover dark:border-[#101626] dark:bg-slate-800"
+            />
+          );
+        }
 
         return (
-          <img
-            key={seed}
-            src={src}
-            alt={name}
-            referrerPolicy="no-referrer"
-            // Optimization 1: Ensure eager offscreen loads don't block main thread
-            loading="lazy"
-            className="h-10 w-10 rounded-full border-2 border-white bg-slate-100 object-cover shadow-sm dark:border-[#101626] dark:bg-slate-800 transform-gpu"
-          />
+          <div
+            key={key}
+            title={name}
+            className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[11px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200"
+          >
+            {getInitial(name, index)}
+          </div>
         );
       })}
 
       {activeCount > 4 && (
-        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-black text-slate-700 shadow-sm dark:border-[#101626] dark:bg-slate-800 dark:text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200">
           +{activeCount - 4}
         </div>
       )}
@@ -138,7 +142,6 @@ AvatarStack.displayName = 'AvatarStack';
 const RoomCard = ({ roomdata }) => {
   const { user } = useAuth();
   const loginStatus = Boolean(user);
-
   const room = roomdata || {};
   const roomId = getRoomId(room);
 
@@ -167,11 +170,9 @@ const RoomCard = ({ roomdata }) => {
   const seatsLeft = Math.max(maxPeople - activeCount, 0);
   const capacityPercent = Math.min(100, Math.round((activeCount / maxPeople) * 100));
 
-  // Optimization 2: Wrapped in useCallback to prevent recreation on every render, 
-  // keeping the memoized component stable.
-  const handleJoinClick = useCallback((e) => {
+  const handleJoinClick = useCallback((event) => {
     if (!loginStatus) {
-      e.preventDefault();
+      event.preventDefault();
       toast.error('Please sign in to join a room');
     }
   }, [loginStatus]);
@@ -179,26 +180,19 @@ const RoomCard = ({ roomdata }) => {
   if (!roomId) return null;
 
   return (
-    <article 
-      /* Optimization 3: Added 'contain: layout paint style' to isolate DOM layout recalculations. 
-         Combined with 'transform-gpu', this heavily optimizes list scrolling. */
+    <article
+      className="flex min-h-[228px] flex-col rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#101626]"
       style={{ contain: 'layout paint style' }}
-      className="group relative flex min-h-[236px] flex-col overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-[#101626] transform-gpu"
     >
-      {/* Optimization 4: Replaced wildly expensive `blur-3xl` with standard radial-gradients. 
-          CSS blurs require multi-pass processing which causes massive frame drops in scrollable grids. 
-          Removed will-change-transform to avoid GPU memory limits in large arrays. */}
-      <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.15)_0%,transparent_70%)] transition-opacity group-hover:opacity-90 dark:bg-[radial-gradient(circle,rgba(99,102,241,0.25)_0%,transparent_70%)] transform-gpu" />
-      <div className="pointer-events-none absolute -bottom-20 -left-20 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.15)_0%,transparent_70%)] dark:bg-[radial-gradient(circle,rgba(34,211,238,0.15)_0%,transparent_70%)] transform-gpu" />
-
-      <div className="relative z-10 flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="inline-flex max-w-[140px] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-300">
+          <span className="inline-flex max-w-[140px] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
             <img
               src={`https://flagsapi.com/${getFlagCode(language)}/flat/64.png`}
               alt=""
               aria-hidden="true"
               loading="lazy"
+              decoding="async"
               className="h-3.5 w-3.5 shrink-0 object-contain"
               onError={(event) => {
                 event.currentTarget.style.display = 'none';
@@ -213,40 +207,34 @@ const RoomCard = ({ roomdata }) => {
         </div>
 
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-          <span className="relative flex h-1.5 w-1.5">
-            {/* Optimization 5: Ensured hardware acceleration on continuous animations to prevent layout thrashing */}
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75 transform-gpu" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           Live
         </span>
       </div>
 
-      <div className="relative z-10 mt-5 min-w-0 flex-1">
+      <div className="mt-4 min-w-0 flex-1">
         <div className="mb-3 flex items-center gap-2">
           {isFull && (
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
               Full
             </span>
           )}
-
           <span className="truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
             {topic}
           </span>
         </div>
 
-        {/* Optimization 6: Removed color transitions here to reduce paint work on hover; it's unnoticeable but saves processing */}
-        <h3 className="line-clamp-2 text-xl font-black leading-snug text-slate-950 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-100">
+        <h3 className="line-clamp-2 text-lg font-black leading-snug text-slate-950 dark:text-white sm:text-xl">
           {title}
         </h3>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-bold text-slate-500 dark:text-slate-400">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
           <span className="inline-flex items-center gap-1.5">
-            <i className="fa-solid fa-user-tie text-[10px] text-slate-400" />
+            <i className="fa-solid fa-user-tie text-[9px] text-slate-400" aria-hidden="true" />
             {owner}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <i className="fa-solid fa-user-group text-[10px] text-slate-400" />
+            <i className="fa-solid fa-user-group text-[9px] text-slate-400" aria-hidden="true" />
             {activeCount}/{maxPeople} speaking
           </span>
           <span className={isFull ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}>
@@ -254,22 +242,22 @@ const RoomCard = ({ roomdata }) => {
           </span>
         </div>
 
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.06] transform-gpu">
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.06]">
           <div
-            className={`h-full rounded-full ${isFull ? 'bg-amber-500' : 'bg-gradient-to-r from-indigo-600 to-cyan-500'}`}
+            className={`h-full rounded-full ${isFull ? 'bg-amber-500' : 'bg-teal-600 dark:bg-teal-400'}`}
             style={{ width: `${capacityPercent}%` }}
           />
         </div>
       </div>
 
-      <div className="relative z-10 mt-5 flex items-center justify-between gap-3">
+      <div className="mt-5 flex items-center justify-between gap-3">
         <AvatarStack roomId={roomId} participants={participants} activeCount={activeCount} />
 
         {isFull ? (
           <button
             type="button"
             disabled
-            className="rounded-2xl bg-amber-50 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+            className="rounded-xl bg-amber-50 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
           >
             Full
           </button>
@@ -277,12 +265,11 @@ const RoomCard = ({ roomdata }) => {
           <Link
             to={`/room/${roomId}`}
             onClick={handleJoinClick}
-            /* Optimization 7: Restricted animations to transforms to keep UI interactions strictly on the GPU */
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2.5 text-[11px] font-black uppercase tracking-wide text-white shadow-md transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:bg-white dark:text-slate-950 transform-gpu"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white transition-colors hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
             aria-label={`Join ${title}`}
           >
             Join
-            <i className="fa-solid fa-arrow-right text-[10px]" />
+            <i className="fa-solid fa-arrow-right text-[10px]" aria-hidden="true" />
           </Link>
         )}
       </div>
@@ -290,5 +277,4 @@ const RoomCard = ({ roomdata }) => {
   );
 };
 
-// Use memo to ensure parent list re-renders don't continuously re-render this card
 export default memo(RoomCard);
