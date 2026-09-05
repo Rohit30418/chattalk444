@@ -104,15 +104,25 @@ const Hero = () => {
               </div>
 
               <div className="px-4 pt-5">
-                <div className="rounded-[2rem] bg-[var(--color-primary)] p-4 text-[var(--color-on-primary)] shadow-sm">
+                <div
+                  className="rounded-[2rem] p-4 shadow-sm"
+                  style={{ backgroundColor: "#0f766e", color: "#ffffff" }}
+                >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-black text-[var(--color-on-primary)]">Vaani</p>
-                      <p className="text-xs font-semibold text-[var(--color-on-primary)] opacity-80">AI speaking coach</p>
+                      <p className="text-sm font-black" style={{ color: "#ffffff" }}>
+                        Vaani
+                      </p>
+                      <p
+                        className="text-xs font-semibold opacity-80"
+                        style={{ color: "#ffffff" }}
+                      >
+                        AI speaking coach
+                      </p>
                     </div>
 
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black text-white">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
                       Live
                     </span>
                   </div>
@@ -211,25 +221,27 @@ const ChatBubble = ({ type, name, text }) => {
       <div
         className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm ${
           isUser
-            ? "rounded-br-md bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-            : "rounded-bl-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
+            ? "rounded-br-md"
+            : "rounded-bl-md border border-[var(--color-border)] bg-[var(--color-surface)]"
         }`}
+        style={
+          isUser
+            ? { backgroundColor: "#0f766e", color: "#ffffff" }
+            : { color: "var(--color-text)" }
+        }
       >
         <p
-          className={`mb-1 text-[10px] font-black uppercase tracking-wider ${
-            isUser
-              ? "text-[var(--color-on-primary)] opacity-70"
-              : "text-[var(--color-soft)]"
-          }`}
+          className="mb-1 text-[10px] font-black uppercase tracking-wider"
+          style={{
+            color: isUser ? "#ffffff" : "var(--color-soft)",
+            opacity: isUser ? 0.82 : 1,
+          }}
         >
           {name}
         </p>
         <p
-          className={`text-sm font-semibold leading-5 ${
-            isUser
-              ? "text-[var(--color-on-primary)]"
-              : "text-[var(--color-text)]"
-          }`}
+          className="text-sm font-semibold leading-5"
+          style={{ color: isUser ? "#ffffff" : "var(--color-text)" }}
         >
           {text}
         </p>
