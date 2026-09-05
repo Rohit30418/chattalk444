@@ -107,8 +107,8 @@ const Hero = () => {
                 <div className="rounded-[2rem] bg-[var(--color-primary)] p-4 text-[var(--color-on-primary)] shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-black">Vaani</p>
-                      <p className="text-xs font-semibold opacity-80">AI speaking coach</p>
+                      <p className="text-sm font-black text-[var(--color-on-primary)]">Vaani</p>
+                      <p className="text-xs font-semibold text-[var(--color-on-primary)] opacity-80">AI speaking coach</p>
                     </div>
 
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[10px] font-black">
@@ -215,10 +215,24 @@ const ChatBubble = ({ type, name, text }) => {
             : "rounded-bl-md border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
         }`}
       >
-        <p className={`mb-1 text-[10px] font-black uppercase tracking-wider ${isUser ? "opacity-70" : "text-[var(--color-soft)]"}`}>
+        <p
+          className={`mb-1 text-[10px] font-black uppercase tracking-wider ${
+            isUser
+              ? "text-[var(--color-on-primary)] opacity-70"
+              : "text-[var(--color-soft)]"
+          }`}
+        >
           {name}
         </p>
-        <p className="text-sm font-semibold leading-5">{text}</p>
+        <p
+          className={`text-sm font-semibold leading-5 ${
+            isUser
+              ? "text-[var(--color-on-primary)]"
+              : "text-[var(--color-text)]"
+          }`}
+        >
+          {text}
+        </p>
       </div>
     </div>
   );
