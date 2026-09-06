@@ -14,6 +14,45 @@ const STATE = {
   ERROR: 'error',
 };
 
+const STATE_UI = {
+  [STATE.IDLE]: {
+    label: 'Ready',
+    description: 'Tap the mic to begin',
+    dot: 'bg-slate-400',
+    chip: 'border-white/10 bg-white/[0.04] text-slate-300',
+  },
+  [STATE.LISTENING]: {
+    label: 'Listening',
+    description: 'Speak naturally',
+    dot: 'bg-emerald-400',
+    chip: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200',
+  },
+  [STATE.THINKING]: {
+    label: 'Thinking',
+    description: 'Luna is preparing a reply',
+    dot: 'bg-amber-400',
+    chip: 'border-amber-400/20 bg-amber-400/10 text-amber-200',
+  },
+  [STATE.SPEAKING]: {
+    label: 'Luna speaking',
+    description: 'Listen and respond',
+    dot: 'bg-violet-400',
+    chip: 'border-violet-400/20 bg-violet-400/10 text-violet-200',
+  },
+  [STATE.PAUSED]: {
+    label: 'Paused',
+    description: 'Microphone is off',
+    dot: 'bg-rose-400',
+    chip: 'border-rose-400/20 bg-rose-400/10 text-rose-200',
+  },
+  [STATE.ERROR]: {
+    label: 'Needs attention',
+    description: 'Check your microphone',
+    dot: 'bg-red-400',
+    chip: 'border-red-400/20 bg-red-400/10 text-red-200',
+  },
+};
+
 const SILENCE_TIMEOUT_MS = 1100;
 
 export default function VoiceRecognition({ onMouthLevel }) {
@@ -102,23 +141,6 @@ export default function VoiceRecognition({ onMouthLevel }) {
 
     audioContextRef.current = null;
   }, []);
-
-  const getOrbColor = () => {
-    switch (state) {
-      case STATE.LISTENING:
-        return 'from-emerald-400 to-cyan-400';
-      case STATE.THINKING:
-        return 'from-amber-400 to-orange-500';
-      case STATE.SPEAKING:
-        return 'from-indigo-500 to-purple-600';
-      case STATE.PAUSED:
-        return 'from-rose-500 to-red-600';
-      case STATE.ERROR:
-        return 'from-red-500 to-rose-700';
-      default:
-        return 'from-slate-500 to-slate-700';
-    }
-  };
 
   const playAudioWithAnalysis = useCallback(async (url) => new Promise(async (resolve) => {
     if (!url) {
@@ -256,7 +278,6 @@ export default function VoiceRecognition({ onMouthLevel }) {
         finalTranscriptRef.current = finalText.trim();
 
         const liveText = `${finalTranscriptRef.current} ${interim}`.trim();
-
         if (!liveText) return;
 
         setTranscript(liveText);
@@ -352,7 +373,7 @@ export default function VoiceRecognition({ onMouthLevel }) {
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6366f1',
+      cancelButtonColor: '#0f766e',
       confirmButtonText: 'Exit',
       cancelButtonText: 'Stay',
       background: '#0f172a',
@@ -384,81 +405,101 @@ export default function VoiceRecognition({ onMouthLevel }) {
   }, [clearSilenceTimer, closeAudioContext, onMouthLevel, stopAiAudio, stopRecognition]);
 
   const currentCaption = state === STATE.SPEAKING ? botText : transcript;
+  const currentUi = STATE_UI[state] || STATE_UI[STATE.IDLE];
+  const controlsDisabled = state === STATE.SPEAKING || state === STATE.THINKING;
 
   return (
-    <div className="mx-auto flex w-full max-w-[28rem] flex-col items-center gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:gap-4">
-      <SpeechHud
-        isSpeaking={state === STATE.LISTENING}
-        transcript={transcript}
-        state={state}
-      />
+    <div className="pointer-events-none absolute inset-0 z-40">
+      <aside className="pointer-events-auto absolute right-5 top-24 hidden w-[320px] lg:block xl:right-8 xl:w-[340px]">
+        <SpeechHud
+          isSpeaking={state === STATE.LISTENING}
+          transcript={transcript}
+          state={state}
+        />
+      </aside>
 
-      <div className="min-h-[54px] w-full">
-        {currentCaption && (
-          <div className="rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-center shadow-2xl backdrop-blur-xl">
-            <p className={`line-clamp-3 text-sm font-semibold leading-6 sm:text-base ${state === STATE.SPEAKING ? 'text-indigo-100' : 'text-white'}`}>
-              {state === STATE.SPEAKING ? currentCaption : `"${currentCaption}"`}
-            </p>
-          </div>
-        )}
-
-        {state === STATE.PAUSED && (
-          <div className="mx-auto w-fit rounded-full border border-rose-500/20 bg-rose-500/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-rose-300">
-            Microphone paused
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-center text-xs font-semibold leading-5 text-rose-200">
-            {error}
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-4 rounded-[2rem] border border-white/10 bg-white/[0.06] p-3 shadow-2xl backdrop-blur-2xl">
-        <button
-          type="button"
-          onClick={toggleMic}
-          disabled={state === STATE.SPEAKING || state === STATE.THINKING}
-          className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 sm:h-14 sm:w-14 ${
-            state === STATE.LISTENING
-              ? 'bg-white text-slate-950 shadow-[0_0_20px_rgba(255,255,255,0.35)]'
-              : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-          } ${(state === STATE.SPEAKING || state === STATE.THINKING) ? 'cursor-not-allowed opacity-40' : 'hover:scale-105 active:scale-95'}`}
-          aria-label={state === STATE.LISTENING ? 'Pause microphone' : 'Start microphone'}
-        >
-          <i className={`fa-solid ${state === STATE.LISTENING ? 'fa-microphone' : 'fa-microphone-slash'} text-lg`} />
-        </button>
-
-        <div className="relative">
-          <div className={`absolute inset-0 rounded-full bg-gradient-to-tr ${getOrbColor()} opacity-50 blur-md ${state !== STATE.PAUSED && state !== STATE.IDLE ? 'animate-pulse' : ''}`} />
-          <div className={`relative flex h-16 w-16 flex-col items-center justify-center rounded-full border border-white/20 bg-gradient-to-tr ${getOrbColor()} text-white shadow-inner sm:h-20 sm:w-20`}>
-            <span className="text-[9px] font-black uppercase tracking-tight sm:text-[10px]">
-              {state}
-            </span>
-
-            {state === STATE.LISTENING && (
-              <div className="mt-1 flex gap-0.5">
-                <span className="h-2 w-0.5 animate-bounce rounded-full bg-white/60" />
-                <span className="h-3 w-0.5 animate-bounce rounded-full bg-white [animation-delay:0.2s]" />
-                <span className="h-2 w-0.5 animate-bounce rounded-full bg-white/60 [animation-delay:0.4s]" />
+      <div className="absolute inset-y-0 left-0 right-0 lg:right-[22rem]">
+        <div className="absolute bottom-[112px] left-1/2 w-[min(92%,42rem)] -translate-x-1/2 sm:bottom-[118px]">
+          {currentCaption ? (
+            <div className="mx-auto max-w-xl rounded-2xl border border-white/10 bg-[#0b1220]/95 px-4 py-3 shadow-lg sm:px-5 sm:py-4">
+              <div className="mb-1.5 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.16em]">
+                <span className={state === STATE.SPEAKING ? 'text-violet-300' : 'text-teal-300'}>
+                  {state === STATE.SPEAKING ? 'Luna' : 'You'}
+                </span>
+                <span className="h-1 w-1 rounded-full bg-slate-600" />
+                <span className="text-slate-500">
+                  {state === STATE.SPEAKING ? 'AI reply' : 'Live transcript'}
+                </span>
               </div>
-            )}
+              <p className={`line-clamp-3 text-center text-sm font-semibold leading-6 sm:text-base ${
+                state === STATE.SPEAKING ? 'text-violet-100' : 'text-white'
+              }`}>
+                {currentCaption}
+              </p>
+            </div>
+          ) : (
+            <div className="mx-auto hidden w-fit items-center gap-2 rounded-full border border-white/[0.08] bg-[#0b1220]/80 px-4 py-2 text-[10px] font-bold text-slate-400 sm:flex">
+              <i className="fa-solid fa-microphone-lines text-teal-400" aria-hidden="true" />
+              Tap the microphone and start speaking naturally.
+            </div>
+          )}
 
-            {state === STATE.THINKING && (
-              <i className="fa-solid fa-spinner mt-1 animate-spin text-xs" />
-            )}
-          </div>
+          {error && (
+            <div className="mx-auto mt-2 max-w-lg rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-2.5 text-center text-xs font-semibold text-rose-200">
+              {error}
+            </div>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleQuitCall}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-rose-300 shadow-lg transition-all duration-300 hover:scale-105 hover:bg-rose-500 hover:text-white active:scale-95 sm:h-14 sm:w-14"
-          aria-label="End AI session"
-        >
-          <i className="fa-solid fa-phone-slash text-lg" />
-        </button>
+        <div className="pointer-events-auto absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-[1.35rem] border border-white/10 bg-[#0b1220]/95 p-2 shadow-lg sm:gap-3 sm:p-2.5">
+            <button
+              type="button"
+              onClick={toggleMic}
+              disabled={controlsDisabled}
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-colors sm:h-14 sm:w-14 ${
+                state === STATE.LISTENING
+                  ? 'border-emerald-300/20 bg-emerald-400 text-slate-950 hover:bg-emerald-300'
+                  : 'border-white/10 bg-white/[0.055] text-slate-200 hover:bg-white/[0.09]'
+              } ${controlsDisabled ? 'cursor-not-allowed opacity-40' : ''}`}
+              aria-label={state === STATE.LISTENING ? 'Pause microphone' : 'Start microphone'}
+            >
+              <i
+                className={`fa-solid ${
+                  state === STATE.LISTENING ? 'fa-microphone' : 'fa-microphone-slash'
+                } text-base`}
+                aria-hidden="true"
+              />
+            </button>
+
+            <div className={`flex h-12 min-w-[128px] items-center gap-3 rounded-xl border px-3 sm:h-14 sm:min-w-[156px] sm:px-4 ${currentUi.chip}`}>
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${currentUi.dot}`} />
+              <div className="min-w-0 leading-tight">
+                <div className="truncate text-[10px] font-black uppercase tracking-[0.12em] sm:text-[11px]">
+                  {currentUi.label}
+                </div>
+                <div className="mt-1 hidden truncate text-[9px] font-semibold normal-case tracking-normal opacity-70 sm:block">
+                  {currentUi.description}
+                </div>
+              </div>
+              {state === STATE.THINKING && (
+                <i className="fa-solid fa-spinner ml-auto animate-spin text-[10px]" aria-hidden="true" />
+              )}
+              {state === STATE.SPEAKING && (
+                <i className="fa-solid fa-wave-square ml-auto text-[10px]" aria-hidden="true" />
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleQuitCall}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-rose-400/15 bg-rose-400/10 text-rose-300 transition-colors hover:bg-rose-500 hover:text-white sm:h-14 sm:w-14"
+              aria-label="End AI session"
+            >
+              <i className="fa-solid fa-phone-slash text-base" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
