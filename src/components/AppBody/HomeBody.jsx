@@ -10,8 +10,6 @@ import { Popup } from '../common/Popup';
 import AiCard from '../ai/AiCard';
 import SkeletonLoader from './SkeletonLoader';
 import LiveActivityFeed from './LiveActivityFeed';
-import AnniversaryCard from './AnniversaryCard';
-import SpinWheelModal from './SpinWheelModal';
 import { useAuth } from '../auth/AppWrapper';
 
 const DUMMY_ROOMS = [
@@ -43,7 +41,6 @@ const HomeBody = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [page, setPage] = useState(1);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
-  const [showOffer, setShowOffer] = useState(false);
 
   const deferredSearchText = useDeferredValue(searchText);
   const loginStatus = Boolean(user);
@@ -275,7 +272,6 @@ const HomeBody = () => {
           </button>
         </div>
 
-        <AnniversaryCard onClick={() => setShowOffer(true)} />
         <AddRoomForm data={rooms} />
 
         {modalToggle && <div className="fixed inset-0 z-[60] bg-slate-950/50" />}
@@ -285,8 +281,6 @@ const HomeBody = () => {
             <Popup text="Room created successfully!" color="bg-emerald-600" />
           </div>
         )}
-
-        {showOffer && <SpinWheelModal onClose={() => setShowOffer(false)} />}
 
         {showPrivacyNotice && (
           <div className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/60 p-4 sm:items-center">
