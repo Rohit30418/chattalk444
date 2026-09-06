@@ -89,56 +89,114 @@ const AiCard = memo(({
         className="flex transition-transform duration-500 ease-out motion-reduce:transition-none"
         style={{ transform: `translateX(-${activeSlide * 100}%)` }}
       >
-        <section className="relative min-h-[230px] w-full shrink-0 bg-[#07111f] p-5 sm:min-h-[250px] sm:p-6 lg:p-7">
-          <div className="relative z-10 flex min-h-[190px] flex-col justify-between gap-6 pr-[35%] sm:pr-[38%]">
+        {/* LUNA AI */}
+        <section className="relative min-h-[250px] w-full shrink-0 overflow-hidden bg-[#07111f] p-5 sm:min-h-[270px] sm:p-6 lg:p-7">
+          <div className="relative z-20 flex min-h-[210px] max-w-[62%] flex-col justify-between gap-5 sm:max-w-[58%] lg:max-w-[60%]">
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">
-                  <i className="fa-solid fa-robot text-teal-300" aria-hidden="true" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-teal-200">
+                  <i className="fa-solid fa-robot" aria-hidden="true" />
                   {pageName}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold text-emerald-300">
+
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-300">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  24/7
+                  Online 24/7
                 </span>
               </div>
 
-              <h3 className="max-w-[17rem] text-xl font-black leading-tight tracking-tight text-white sm:text-2xl lg:text-3xl">
+              <p className="mb-1 text-[11px] font-black uppercase tracking-[0.18em] text-teal-300">
+                Meet your speaking partner
+              </p>
+
+              <h3 className="max-w-[24rem] text-2xl font-black leading-[1.08] tracking-[-0.035em] text-white sm:text-3xl lg:text-[2.15rem]">
                 {title}
               </h3>
-              <p className="mt-2 max-w-[20rem] text-xs font-medium leading-5 text-slate-300 sm:text-sm sm:leading-6">
+
+              <p className="mt-3 max-w-[26rem] text-xs font-medium leading-5 text-slate-300 sm:text-sm sm:leading-6">
                 {description}
               </p>
+
+              <div className="mt-4 hidden flex-wrap gap-2 sm:flex">
+                {[
+                  ['fa-microphone-lines', 'Voice practice'],
+                  ['fa-comment-dots', 'Instant replies'],
+                  ['fa-chart-line', 'Pronunciation help'],
+                ].map(([icon, label]) => (
+                  <span
+                    key={label}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-bold text-slate-300"
+                  >
+                    <i className={`fa-solid ${icon} text-teal-300`} aria-hidden="true" />
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 pb-3">
+            <div className="flex flex-wrap items-center gap-3 pb-3">
               <button
                 type="button"
                 onClick={handleTalkNow}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-teal-700 shadow-sm transition-colors hover:bg-slate-100 sm:px-5 sm:py-3"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 px-4 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-teal-400 sm:px-5 sm:py-3"
               >
-                Talk Now
+                Start talking
                 <i className="fa-solid fa-microphone-lines text-xs" aria-hidden="true" />
               </button>
-              <span className="hidden text-[11px] font-semibold text-slate-500 sm:inline">
+
+              <span className="hidden items-center gap-2 text-[11px] font-semibold text-slate-400 sm:inline-flex">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.06] text-[9px] text-teal-300">
+                  <i className="fa-solid fa-cube" aria-hidden="true" />
+                </span>
                 Voice + 3D avatar
               </span>
             </div>
           </div>
 
+          {/* Lightweight visual panel - no blur or continuous animation */}
+          <div className="absolute inset-y-4 right-4 z-10 hidden w-[35%] overflow-hidden rounded-[1.3rem] border border-white/10 bg-[#0b1b29] sm:block lg:w-[34%]">
+            <div className="absolute left-4 top-4 z-20 rounded-xl border border-teal-300/20 bg-[#0c2529] px-3 py-2">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-teal-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-300" />
+                Live coaching
+              </div>
+              <div className="mt-2 flex items-end gap-1" aria-hidden="true">
+                {[8, 14, 20, 11, 17, 9].map((height, index) => (
+                  <span
+                    key={`${height}-${index}`}
+                    className="w-1 rounded-full bg-teal-300/80"
+                    style={{ height: `${height}px` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="absolute bottom-4 left-4 z-20 rounded-xl border border-white/10 bg-[#0a1722]/95 px-3 py-2 text-left">
+              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                Luna can help with
+              </p>
+              <p className="mt-1 text-[11px] font-bold text-white">
+                Interviews · fluency · confidence
+              </p>
+            </div>
+          </div>
+
           <img
             src={AVATAR_URL}
-            alt="AI avatar"
+            alt="Luna AI speaking coach"
             loading="lazy"
             decoding="async"
             fetchPriority="low"
             referrerPolicy="no-referrer"
-            className="pointer-events-none absolute bottom-0 right-0 z-10 w-[40%] max-w-[175px] object-contain sm:max-w-[220px] lg:max-w-[250px]"
+            className="pointer-events-none absolute bottom-0 right-0 z-10 w-[42%] max-w-[185px] object-contain sm:right-[1.5%] sm:w-[31%] sm:max-w-[240px] lg:max-w-[270px]"
           />
+
+          <div className="pointer-events-none absolute bottom-0 left-0 h-1 w-full bg-teal-500/70" />
         </section>
 
-        <section className="relative min-h-[230px] w-full shrink-0 bg-[#0b1717] p-5 sm:min-h-[250px] sm:p-6 lg:p-7">
-          <div className="relative z-10 flex min-h-[190px] flex-col justify-between gap-5 pr-0 sm:pr-[34%]">
+        {/* PREMIUM */}
+        <section className="relative min-h-[250px] w-full shrink-0 bg-[#0b1717] p-5 sm:min-h-[270px] sm:p-6 lg:p-7">
+          <div className="relative z-10 flex min-h-[210px] flex-col justify-between gap-5 pr-0 sm:pr-[34%]">
             <div>
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-200">
