@@ -22,6 +22,12 @@ const HomePage = () => {
   return (
     <div className="vaani-home">
       <style>{`
+        @property --vaani-pill-angle {
+          syntax: '<angle>';
+          inherits: false;
+          initial-value: 0deg;
+        }
+
         .vaani-home {
           font-size: 15px;
         }
@@ -62,6 +68,46 @@ const HomePage = () => {
 
         .vaani-home > section:first-of-type a {
           font-size: 0.925rem !important;
+        }
+
+        /* Premium moving edge glow for the main pill badge in each homepage section. */
+        .vaani-home section > div > div:first-child > .inline-flex.rounded-full {
+          border: 1px solid transparent !important;
+          background:
+            linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+            conic-gradient(
+              from var(--vaani-pill-angle),
+              rgba(16, 185, 129, 0.16) 0deg,
+              rgba(16, 185, 129, 0.16) 250deg,
+              #10b981 282deg,
+              #5eead4 312deg,
+              #a7f3d0 332deg,
+              #10b981 346deg,
+              rgba(16, 185, 129, 0.16) 360deg
+            ) border-box !important;
+          box-shadow:
+            0 0 0 1px rgba(16, 185, 129, 0.04),
+            0 0 16px rgba(16, 185, 129, 0.12);
+          animation: vaani-pill-edge 4.8s linear infinite;
+          will-change: --vaani-pill-angle;
+        }
+
+        .dark .vaani-home section > div > div:first-child > .inline-flex.rounded-full {
+          box-shadow:
+            0 0 0 1px rgba(94, 234, 212, 0.05),
+            0 0 18px rgba(16, 185, 129, 0.16);
+        }
+
+        @keyframes vaani-pill-edge {
+          to {
+            --vaani-pill-angle: 360deg;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .vaani-home section > div > div:first-child > .inline-flex.rounded-full {
+            animation: none;
+          }
         }
 
         @media (max-width: 640px) {
