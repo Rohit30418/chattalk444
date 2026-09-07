@@ -1,6 +1,8 @@
 import React, { memo, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import api from '../../services/api';
+import { useAuth } from '../auth/AppWrapper';
 
 const AVATAR_URL =
   'https://static.vecteezy.com/system/resources/previews/034/599/439/non_2x/ai-generated-3d-cute-cartoon-woman-character-in-blue-suit-on-transparent-background-png.png';
@@ -19,7 +21,9 @@ const AiCard = memo(({
   description = 'Practice speaking without pressure. Talk, listen, improve pronunciation, and build confidence.',
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [checkingAccess, setCheckingAccess] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -38,50 +42,92 @@ const AiCard = memo(({
     event?.preventDefault();
     event?.stopPropagation();
 
-    const accessCode = String(import.meta.env.VITE_AI_ACCESS_CODE || '').trim();
-
-    if (!accessCode) {
-      navigate('/ai-bot');
-      return;
-    }
-
     const theme = getTheme();
-    const { value: password } = await Swal.fire({
-      title: 'Unlock AI Room',
-      text: 'Enter your access code to continue.',
-      input: 'password',
-      inputPlaceholder: 'Access code',
-      showCancelButton: true,
-      confirmButtonText: 'Continue',
-      confirmButtonColor: '#0f766e',
-      cancelButtonColor: '#ef4444',
-      background: theme.background,
-      color: theme.color,
-      customClass: {
-        popup: 'rounded-2xl',
-        confirmButton: 'rounded-xl',
-        cancelButton: 'rounded-xl',
-      },
-    });
 
-    if (!password) return;
-
-    if (password.trim() === accessCode) {
-      navigate('/ai-bot');
+    if (!user?.uid) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Sign in required',
+        text: 'Please sign in to your Vaani account before opening Luna AI.',
+        confirmButtonText: 'Got it',
+        confirmButtonColor: '#0f766e',
+        background: theme.background,
+        color: theme.color,
+        customClass: { popup: 'rounded-2xl', confirmButton: 'rounded-xl' },
+      });
       return;
     }
 
-    Swal.fire({
-      icon: 'error',
-      title: 'Access denied',
-      text: 'The access code is incorrect.',
-      timer: 1500,
-      showConfirmButton: false,
-      background: theme.background,
-      color: theme.color,
-      customClass: { popup: 'rounded-2xl' },
-    });
-  }, [navigate]);
+    setCheckingAccess(true);
+
+    try {
+      const { data } = await api.get(`/api/users/${encodeURIComponent(user.uid)}`);
+
+      if (data?.isMember === true) {
+        navigate('/ai-bot');
+        return;
+      }
+
+      const result = await Swal.fire({
+        icon: 'info',
+        title: 'Membership required',
+        text: 'Luna AI voice practice is available to Vaani members. Choose a membership plan to unlock this feature.',
+        showCancelButton: true,
+        confirmButtonText: 'View plans',
+        cancelButtonText: 'Not now',
+        confirmButtonColor: '#0f766e',
+        cancelButtonColor: '#64748b',
+        background: theme.background,
+        color: theme.color,
+        customClass: {
+          popup: 'rounded-2xl',
+          confirmButton: 'rounded-xl',
+          cancelButton: 'rounded-xl',
+        },
+      });
+
+      if (result.isConfirmed) {
+        navigate('/#pricing');
+      }
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        const result = await Swal.fire({
+          icon: 'info',
+          title: 'Membership required',
+          text: 'Your Vaani profile does not have an active membership yet.',
+          showCancelButton: true,
+          confirmButtonText: 'View plans',
+          cancelButtonText: 'Not now',
+          confirmButtonColor: '#0f766e',
+          cancelButtonColor: '#64748b',
+          background: theme.background,
+          color: theme.color,
+          customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'rounded-xl',
+            cancelButton: 'rounded-xl',
+          },
+        });
+
+        if (result.isConfirmed) navigate('/#pricing');
+        return;
+      }
+
+      console.error('Failed to verify AI membership:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Could not verify membership',
+        text: 'Please try again in a moment.',
+        confirmButtonText: 'Okay',
+        confirmButtonColor: '#0f766e',
+        background: theme.background,
+        color: theme.color,
+        customClass: { popup: 'rounded-2xl', confirmButton: 'rounded-xl' },
+      });
+    } finally {
+      setCheckingAccess(false);
+    }
+  }, [navigate, user?.uid]);
 
   return (
     <div className="relative overflow-hidden rounded-[1.6rem] border border-slate-800 bg-[#07111f] shadow-sm">
@@ -97,6 +143,11 @@ const AiCard = memo(({
                 <span className="inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-teal-200">
                   <i className="fa-solid fa-robot" aria-hidden="true" />
                   {pageName}
+                </span>
+
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-amber-200">
+                  <i className="fa-solid fa-lock text-[9px]" aria-hidden="true" />
+                  Members only
                 </span>
 
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-300">
@@ -138,10 +189,11 @@ const AiCard = memo(({
               <button
                 type="button"
                 onClick={handleTalkNow}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 px-4 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-teal-400 sm:px-5 sm:py-3"
+                disabled={checkingAccess}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 px-4 py-2.5 text-sm font-black text-white shadow-sm transition-colors hover:bg-teal-400 disabled:cursor-wait disabled:opacity-70 sm:px-5 sm:py-3"
               >
-                Start talking
-                <i className="fa-solid fa-microphone-lines text-xs" aria-hidden="true" />
+                {checkingAccess ? 'Checking access...' : 'Start talking'}
+                <i className={`fa-solid ${checkingAccess ? 'fa-spinner fa-spin' : 'fa-microphone-lines'} text-xs`} aria-hidden="true" />
               </button>
 
               <span className="hidden items-center gap-2 text-[11px] font-semibold text-slate-400 sm:inline-flex">
@@ -153,7 +205,6 @@ const AiCard = memo(({
             </div>
           </div>
 
-          {/* Lightweight visual panel - no blur or continuous animation */}
           <div className="absolute inset-y-4 right-4 z-10 hidden w-[35%] overflow-hidden rounded-[1.3rem] border border-white/10 bg-[#0b1b29] sm:block lg:w-[34%]">
             <div className="absolute left-4 top-4 z-20 rounded-xl border border-teal-300/20 bg-[#0c2529] px-3 py-2">
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-teal-200">
