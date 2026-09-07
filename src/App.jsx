@@ -9,6 +9,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { store } from './store';
 import { AuthProvider } from './components/auth/AppWrapper';
+import MemberRoute from './components/auth/MemberRoute';
 import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
 import ErrorBoundary from './ErrorBoundary';
@@ -19,20 +20,19 @@ const Mainbody = lazy(() => import('./components/AppBody/Mainbody'));
 const Room = lazy(() => import('./room/Room'));
 const MyProfile = lazy(() => import('./components/AppBody/MyProfile'));
 const AiCharacter = lazy(() => import('./components/ai/AiCharacter'));
-const NotFound=lazy(()=>import('./NotFound'));
+const NotFound = lazy(() => import('./NotFound'));
+
 const SuspenseLayout = ({ children }) => (
   <Suspense fallback={<GradientSpinner />}>
     {children}
   </Suspense>
 );
 
-
-
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
-    errorElement:<ErrorBoundary/>,
+    errorElement: <ErrorBoundary />,
     children: [
       {
         index: true,
@@ -74,7 +74,6 @@ const router = createBrowserRouter([
     ),
   },
 
-  // Profile route
   {
     path: '/profile/:userId',
     element: (
@@ -84,7 +83,6 @@ const router = createBrowserRouter([
     ),
   },
 
-  // Alias support because some older code may use /MyProfile/:uid
   {
     path: '/MyProfile/:userId',
     element: (
@@ -97,13 +95,14 @@ const router = createBrowserRouter([
   {
     path: '/aiBot',
     element: (
-      <SuspenseLayout>
-        <AiCharacter />
-      </SuspenseLayout>
+      <MemberRoute>
+        <SuspenseLayout>
+          <AiCharacter />
+        </SuspenseLayout>
+      </MemberRoute>
     ),
   },
 
-  // Optional clean alias
   {
     path: '/ai-bot',
     element: <Navigate to="/aiBot" replace />,
@@ -117,12 +116,8 @@ const router = createBrowserRouter([
 
 function App() {
   return (
-
-   
     <Provider store={store}>
-  
       <AuthProvider>
-          
         <ToastContainer
           theme="colored"
           position="top-right"
@@ -135,10 +130,8 @@ function App() {
         />
 
         <RouterProvider router={router} />
-
       </AuthProvider>
     </Provider>
-
   );
 }
 
