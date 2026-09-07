@@ -38,7 +38,6 @@ const socials = [
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   const { pathname } = useLocation();
-
   const isRoomsPage = pathname === "/rooms";
 
   const footerContainerClass = isRoomsPage
@@ -46,74 +45,57 @@ const Footer = () => {
     : "container-app";
 
   return (
-    <footer className="relative overflow-hidden border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_86%,transparent)] px-4 py-12 text-[var(--color-muted)] backdrop-blur-xl sm:py-16">
-      <style>{`
-        .footer-glow {
-          background: radial-gradient(
-            circle,
-            color-mix(in srgb, var(--color-primary) 16%, transparent),
-            transparent 70%
-          );
-        }
-      `}</style>
-
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="footer-glow absolute -left-24 top-10 h-72 w-72 rounded-full blur-[90px]" />
-        <div className="absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-[color-mix(in_srgb,var(--color-accent)_16%,transparent)] blur-[90px]" />
-      </div>
-
+    <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-10 text-[var(--color-muted)] sm:py-12">
       <div className={footerContainerClass}>
-        <div className="grid gap-10 lg:grid-cols-[1.4fr_2fr] lg:gap-16">
-          {/* Brand */}
+        <div className="grid gap-9 lg:grid-cols-[1.35fr_2fr] lg:gap-14">
           <div>
             <Link to="/" className="inline-flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-secondary)] to-[var(--color-accent)] text-[var(--color-on-primary)] [box-shadow:var(--shadow-teal)]">
-                <i className="fa-solid fa-comments text-lg" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-primary)] text-[var(--color-on-primary)]">
+                <i className="fa-solid fa-comments text-base" aria-hidden="true" />
               </span>
 
               <span>
-                <span className="block text-2xl font-black tracking-tight text-[var(--color-text)]">
+                <span className="block text-xl font-extrabold tracking-tight text-[var(--color-text)]">
                   Vaani
                 </span>
-                <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-soft)]">
+                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-soft)]">
                   Speak together
                 </span>
               </span>
             </Link>
 
-            <p className="mt-5 max-w-md text-sm font-medium leading-7 text-[var(--color-muted)]">
+            <p className="mt-4 max-w-md text-[13px] font-medium leading-6 text-[var(--color-muted)]">
               A clean, real-time voice-room experience for learners who want
               live practice, better pronunciation, and a safer community.
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-2.5">
               {socials.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-soft)] [box-shadow:var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[var(--color-border-strong)] hover:text-[var(--color-primary-700)]"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-soft)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-primary-700)]"
                   aria-label={item.label}
                 >
-                  <i className={`${item.icon} text-sm`} />
+                  <i className={`${item.icon} text-xs`} aria-hidden="true" />
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Links */}
-          <div className="grid gap-8 sm:grid-cols-3">
+          <div className="grid gap-7 sm:grid-cols-3">
             {footerGroups.map((group) => (
               <div key={group.title}>
-                <h3 className="text-sm font-black uppercase tracking-[0.16em] text-[var(--color-text)]">
+                <h3 className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-[var(--color-text)]">
                   {group.title}
                 </h3>
 
-                <ul className="mt-4 space-y-3">
+                <ul className="mt-3.5 space-y-2.5">
                   {group.links.map((item) => (
                     <li key={item.label}>
                       <Link
                         to={item.to}
-                        className="text-sm font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-primary-700)]"
+                        className="text-[13px] font-medium text-[var(--color-muted)] transition-colors hover:text-[var(--color-primary-700)]"
                       >
                         {item.label}
                       </Link>
@@ -125,9 +107,8 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="mt-10 flex flex-col justify-between gap-4 border-t border-[var(--color-border)] pt-6 text-sm font-semibold md:flex-row md:items-center">
-          <p className="text-[var(--color-muted)]">
+        <div className="mt-8 flex flex-col justify-between gap-3 border-t border-[var(--color-border)] pt-5 text-[12px] font-medium md:flex-row md:items-center">
+          <p className="text-[12px] text-[var(--color-muted)]">
             © {currentYear} Vaani Inc. All rights reserved.
           </p>
 
@@ -135,10 +116,10 @@ const Footer = () => {
             href="https://rohitpant.in/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-[var(--color-muted)] [box-shadow:var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-[var(--color-border-strong)] hover:text-[var(--color-primary-700)]"
+            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-[12px] text-[var(--color-muted)] transition-colors hover:border-[var(--color-border-strong)] hover:text-[var(--color-primary-700)]"
           >
             Designed & Developed by Rohit Pant
-            <i className="fa-solid fa-heart text-[var(--color-danger)]" />
+            <i className="fa-solid fa-heart text-[10px] text-[var(--color-danger)]" aria-hidden="true" />
           </a>
         </div>
       </div>
