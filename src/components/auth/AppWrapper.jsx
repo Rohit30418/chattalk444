@@ -24,14 +24,36 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const auth = getAuth(firebaseApp);
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser({
+        const baseUser = {
           uid: firebaseUser.uid,
           displayName: firebaseUser.displayName,
           email: firebaseUser.email,
           photoURL: firebaseUser.photoURL,
-        });
+        };
+
+        try {
+          const { data } = await axios.post(`${backendUrl}/api/users`, baseUser);
+          const backendUser = data?.user || {};
+          const syncedUser = {
+            ...baseUser,
+            ...backendUser,
+            uid: firebaseUser.uid,
+            isMember: backendUser?.isMember === true,
+          };
+
+          setUser(syncedUser);
+          localStorage.setItem('userInfo', JSON.stringify(syncedUser));
+        } catch (error) {
+          console.error('Failed to sync user profile with backend:', error);
+          const fallbackUser = {
+            ...baseUser,
+            isMember: false,
+          };
+          setUser(fallbackUser);
+          localStorage.setItem('userInfo', JSON.stringify(fallbackUser));
+        }
 
         if (!socket.connected) socket.connect();
         setLoading(false);
@@ -39,7 +61,11 @@ export const AuthProvider = ({ children }) => {
         try {
           const storedUser = localStorage.getItem('userInfo');
           if (storedUser) {
-            setUser(JSON.parse(storedUser));
+            const parsedUser = JSON.parse(storedUser);
+            setUser({
+              ...parsedUser,
+              isMember: parsedUser?.isMember === true,
+            });
             if (!socket.connected) socket.connect();
           }
         } catch (error) {
@@ -61,8 +87,13 @@ export const AuthProvider = ({ children }) => {
         { email, password }
       );
 
-      setUser(data);
-      localStorage.setItem('userInfo', JSON.stringify(data));
+      const loggedInUser = {
+        ...data,
+        isMember: data?.isMember === true,
+      };
+
+      setUser(loggedInUser);
+      localStorage.setItem('userInfo', JSON.stringify(loggedInUser));
 
       if (!socket.connected) {
         socket.connect();
@@ -83,8 +114,13 @@ export const AuthProvider = ({ children }) => {
         { displayName, email, password }
       );
 
-      setUser(data);
-      localStorage.setItem('userInfo', JSON.stringify(data));
+      const registeredUser = {
+        ...data,
+        isMember: data?.isMember === true,
+      };
+
+      setUser(registeredUser);
+      localStorage.setItem('userInfo', JSON.stringify(registeredUser));
 
       if (!socket.connected) {
         socket.connect();
@@ -97,6 +133,27 @@ export const AuthProvider = ({ children }) => {
       );
     }
   }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (!user?.uid) return null;
+
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/users/${encodeURIComponent(user.uid)}`);
+      const refreshedUser = {
+        ...user,
+        ...data,
+        uid: user.uid,
+        isMember: data?.isMember === true,
+      };
+
+      setUser(refreshedUser);
+      localStorage.setItem('userInfo', JSON.stringify(refreshedUser));
+      return refreshedUser;
+    } catch (error) {
+      console.error('Failed to refresh user profile:', error);
+      return null;
+    }
+  }, [user]);
 
   const logout = useCallback(async () => {
     const auth = getAuth(firebaseApp);
@@ -122,10 +179,11 @@ export const AuthProvider = ({ children }) => {
       user,
       login,
       register,
+      refreshUser,
       logout,
       loading,
     }),
-    [user, login, register, logout, loading]
+    [user, login, register, refreshUser, logout, loading]
   );
 
   if (loading) {
