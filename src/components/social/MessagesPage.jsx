@@ -325,10 +325,10 @@ const MessagesPage = () => {
             </div>
           </aside>
 
-          <section className={`${activeConversation ? 'flex' : 'hidden lg:flex'} min-h-0 flex-col`}>
+          <section className={`${activeConversation ? 'flex' : 'hidden lg:flex'} relative min-h-0 flex-col overflow-hidden`}>
             {activeConversation ? (
               <>
-                <div className="flex h-18 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10 sm:px-5">
+                <div className="flex h-18 shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10 sm:px-5">
                   <button type="button" onClick={() => { setActiveConversation(null); setSearchParams({}); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 lg:hidden dark:border-white/10 dark:text-slate-300"><i className="fa-solid fa-arrow-left text-xs" /></button>
                   <Avatar user={activeConversation.otherUser} />
                   <div className="min-w-0 flex-1">
@@ -365,7 +365,7 @@ const MessagesPage = () => {
                   )}
                 </div>
 
-                <form onSubmit={sendMessage} className="border-t border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#0b1220] sm:p-4">
+                <form onSubmit={sendMessage} className="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0b1220]/95 sm:p-4">
                   <div className="mx-auto flex max-w-3xl items-end gap-2">
                     <textarea
                       value={draft}
