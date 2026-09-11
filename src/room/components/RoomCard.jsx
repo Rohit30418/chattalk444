@@ -164,17 +164,22 @@ const RoomCard = ({ roomdata }) => {
     `Join the conversation and practice ${language} with other Vaani learners.`
   );
 
-  const isPremiumRoom = room.isPremiumRoom === true || room.hostIsMember === true;
-  const hostIsMember = room.hostIsMember === true || room.isPremiumRoom === true;
-  const isMembersOnly = room.isMembersOnly === true;
+  const isDemoPremiumRoom = roomId === 'room_008';
+  const isPremiumRoom = room.isPremiumRoom === true || room.hostIsMember === true || isDemoPremiumRoom;
+  const hostIsMember = room.hostIsMember === true || room.isPremiumRoom === true || isDemoPremiumRoom;
+  const isMembersOnly = room.isMembersOnly === true || isDemoPremiumRoom;
   const premiumFeatures = useMemo(() => {
     if (Array.isArray(room.premiumFeatures) && room.premiumFeatures.length) {
       return room.premiumFeatures.slice(0, 3);
     }
 
+    if (isDemoPremiumRoom) {
+      return ['AI feedback', 'Priority room', 'Members only'];
+    }
+
     if (!isPremiumRoom) return [];
     return ['AI feedback', 'Priority room'];
-  }, [isPremiumRoom, room.premiumFeatures]);
+  }, [isDemoPremiumRoom, isPremiumRoom, room.premiumFeatures]);
 
   const participants = useMemo(() => getParticipants(room), [room]);
   const activeCount = Math.max(0, safeNumber(room.participantsCount ?? room.activeCount ?? room.memberCount ?? participants.length, participants.length));
