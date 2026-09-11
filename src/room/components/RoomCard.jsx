@@ -110,19 +110,27 @@ const ProfilePhoto = memo(({ src, name, className = 'h-6 w-6', rounded = 'rounde
 
 ProfilePhoto.displayName = 'ProfilePhoto';
 
-const AvatarStack = memo(({ roomId, participants, activeCount, ownerName, ownerPhoto, memberHost, profileTheme }) => {
-  const withOwner = useMemo(() => {
-    const list = Array.isArray(participants) ? [...participants] : [];
-    if (ownerPhoto && !list.some((item) => getParticipantPhoto(item) === ownerPhoto)) {
-      list.unshift({ uid: `${roomId}-owner`, displayName: ownerName, photoURL: ownerPhoto });
-    }
-    return list;
-  }, [ownerName, ownerPhoto, participants, roomId]);
+const AvatarStack = memo(({ roomId, participants, activeCount, memberHost, profileTheme }) => {
+  const activeParticipants = useMemo(
+    () => (Array.isArray(participants) ? participants.filter(Boolean).slice(0, Math.max(activeCount, 0)) : []),
+    [participants, activeCount]
+  );
 
-  if (!withOwner.length) {
+  if (activeCount <= 0) {
+    return (
+      <div className="inline-flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500" aria-label="No active participants">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]">
+          <i className="fa-solid fa-user text-[9px]" aria-hidden="true" />
+        </span>
+        <span>Empty</span>
+      </div>
+    );
+  }
+
+  if (!activeParticipants.length) {
     return (
       <div className="flex -space-x-2" aria-label={`${activeCount} active participants`}>
-        {Array.from({ length: Math.min(Math.max(activeCount, 1), 3) }, (_, index) => (
+        {Array.from({ length: Math.min(activeCount, 3) }, (_, index) => (
           <span key={`${roomId}-placeholder-${index}`} className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[9px] font-black text-slate-500 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-300">
             {index + 1}
           </span>
@@ -134,7 +142,7 @@ const AvatarStack = memo(({ roomId, participants, activeCount, ownerName, ownerP
     );
   }
 
-  const visible = withOwner.slice(0, 4);
+  const visible = activeParticipants.slice(0, 4);
 
   return (
     <div className="flex -space-x-2" aria-label={`${activeCount} active participants`}>
@@ -281,8 +289,6 @@ const RoomCard = ({ roomdata }) => {
           roomId={roomId}
           participants={participants}
           activeCount={activeCount}
-          ownerName={ownerName}
-          ownerPhoto={ownerPhoto}
           memberHost={hostIsMember}
           profileTheme={profileTheme}
         />
