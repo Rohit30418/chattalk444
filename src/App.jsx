@@ -14,11 +14,12 @@ import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
 import ErrorBoundary from './ErrorBoundary';
 
-// Lazy-loaded pages
 const HomePage = lazy(() => import('./Home/HomePage'));
 const Mainbody = lazy(() => import('./components/AppBody/Mainbody'));
 const Room = lazy(() => import('./room/Room'));
-const MyProfile = lazy(() => import('./components/AppBody/MyProfile'));
+const SocialProfilePage = lazy(() => import('./components/social/SocialProfilePage'));
+const ConnectPage = lazy(() => import('./components/social/ConnectPage'));
+const MessagesPage = lazy(() => import('./components/social/MessagesPage'));
 const AiCharacter = lazy(() => import('./components/ai/AiCharacter'));
 const NotFound = lazy(() => import('./NotFound'));
 
@@ -51,6 +52,22 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: 'connect',
+        element: (
+          <SuspenseLayout>
+            <ConnectPage />
+          </SuspenseLayout>
+        ),
+      },
+      {
+        path: 'messages',
+        element: (
+          <SuspenseLayout>
+            <MessagesPage />
+          </SuspenseLayout>
+        ),
+      },
+      {
         path: 'room',
         element: <Navigate to="/rooms" replace />,
       },
@@ -78,7 +95,7 @@ const router = createBrowserRouter([
     path: '/profile/:userId',
     element: (
       <SuspenseLayout>
-        <MyProfile />
+        <SocialProfilePage />
       </SuspenseLayout>
     ),
   },
@@ -87,7 +104,7 @@ const router = createBrowserRouter([
     path: '/MyProfile/:userId',
     element: (
       <SuspenseLayout>
-        <MyProfile />
+        <SocialProfilePage />
       </SuspenseLayout>
     ),
   },
