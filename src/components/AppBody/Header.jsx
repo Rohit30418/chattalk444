@@ -6,16 +6,15 @@ import Swal from "sweetalert2";
 import { loginToggle } from "../../redux/action";
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import { useAuth } from "../auth/AppWrapper";
+import "../../styles/memberEffects.css";
 
-// 1. UPDATED NAV ITEMS
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
-  { label: "Luna AI", to: "/rooms#ai-bot" }, 
+  { label: "Luna AI", to: "/rooms#ai-bot" },
   { label: "Pricing", to: "/#pricing" },
 ];
 
-/* Inline SVG Icons */
 const SunIcon = ({ className = "" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M12 17A5 5 0 1 0 12 7A5 5 0 0 0 12 17Z" stroke="currentColor" strokeWidth="2" />
@@ -87,6 +86,11 @@ const getCssVar = (name, fallback = "") => {
   );
 };
 
+const normalizeProfileTheme = (value) => {
+  const theme = typeof value === "string" ? value.trim().toLowerCase() : "aurora";
+  return ["aurora", "gold", "galaxy"].includes(theme) ? theme : "aurora";
+};
+
 const Header = () => {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -101,6 +105,7 @@ const Header = () => {
   const isRoomsPage = location.pathname === "/rooms";
   const containerWidth = isRoomsPage ? "max-w-8xl" : "max-w-7xl";
   const loginStatus = Boolean(user);
+  const memberProfileTheme = normalizeProfileTheme(user?.profileAnimationId);
 
   const displayName = useMemo(
     () => user?.displayName || user?.email?.split("@")[0] || "Learner",
@@ -111,14 +116,12 @@ const Header = () => {
     return (displayName || "Learner").trim().charAt(0).toUpperCase();
   }, [displayName]);
 
-  // Sync Theme to HTML
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // OPTIMIZATION: Throttled Scroll Listener using requestAnimationFrame
   useEffect(() => {
     let ticking = false;
 
@@ -132,20 +135,17 @@ const Header = () => {
       }
     };
 
-    // Run once on mount to get initial position
     onScroll();
 
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Reset menus on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsProfileOpen(false);
   }, [location.pathname, location.hash]);
 
-  // Handle body scroll locking
   useEffect(() => {
     document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
     return () => {
@@ -177,15 +177,14 @@ const Header = () => {
     });
   }, [dispatch, logout]);
 
-  // OPTIMIZATION: Memoized Active Check
   const checkIsActive = useCallback((itemTo) => {
     const currentPath = location.pathname;
     const currentHash = location.hash;
     const currentFullPath = currentPath + currentHash;
 
     if (currentPath === "/ai-bot" || currentPath === "/aiBot") {
-      if (itemTo.includes("ai-bot")) return true; 
-      return false; 
+      if (itemTo.includes("ai-bot")) return true;
+      return false;
     }
 
     if (itemTo === currentFullPath) return true;
@@ -196,9 +195,9 @@ const Header = () => {
       const isAnotherTabExactlyActive = navItems.some(
         (nav) => nav.to === currentFullPath
       );
-      
+
       if (isAnotherTabExactlyActive) {
-        return false; 
+        return false;
       }
       return true;
     }
@@ -206,7 +205,6 @@ const Header = () => {
     return false;
   }, [location.pathname, location.hash]);
 
-  // OPTIMIZATION: Memoized Nav Classes
   const getNavClass = useCallback((itemTo) => {
     const isActive = checkIsActive(itemTo);
     return `inline-flex items-center rounded-full px-5 py-2.5 text-sm font-black transition-colors duration-200 ${
@@ -225,9 +223,21 @@ const Header = () => {
     }`;
   }, [checkIsActive]);
 
+  const profileVisual = user?.photoURL ? (
+    <img
+      src={user.photoURL}
+      alt={displayName}
+      className="h-8 w-8 rounded-xl object-cover sm:h-9 sm:w-9"
+      referrerPolicy="no-referrer"
+    />
+  ) : (
+    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-sm font-black text-[var(--color-on-primary)] sm:h-9 sm:w-9">
+      {initials}
+    </span>
+  );
+
   return (
     <>
-      {/* OPTIMIZATION: Removed transition-all, replaced with targeted transitions to save GPU */}
       <header
         className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-200 ${
           scrolled || isMobileMenuOpen
@@ -238,7 +248,6 @@ const Header = () => {
         <div
           className={`relative mx-auto flex h-[68px] ${containerWidth} items-center justify-between gap-3 px-5 lg:h-[82px]`}
         >
-          {/* Logo */}
           <Link
             to="/"
             className="flex min-w-0 shrink-0 items-center gap-3"
@@ -277,7 +286,6 @@ const Header = () => {
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_88%,transparent)] p-1 [box-shadow:var(--shadow-card)] lg:flex">
             {navItems.map((item) => (
               <Link key={item.to} to={item.to} className={getNavClass(item.to)}>
@@ -286,9 +294,7 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Right Actions */}
           <div className="flex shrink-0 items-center gap-2">
-            {/* Theme Toggle */}
             <button
               type="button"
               onClick={toggleTheme}
@@ -319,18 +325,11 @@ const Header = () => {
                   className="flex h-10 items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1 pr-1 transition-colors duration-200 hover:border-[var(--color-border-strong)] sm:h-11 sm:pr-3"
                   aria-expanded={isProfileOpen}
                 >
-                  {user?.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={displayName}
-                      className="h-8 w-8 rounded-xl object-cover sm:h-9 sm:w-9"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-sm font-black text-[var(--color-on-primary)] sm:h-9 sm:w-9">
-                      {initials}
+                  {user?.isMember ? (
+                    <span className={`vaani-profile-frame vaani-profile-theme-${memberProfileTheme} !rounded-2xl !p-[2px]`}>
+                      {profileVisual}
                     </span>
-                  )}
+                  ) : profileVisual}
 
                   <span className="hidden max-w-[130px] truncate text-sm font-black text-[var(--color-muted)] md:block">
                     {displayName}
@@ -342,9 +341,17 @@ const Header = () => {
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-[var(--color-text)] [box-shadow:var(--shadow-soft)]">
                     <div className="rounded-2xl bg-[var(--color-surface-2)] p-3">
-                      <p className="truncate text-sm font-black text-[var(--color-text)]">
-                        {displayName}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate text-sm font-black text-[var(--color-text)]">
+                          {displayName}
+                        </p>
+                        {user?.isMember && (
+                          <span className="vaani-member-badge inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300">
+                            <span className="vaani-member-star" aria-hidden="true">✦</span>
+                            Member
+                          </span>
+                        )}
+                      </div>
                       <p className="truncate text-xs font-semibold text-[var(--color-soft)]">
                         {user?.email || "Signed in"}
                       </p>
@@ -379,7 +386,6 @@ const Header = () => {
               </button>
             )}
 
-            {/* Mobile Menu Button */}
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((value) => !value)}
@@ -397,7 +403,6 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 bg-[var(--color-overlay)] pt-[76px] lg:hidden">
           <div className="mx-3 overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 [box-shadow:var(--shadow-soft)]">
