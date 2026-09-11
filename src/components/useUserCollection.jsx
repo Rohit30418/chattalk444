@@ -1,43 +1,65 @@
-import { useState, useEffect } from "react";
-import { getFirestore, doc, getDocs, collection } from "firebase/firestore";
-
-const db = getFirestore();
+import { useEffect, useState } from 'react';
+import api from '../services/api';
 
 function useUserCollection(userId) {
-  const [collectionsData, setCollectionsData] = useState({});
+  const [collectionsData, setCollectionsData] = useState({
+    following: [],
+    followers: [],
+    friends: [],
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!userId) return; // Avoid fetching if no userId
+    if (!userId) {
+      setCollectionsData({ following: [], followers: [], friends: [] });
+      setLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
 
     const fetchUserCollections = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // List of subcollections to fetch (you can change this dynamically)
-        const subcollections = ["following", "followers", "friends"]; // Example subcollection names
-        
-        const fetchPromises = subcollections.map(async (colName) => {
-          const subcollectionRef = collection(db, `users/${userId}/${colName}`);
-          const querySnapshot = await getDocs(subcollectionRef);
-          return { [colName]: querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) };
-        });
+        const types = ['following', 'followers', 'friends'];
+        const results = await Promise.all(
+          types.map(async (type) => {
+            const { data } = await api.get(
+              `/api/social/collections/${encodeURIComponent(userId)}/${type}`
+            );
+            const users = Array.isArray(data?.users) ? data.users : [];
+            return [
+              type,
+              users.map((user) => ({
+                ...user,
+                id: user.uid || user.id,
+              })),
+            ];
+          })
+        );
 
-        const results = await Promise.all(fetchPromises);
-        const allData = Object.assign({}, ...results);
-
-        setCollectionsData(allData);
+        if (!cancelled) {
+          setCollectionsData(Object.fromEntries(results));
+        }
       } catch (err) {
-        console.error("Error fetching user collections:", err);
-        setError(err);
+        console.error('Error fetching user social collections:', err);
+        if (!cancelled) {
+          setError(err);
+          setCollectionsData({ following: [], followers: [], friends: [] });
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchUserCollections();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   return { collectionsData, loading, error };
