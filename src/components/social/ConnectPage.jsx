@@ -13,6 +13,13 @@ const normalizeProfileTheme = (value) => {
   return ['aurora', 'gold', 'galaxy'].includes(theme) ? theme : 'aurora';
 };
 
+const profileThemeToCardTheme = (value) => {
+  const theme = normalizeProfileTheme(value);
+  if (theme === 'gold') return 'sunset';
+  if (theme === 'galaxy') return 'cosmic';
+  return 'aurora';
+};
+
 const formatLastActive = (value, isOnline = false) => {
   if (isOnline) return 'Online now';
   if (!value) return 'Offline';
@@ -101,10 +108,15 @@ const ConnectPage = () => {
       const hydrated = await Promise.all(
         rawUsers.map(async (person) => {
           try {
-            const profile = await api.get(`/api/social/profile/${encodeURIComponent(person.uid)}`);
+            const [profile, userDoc] = await Promise.all([
+              api.get(`/api/social/profile/${encodeURIComponent(person.uid)}`),
+              api.get(`/api/users/${encodeURIComponent(person.uid)}`),
+            ]);
+
             return {
               ...person,
               ...(profile.data?.user || {}),
+              ...(userDoc.data || {}),
               relationship: profile.data?.relationship || {},
               counts: profile.data?.counts || {},
             };
@@ -274,24 +286,25 @@ const ConnectPage = () => {
             const busy = busyUid === person.uid;
             const state = person.relationship || {};
             const isMember = person.isMember === true;
+            const memberCardTheme = profileThemeToCardTheme(person.profileAnimationId);
 
             return (
               <article
                 key={person.uid}
-                className={`relative overflow-hidden rounded-[1.6rem] border bg-white p-5 shadow-sm transition-colors dark:bg-[#101626] ${
+                className={`relative overflow-hidden rounded-[1.6rem] border p-5 shadow-sm transition-colors ${
                   isMember
-                    ? 'border-amber-300/70 ring-1 ring-amber-200/40 dark:border-amber-400/25 dark:ring-amber-400/10'
-                    : 'border-slate-200 hover:border-teal-300 dark:border-white/10 dark:hover:border-teal-400/30'
+                    ? `vaani-member-room vaani-room-theme-${memberCardTheme} border-amber-300/70 bg-white/95 dark:border-amber-400/25 dark:bg-[#101626]/95`
+                    : 'border-slate-200 bg-white hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:hover:border-teal-400/30'
                 }`}
               >
                 {isMember && (
-                  <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300">
+                  <div className="absolute right-4 top-4 z-[2] flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50/95 px-2 py-1 text-[9px] font-black text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-[#17130a]/95 dark:text-amber-300">
                     <span className="vaani-member-star text-xs" aria-hidden="true">✦</span>
-                    Member
+                    Vaani Member
                   </div>
                 )}
 
-                <div className={`flex items-start gap-4 ${isMember ? 'pr-16' : ''}`}>
+                <div className={`relative z-[1] flex items-start gap-4 ${isMember ? 'pr-24' : ''}`}>
                   <div className="relative shrink-0">
                     <MemberAvatar person={person} />
                     <span className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#101626] ${person.isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
@@ -309,19 +322,19 @@ const ConnectPage = () => {
                   </div>
                 </div>
 
-                <p className="mt-4 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">{person.bio || 'Ready to meet people, practice languages and have real conversations on Vaani.'}</p>
+                <p className="relative z-[1] mt-4 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">{person.bio || 'Ready to meet people, practice languages and have real conversations on Vaani.'}</p>
 
-                <div className="mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-[11px] font-bold text-slate-500 dark:border-white/[0.07] dark:text-slate-400">
+                <div className="relative z-[1] mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-[11px] font-bold text-slate-500 dark:border-white/[0.07] dark:text-slate-400">
                   <span>{Number(person.counts?.followers || 0)} followers</span>
                   <span>{Number(person.counts?.friends || 0)} friends</span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="relative z-[1] mt-4 grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => toggleFollow(person)}
                     disabled={busy}
-                    className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors ${state.isFollowing ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
+                    className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors ${state.isFollowing ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'border border-slate-200 bg-white/75 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-black/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
                   >
                     {state.isFollowing ? 'Following' : 'Follow'}
                   </button>
@@ -329,7 +342,7 @@ const ConnectPage = () => {
                     type="button"
                     onClick={() => connect(person)}
                     disabled={busy}
-                    className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors ${state.connectionStatus === 'friends' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
+                    className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors ${state.connectionStatus === 'friends' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border border-slate-200 bg-white/75 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-black/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
                   >
                     {connectionLabel(person)}
                   </button>
