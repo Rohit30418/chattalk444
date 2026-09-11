@@ -14,22 +14,21 @@ import { useAuth } from '../auth/AppWrapper';
 
 const face = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=120&h=120&q=82`;
 
-const LANGUAGE_FLAGS = {
-  abkhazian: '🏳️',
-  arabic: '🇸🇦',
-  chinese: '🇨🇳',
-  english: '🇬🇧',
-  french: '🇫🇷',
-  german: '🇩🇪',
-  hindi: '🇮🇳',
-  italian: '🇮🇹',
-  japanese: '🇯🇵',
-  korean: '🇰🇷',
-  mandarin: '🇨🇳',
-  portuguese: '🇵🇹',
-  russian: '🇷🇺',
-  spanish: '🇪🇸',
-  urdu: '🇵🇰',
+const LANGUAGE_FLAG_CODES = {
+  arabic: 'SA',
+  chinese: 'CN',
+  english: 'GB',
+  french: 'FR',
+  german: 'DE',
+  hindi: 'IN',
+  italian: 'IT',
+  japanese: 'JP',
+  korean: 'KR',
+  mandarin: 'CN',
+  portuguese: 'PT',
+  russian: 'RU',
+  spanish: 'ES',
+  urdu: 'PK',
 };
 
 const DUMMY_PEOPLE = {
@@ -113,9 +112,42 @@ const normalizeLanguage = (value) => {
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
 
-const getLanguageFlag = (language) => (
-  LANGUAGE_FLAGS[String(language || '').trim().toLowerCase()] || '🌐'
-);
+const getLanguageFlagUrl = (language) => {
+  const key = String(language || '').trim().toLowerCase();
+
+  if (key === 'abkhazian') {
+    return 'https://upload.wikimedia.org/wikipedia/commons/2/27/Flag_of_Abkhazia.svg';
+  }
+
+  const code = LANGUAGE_FLAG_CODES[key];
+  return code ? `https://flagsapi.com/${code}/flat/64.png` : '';
+};
+
+const LanguageFlag = ({ language, className = 'h-4 w-5' }) => {
+  const src = getLanguageFlagUrl(language);
+
+  if (!src) {
+    return (
+      <span className="inline-flex h-4 w-5 items-center justify-center text-xs" aria-hidden="true">
+        🌐
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      loading="lazy"
+      decoding="async"
+      className={`${className} shrink-0 rounded-[3px] object-cover shadow-[0_0_0_1px_rgba(15,23,42,0.08)]`}
+      onError={(event) => {
+        event.currentTarget.style.display = 'none';
+      }}
+    />
+  );
+};
 
 const HomeBody = () => {
   const dispatch = useDispatch();
@@ -240,18 +272,18 @@ const HomeBody = () => {
 
             <div className="grid w-full gap-2 sm:grid-cols-[190px_minmax(0,1fr)_auto] lg:max-w-3xl">
               <div className="relative">
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm" aria-hidden="true">
-                  {selectedLanguage ? getLanguageFlag(selectedLanguage) : '🌐'}
+                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2" aria-hidden="true">
+                  {selectedLanguage ? <LanguageFlag language={selectedLanguage} /> : <span className="text-sm">🌐</span>}
                 </span>
                 <select
                   value={selectedLanguage}
                   onChange={(event) => setSelectedLanguage(event.target.value)}
                   className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-11 pr-10 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-teal-500 dark:border-white/10 dark:bg-[#101626] dark:text-slate-200"
                 >
-                  <option value="">🌐 All languages</option>
+                  <option value="">All languages</option>
                   {languageList.map((lang) => (
                     <option key={lang.item} value={lang.item}>
-                      {getLanguageFlag(lang.item)} {lang.item} ({lang.count})
+                      {lang.item} ({lang.count})
                     </option>
                   ))}
                 </select>
@@ -285,7 +317,7 @@ const HomeBody = () => {
             <button
               type="button"
               onClick={() => setSelectedLanguage('')}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-black transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-black transition-colors ${
                 !selectedLanguage
                   ? 'bg-teal-700 text-white'
                   : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-slate-300'
@@ -300,13 +332,13 @@ const HomeBody = () => {
                 key={lang.item}
                 type="button"
                 onClick={() => setSelectedLanguage(lang.item)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-black transition-colors ${
+                className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-black transition-colors ${
                   selectedLanguage === lang.item
                     ? 'bg-teal-700 text-white'
                     : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-slate-300'
                 }`}
               >
-                <span className="text-sm" aria-hidden="true">{getLanguageFlag(lang.item)}</span>
+                <LanguageFlag language={lang.item} className="h-[14px] w-5" />
                 {lang.item}
               </button>
             ))}
