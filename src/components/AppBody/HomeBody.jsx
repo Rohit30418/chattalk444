@@ -116,6 +116,7 @@ const normalizeLanguage = (value) => {
 };
 
 const isMemberRoom = (room) => room?.hostIsMember === true || room?.isPremiumRoom === true;
+const getRoomOwnerUid = (room) => String(room?.ownerUid || room?.hostId || room?.createdBy || '');
 
 const getLanguageFlagUrl = (language) => {
   const key = String(language || '').trim().toLowerCase();
@@ -226,8 +227,16 @@ const HomeBody = () => {
 
         return matchesText && matchesLanguage;
       })
-      .sort((a, b) => Number(isMemberRoom(b)) - Number(isMemberRoom(a)));
-  }, [allRooms, deferredSearchText, selectedLanguage]);
+      .sort((a, b) => {
+        const ownDiff = Number(getRoomOwnerUid(b) === user?.uid) - Number(getRoomOwnerUid(a) === user?.uid);
+        if (ownDiff) return ownDiff;
+
+        const memberDiff = Number(isMemberRoom(b)) - Number(isMemberRoom(a));
+        if (memberDiff) return memberDiff;
+
+        return 0;
+      });
+  }, [allRooms, deferredSearchText, selectedLanguage, user?.uid]);
 
   const paginatedRooms = useMemo(
     () => filteredRooms.slice(0, PAGE_SIZE * page),
