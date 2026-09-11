@@ -30,11 +30,13 @@ const Icon = ({ type, className = '' }) => {
 
   if (type === 'connect') {
     return (
-      <svg {...common}>
-        <circle cx="8" cy="8" r="2.7" stroke="currentColor" strokeWidth="1.8" />
-        <circle cx="16.5" cy="9" r="2.3" stroke="currentColor" strokeWidth="1.7" />
-        <path d="M3.5 19c0-3 1.9-5 4.5-5s4.5 2 4.5 5M13 18.8c.2-2.3 1.7-3.8 3.8-3.8 2.2 0 3.7 1.6 3.7 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M13.7 5.6h4.8M16.1 3.2v4.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="8" cy="8" r="3" fill="currentColor" />
+        <circle cx="16.7" cy="9" r="2.4" fill="currentColor" opacity="0.8" />
+        <path d="M2.8 19.7c0-3.3 2.2-5.5 5.2-5.5s5.2 2.2 5.2 5.5c0 .5-.4.8-.8.8H3.6c-.5 0-.8-.3-.8-.8Z" fill="currentColor" />
+        <path d="M13.7 19.8c.2-2.7 1.9-4.5 4.3-4.5 2.2 0 3.7 1.5 4 3.8.1.7-.4 1.2-1.1 1.2h-7.2v-.5Z" fill="currentColor" opacity="0.8" />
+        <circle cx="18.8" cy="5.1" r="3.2" fill="currentColor" />
+        <path d="M18.8 3.5v3.2M17.2 5.1h3.2" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     );
   }
@@ -76,9 +78,10 @@ const MobileBottomNav = () => (
             key={item.to}
             to={item.to}
             end={item.end}
-            className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-colors ${isActive ? 'bg-teal-700 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white'}`}
+            aria-label={item.label === 'Connect' ? 'Open Connect people page' : item.label}
+            className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-colors ${isActive ? 'bg-teal-700 text-white' : item.icon === 'connect' ? 'text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-500/10' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white'}`}
           >
-            <Icon type={item.icon} className="h-5 w-5" />
+            <Icon type={item.icon} className={item.icon === 'connect' ? 'h-6 w-6' : 'h-5 w-5'} />
             <span className="w-full truncate text-center">{item.label}</span>
           </NavLink>
         ))}
