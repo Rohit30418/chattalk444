@@ -1,8 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import {
   RouterProvider,
   createBrowserRouter,
   Navigate,
+  useLocation,
 } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
@@ -23,11 +24,19 @@ const MessagesPage = lazy(() => import('./components/social/MessagesPage'));
 const AiCharacter = lazy(() => import('./components/ai/AiCharacter'));
 const NotFound = lazy(() => import('./NotFound'));
 
-const SuspenseLayout = ({ children }) => (
-  <Suspense fallback={<GradientSpinner />}>
-    {children}
-  </Suspense>
-);
+const SuspenseLayout = ({ children }) => {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname, search]);
+
+  return (
+    <Suspense fallback={<GradientSpinner />}>
+      {children}
+    </Suspense>
+  );
+};
 
 const router = createBrowserRouter([
   {
