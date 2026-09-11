@@ -1,4 +1,5 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 
@@ -7,20 +8,156 @@ import AddRoomForm from '../AddRoomForm';
 import { addRoomModalToggle, togglePopup } from '../../redux/action';
 import { getRoomData } from '../../hooks/getRoom';
 import { Popup } from '../common/Popup';
-import AiCard from '../ai/AiCard';
 import SkeletonLoader from './SkeletonLoader';
 import LiveActivityFeed from './LiveActivityFeed';
 import { useAuth } from '../auth/AppWrapper';
 
+const face = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=120&h=120&q=82`;
+
+const DUMMY_PEOPLE = {
+  fatima: { uid: 'demo_fatima', displayName: 'Fatima', photoURL: face('photo-1494790108377-be9c29b29330') },
+  ahmed: { uid: 'demo_ahmed', displayName: 'Ahmed', photoURL: face('photo-1500648767791-00dcc994a43e') },
+  maria: { uid: 'demo_maria', displayName: 'Maria', photoURL: face('photo-1534528741775-53994a69daeb') },
+  kenji: { uid: 'demo_kenji', displayName: 'Kenji', photoURL: face('photo-1507003211169-0a1dd7228f2d') },
+  sophie: { uid: 'demo_sophie', displayName: 'Sophie', photoURL: face('photo-1544005313-94ddf0286df2') },
+  hans: { uid: 'demo_hans', displayName: 'Hans', photoURL: face('photo-1506794778202-cad84cf45f1d') },
+  minji: { uid: 'demo_minji', displayName: 'Min-ji', photoURL: face('photo-1524504388940-b1c1722653e1') },
+  sarah: { uid: 'demo_sarah', displayName: 'Sarah', photoURL: face('photo-1531123897727-8f129e1688ce') },
+  raj: { uid: 'demo_raj', displayName: 'Raj', photoURL: face('photo-1507591064344-4c6ce005b128') },
+  amit: { uid: 'demo_amit', displayName: 'Amit', photoURL: face('photo-1560250097-0b93528c311a') },
+};
+
+const roomPeople = (...keys) => keys.map((key) => DUMMY_PEOPLE[key]).filter(Boolean);
+
 const DUMMY_ROOMS = [
-  { id: 'room_001', joinedAt: 1766078139215, participantsCount: 5, MaximumPeople: '5', Level: '#intermediate', ownerName: 'Fatima', ownerUid: 'uid_001', Language: 'Portuguese', flagCode: 'PT', Title: '🦥 Procrastinators Assemble #6', bgColor: '#99BC85' },
-  { id: 'room_002', joinedAt: 1766078140000, participantsCount: 5, MaximumPeople: '5', Level: '#advanced', ownerName: 'Ahmed', ownerUid: 'uid_002', Language: 'Urdu', flagCode: 'PK', Title: '🫠 Socially Awkward Club #5', bgColor: '#FFD6BA' },
-  { id: 'room_003', joinedAt: 1766078200000, participantsCount: 6, MaximumPeople: '6', Level: '#beginner', ownerName: 'Maria', ownerUid: 'uid_003', Language: 'Spanish', flagCode: 'ES', Title: '🌮 Taco Tuesday Debate', bgColor: '#FEC8D8' },
-  { id: 'room_004', joinedAt: 1766078350000, participantsCount: 8, MaximumPeople: '8', Level: '#advanced', ownerName: 'Kenji', ownerUid: 'uid_004', Language: 'Japanese', flagCode: 'JP', Title: '⛩️ Anime Spoilers Only', bgColor: '#D4F1F4' },
-  { id: 'room_005', joinedAt: 1766078420000, participantsCount: 4, MaximumPeople: '4', Level: '#intermediate', ownerName: 'Sophie', ownerUid: 'uid_005', Language: 'French', flagCode: 'FR', Title: '🥐 Croissant Chronicles', bgColor: '#E0BBE4' },
-  { id: 'room_006', joinedAt: 1766078550000, participantsCount: 4, MaximumPeople: '4', Level: '#beginner', ownerName: 'Hans', ownerUid: 'uid_006', Language: 'German', flagCode: 'DE', Title: '🍺 Grammar without boring rules', bgColor: '#FFDFD3' },
-  { id: 'room_007', joinedAt: 1766078600000, participantsCount: 10, MaximumPeople: '10', Level: '#intermediate', ownerName: 'Min-ji', ownerUid: 'uid_007', Language: 'Korean', flagCode: 'KR', Title: '🎵 K-Pop pronunciation practice', bgColor: '#B5EAD7' },
-  { id: 'room_008', joinedAt: 1766078700000, participantsCount: 5, MaximumPeople: '5', Level: '#advanced', ownerName: 'Sarah', ownerUid: 'uid_008', Language: 'English', flagCode: 'US', Title: '💼 Business English mock interview', bgColor: '#A0E7E5' },
+  {
+    id: 'room_001',
+    joinedAt: 1766078139215,
+    participantsCount: 5,
+    MaximumPeople: '5',
+    Level: '#intermediate',
+    ownerName: 'Fatima',
+    ownerUid: 'uid_001',
+    ownerPhoto: DUMMY_PEOPLE.fatima.photoURL,
+    Language: 'Portuguese',
+    flagCode: 'PT',
+    Title: '🦥 Procrastinators Assemble #6',
+    Topic: 'Live practice',
+    description: 'Relaxed Portuguese practice for everyday conversations.',
+    participants: roomPeople('fatima', 'maria', 'sophie', 'raj'),
+  },
+  {
+    id: 'room_002',
+    joinedAt: 1766078140000,
+    participantsCount: 5,
+    MaximumPeople: '5',
+    Level: '#advanced',
+    ownerName: 'Ahmed',
+    ownerUid: 'uid_002',
+    ownerPhoto: DUMMY_PEOPLE.ahmed.photoURL,
+    Language: 'Urdu',
+    flagCode: 'PK',
+    Title: '🫠 Socially Awkward Club #5',
+    Topic: 'Casual chat',
+    description: 'Friendly Urdu conversation without pressure or formal topics.',
+    participants: roomPeople('ahmed', 'amit', 'raj', 'sarah'),
+  },
+  {
+    id: 'room_003',
+    joinedAt: 1766078200000,
+    participantsCount: 5,
+    MaximumPeople: '6',
+    Level: '#beginner',
+    ownerName: 'Maria',
+    ownerUid: 'uid_003',
+    ownerPhoto: DUMMY_PEOPLE.maria.photoURL,
+    Language: 'Spanish',
+    flagCode: 'ES',
+    Title: '🌮 Taco Tuesday Debate',
+    Topic: 'Debate',
+    description: 'Fun debates on random topics while practicing natural Spanish.',
+    participants: roomPeople('maria', 'sophie', 'fatima', 'kenji'),
+  },
+  {
+    id: 'room_004',
+    joinedAt: 1766078350000,
+    participantsCount: 4,
+    MaximumPeople: '8',
+    Level: '#advanced',
+    ownerName: 'Kenji',
+    ownerUid: 'uid_004',
+    ownerPhoto: DUMMY_PEOPLE.kenji.photoURL,
+    Language: 'Japanese',
+    flagCode: 'JP',
+    Title: '⛩️ Anime Spoilers Only',
+    Topic: 'Anime talk',
+    description: 'Talk about your favorite anime, manga and characters in Japanese.',
+    participants: roomPeople('kenji', 'minji', 'raj', 'sarah'),
+  },
+  {
+    id: 'room_005',
+    joinedAt: 1766078420000,
+    participantsCount: 4,
+    MaximumPeople: '4',
+    Level: '#intermediate',
+    ownerName: 'Sophie',
+    ownerUid: 'uid_005',
+    ownerPhoto: DUMMY_PEOPLE.sophie.photoURL,
+    Language: 'French',
+    flagCode: 'FR',
+    Title: '🥐 Croissant Chronicles',
+    Topic: 'Culture',
+    description: 'French culture, travel stories and practical daily conversation.',
+    participants: roomPeople('sophie', 'fatima', 'maria', 'hans'),
+  },
+  {
+    id: 'room_006',
+    joinedAt: 1766078550000,
+    participantsCount: 2,
+    MaximumPeople: '4',
+    Level: '#beginner',
+    ownerName: 'Hans',
+    ownerUid: 'uid_006',
+    ownerPhoto: DUMMY_PEOPLE.hans.photoURL,
+    Language: 'German',
+    flagCode: 'DE',
+    Title: '🍺 Grammar without boring rules',
+    Topic: 'Grammar',
+    description: 'Learn practical German through examples instead of textbook drills.',
+    participants: roomPeople('hans', 'sarah'),
+  },
+  {
+    id: 'room_007',
+    joinedAt: 1766078600000,
+    participantsCount: 6,
+    MaximumPeople: '10',
+    Level: '#intermediate',
+    ownerName: 'Min-ji',
+    ownerUid: 'uid_007',
+    ownerPhoto: DUMMY_PEOPLE.minji.photoURL,
+    Language: 'Korean',
+    flagCode: 'KR',
+    Title: '🎵 K-Pop pronunciation practice',
+    Topic: 'Pronunciation',
+    description: 'Improve Korean pronunciation with music, dramas and real phrases.',
+    participants: roomPeople('minji', 'kenji', 'maria', 'raj'),
+  },
+  {
+    id: 'room_008',
+    joinedAt: 1766078700000,
+    participantsCount: 3,
+    MaximumPeople: '5',
+    Level: '#advanced',
+    ownerName: 'Sarah',
+    ownerUid: 'uid_008',
+    ownerPhoto: DUMMY_PEOPLE.sarah.photoURL,
+    Language: 'English',
+    flagCode: 'US',
+    Title: '💼 Business English mock interview',
+    Topic: 'Career practice',
+    description: 'Practice interview questions, workplace English and clear answers.',
+    participants: roomPeople('sarah', 'ahmed', 'amit'),
+  },
 ];
 
 const PAGE_SIZE = 12;
@@ -28,6 +165,33 @@ const PAGE_SIZE = 12;
 const normalizeLanguage = (value) => {
   const clean = typeof value === 'string' && value.trim() ? value.trim() : 'Unknown';
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+};
+
+const MobileRoomsNav = () => {
+  const items = [
+    { to: '/', label: 'Home', icon: 'fa-house' },
+    { to: '/rooms', label: 'Rooms', icon: 'fa-user-group', active: true },
+    { to: '/connect', label: 'Connect', icon: 'fa-users' },
+    { to: '/messages', label: 'Chat', icon: 'fa-comment' },
+    { to: '/aiBot', label: 'Luna AI', icon: 'fa-wand-magic-sparkles' },
+  ];
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#07111f]/95 lg:hidden" aria-label="Rooms mobile navigation">
+      <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        {items.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-colors ${item.active ? 'bg-teal-700 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white'}`}
+          >
+            <i className={`fa-solid ${item.icon} text-sm`} aria-hidden="true" />
+            <span className="truncate">{item.label}</span>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
 };
 
 const HomeBody = () => {
@@ -129,208 +293,190 @@ const HomeBody = () => {
             <i className="fa-solid fa-wifi text-xl" />
           </div>
           <h2 className="text-xl font-black text-slate-950 dark:text-white">Unable to load rooms</h2>
-          <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
-            Please refresh or check your backend connection.
-          </p>
+          <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">Please refresh or check your backend connection.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-20 pt-[50px] dark:bg-[#050713] sm:pt-[80px]">
-      <div className="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8">
-        <section id="rooms-grid" className="mt-8">
-          <div className="relative z-20 mb-7 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#101626] sm:p-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-                  Public Rooms <span className="text-teal-600 dark:text-teal-400">.</span>
-                </h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  Showing {filteredRooms.length} room{filteredRooms.length === 1 ? '' : 's'}{' '}
-                  {selectedLanguage ? `in ${selectedLanguage}` : 'across all languages'}
-                </p>
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-28 pt-[86px] dark:bg-[#050713] lg:pb-16 lg:pt-[104px]">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <section id="rooms-grid">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <h1 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">Public Rooms</h1>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400 sm:text-base">Join live voice rooms, practice with people around the world and make new friends.</p>
+            </div>
+
+            <div className="grid w-full gap-2 sm:grid-cols-[190px_minmax(0,1fr)_auto] lg:max-w-3xl">
+              <div className="relative">
+                <i className="fa-solid fa-globe pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
+                <select
+                  value={selectedLanguage}
+                  onChange={(event) => setSelectedLanguage(event.target.value)}
+                  className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-teal-500 dark:border-white/10 dark:bg-[#101626] dark:text-slate-200"
+                >
+                  <option value="">All languages</option>
+                  {languageList.map((lang) => (
+                    <option key={lang.item} value={lang.item}>{lang.item} ({lang.count})</option>
+                  ))}
+                </select>
+                <i className="fa-solid fa-chevron-down pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" aria-hidden="true" />
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-[220px_1fr] xl:w-[560px]">
-                <div className="relative">
-                  <select
-                    value={selectedLanguage}
-                    onChange={(event) => setSelectedLanguage(event.target.value)}
-                    className="h-12 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 pr-10 text-sm font-bold text-slate-700 outline-none transition-colors focus:border-teal-500 focus:bg-white dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
-                  >
-                    <option value="">All languages</option>
-                    {languageList.map((lang) => (
-                      <option key={lang.item} value={lang.item}>
-                        {lang.item} ({lang.count})
-                      </option>
-                    ))}
-                  </select>
-                  <i className="fa-solid fa-chevron-down pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
-                </div>
-
-                <div className="relative">
-                  <i className="fa-solid fa-search pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
-                  <input
-                    autoComplete="off"
-                    type="search"
-                    value={searchText}
-                    onChange={(event) => setSearchText(event.target.value)}
-                    placeholder="Search topic, level, host..."
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-bold text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-teal-500 focus:bg-white dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500"
-                  />
-                </div>
+              <div className="relative">
+                <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
+                <input
+                  autoComplete="off"
+                  type="search"
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  placeholder="Search rooms, topic or host..."
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-teal-500 dark:border-white/10 dark:bg-[#101626] dark:text-white"
+                />
               </div>
+
+              <button
+                type="button"
+                onClick={handleAddRoomClick}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-teal-700 px-5 text-sm font-black text-white transition-colors hover:bg-teal-800"
+              >
+                <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
+                <span>Create Room</span>
+              </button>
             </div>
           </div>
 
-          <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="min-w-0">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                <div className="md:col-span-2 2xl:col-span-3">
-                  <AiCard
-                    pageName="AI Voice Room"
-                    title="Luna — AI Friend"
-                    description="Practice pronunciation, ask for replies, and keep speaking even when no one is online."
-                  />
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              type="button"
+              onClick={() => setSelectedLanguage('')}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition-colors ${!selectedLanguage ? 'bg-teal-700 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-slate-300'}`}
+            >
+              All
+            </button>
+            {languageList.map((lang) => (
+              <button
+                key={lang.item}
+                type="button"
+                onClick={() => setSelectedLanguage(lang.item)}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition-colors ${selectedLanguage === lang.item ? 'bg-teal-700 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-slate-300'}`}
+              >
+                {lang.item}
+              </button>
+            ))}
+          </div>
+
+          <LiveActivityFeed />
+
+          <div className="mt-5 flex items-center justify-between gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 sm:text-sm">
+            <p>Showing {filteredRooms.length} room{filteredRooms.length === 1 ? '' : 's'} {selectedLanguage ? `in ${selectedLanguage}` : 'across all languages'}</p>
+            {(selectedLanguage || searchText) && (
+              <button
+                type="button"
+                onClick={() => { setSelectedLanguage(''); setSearchText(''); }}
+                className="shrink-0 font-black text-teal-700 hover:text-teal-800 dark:text-teal-300"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {loading && Array.from({ length: 6 }, (_, index) => (
+              <div key={index} className="h-[270px] w-full"><SkeletonLoader /></div>
+            ))}
+
+            {!loading && paginatedRooms.map((room) => (
+              <RoomCard key={room._id || room.id || room.roomId} roomdata={room} />
+            ))}
+          </div>
+
+          {!loading && paginatedRooms.length === 0 && (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-white p-10 text-center dark:border-white/10 dark:bg-[#101626]">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500"><i className="fa-solid fa-ghost text-xl" /></div>
+              <h3 className="text-lg font-black text-slate-950 dark:text-white">No rooms found</h3>
+              <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">Try another search or create a new room.</p>
+            </div>
+          )}
+
+          {!loading && filteredRooms.length > page * PAGE_SIZE && (
+            <div className="mt-8 text-center">
+              <button
+                type="button"
+                onClick={() => setPage((value) => value + 1)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#101626] dark:text-slate-200"
+              >
+                Load more rooms <i className="fa-solid fa-arrow-down ml-2 text-xs" />
+              </button>
+            </div>
+          )}
+
+          <div className="mt-7 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="flex flex-col justify-between gap-5 rounded-[1.6rem] border border-teal-200 bg-teal-50 p-5 dark:border-teal-400/15 dark:bg-teal-500/[0.07] sm:flex-row sm:items-center sm:p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300"><i className="fa-solid fa-crown" /></div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-950 dark:text-white">Unlock your full speaking potential</h3>
+                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">Get access to Luna AI, detailed speaking feedback and premium practice tools.</p>
                 </div>
-
-                {loading && Array.from({ length: 4 }, (_, index) => (
-                  <div key={index} className="h-[260px] w-full">
-                    <SkeletonLoader />
-                  </div>
-                ))}
-
-                {!loading && paginatedRooms.map((room) => (
-                  <RoomCard key={room._id || room.id || room.roomId} roomdata={room} />
-                ))}
               </div>
-
-              {!loading && paginatedRooms.length === 0 && (
-                <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-white p-10 text-center dark:border-white/10 dark:bg-[#101626]">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-slate-500">
-                    <i className="fa-solid fa-ghost text-xl" />
-                  </div>
-                  <h3 className="text-lg font-black text-slate-950 dark:text-white">No rooms found</h3>
-                  <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                    Try a different search or create a new room.
-                  </p>
-                </div>
-              )}
-
-              {!loading && filteredRooms.length > page * PAGE_SIZE && (
-                <div className="mt-9 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setPage((value) => value + 1)}
-                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-white/10 dark:bg-[#101626] dark:text-slate-200 dark:hover:bg-white/[0.06]"
-                  >
-                    Load more rooms
-                    <i className="fa-solid fa-arrow-down ml-2 text-xs" />
-                  </button>
-                </div>
-              )}
+              <Link to="/#pricing" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-slate-950 hover:bg-amber-300">Go Premium <i className="fa-solid fa-arrow-right text-xs" /></Link>
             </div>
 
-            <aside className="hidden space-y-4 xl:block">
-              <LiveActivityFeed />
-
-              <div className="rounded-[1.75rem] border border-teal-500/20 bg-teal-700 p-6 text-white shadow-sm dark:bg-teal-800">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-xl">
-                  <i className="fa-solid fa-plus" />
+            <button
+              type="button"
+              onClick={handleAddRoomClick}
+              className="flex items-center justify-between gap-4 rounded-[1.6rem] bg-teal-700 p-5 text-left text-white transition-colors hover:bg-teal-800 sm:p-6"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15"><i className="fa-solid fa-plus" /></div>
+                <div>
+                  <h3 className="text-base font-black text-white">Create your own room</h3>
+                  <p className="mt-1 text-xs font-semibold text-white/75">Pick a topic and invite people to practice.</p>
                 </div>
-
-                <h3 className="text-2xl font-black tracking-tight text-white">
-                  Host a focused room
-                </h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-white/80">
-                  Create a safe topic, invite your friends, and lead a better live practice session.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={handleAddRoomClick}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-teal-800 shadow-sm transition-colors hover:bg-slate-100"
-                >
-                  Create Room
-                  <i className="fa-solid fa-arrow-right text-xs" />
-                </button>
               </div>
-            </aside>
+              <i className="fa-solid fa-chevron-right text-sm" />
+            </button>
           </div>
         </section>
-
-        <div className="xl:hidden">
-          <button
-            type="button"
-            onClick={handleAddRoomClick}
-            className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-md transition-colors hover:bg-teal-800"
-            aria-label="Create room"
-          >
-            <i className="fa-solid fa-plus text-lg" />
-          </button>
-        </div>
 
         <AddRoomForm data={rooms} />
 
         {modalToggle && <div className="fixed inset-0 z-[60] bg-slate-950/50" />}
 
         {togglePopUp && (
-          <div className="fixed left-1/2 top-28 z-[70] -translate-x-1/2">
-            <Popup text="Room created successfully!" color="bg-emerald-600" />
-          </div>
+          <div className="fixed left-1/2 top-28 z-[70] -translate-x-1/2"><Popup text="Room created successfully!" color="bg-emerald-600" /></div>
         )}
 
         {showPrivacyNotice && (
           <div className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/60 p-4 sm:items-center">
             <div className="w-full max-w-lg rounded-t-[1.75rem] border border-slate-200 bg-white p-6 shadow-lg dark:border-white/10 dark:bg-[#0f172a] sm:rounded-[1.75rem] sm:p-8">
               <div className="mb-5 flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
-                  <i className="fa-solid fa-shield-halved text-xl" />
-                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"><i className="fa-solid fa-shield-halved text-xl" /></div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-950 dark:text-white">
-                    Community Guidelines
-                  </h2>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                    Keep rooms respectful and safe.
-                  </p>
+                  <h2 className="text-xl font-black text-slate-950 dark:text-white">Community Guidelines</h2>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Keep rooms respectful and safe.</p>
                 </div>
               </div>
 
               <div className="space-y-3 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">
                 <p>Welcome to Vaani. To keep practice rooms useful:</p>
-                <p>
-                  <i className="fa-solid fa-check-circle mr-2 text-teal-600" />
-                  Respect everyone. Hate speech is not allowed.
-                </p>
-                <p>
-                  <i className="fa-solid fa-check-circle mr-2 text-teal-600" />
-                  Protect privacy. Do not share sensitive information in public rooms.
-                </p>
+                <p><i className="fa-solid fa-check-circle mr-2 text-teal-600" />Respect everyone. Hate speech is not allowed.</p>
+                <p><i className="fa-solid fa-check-circle mr-2 text-teal-600" />Protect privacy. Do not share sensitive information in public rooms.</p>
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={handleAcceptPrivacy}
-                  className="rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800"
-                >
-                  I Agree
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPrivacyNotice(false)}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"
-                >
-                  Later
-                </button>
+                <button type="button" onClick={handleAcceptPrivacy} className="rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white hover:bg-teal-800">I Agree</button>
+                <button type="button" onClick={() => setShowPrivacyNotice(false)} className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">Later</button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      <MobileRoomsNav />
     </div>
   );
 };
