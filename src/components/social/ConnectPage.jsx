@@ -7,6 +7,27 @@ import SocialNav from './SocialNav';
 
 const initials = (name = 'Vaani User') => name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'VU';
 
+const formatLastActive = (value, isOnline = false) => {
+  if (isOnline) return 'Online now';
+  if (!value) return 'Offline';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Offline';
+
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (minutes < 1) return 'Active just now';
+  if (minutes < 60) return `Active ${minutes} min ago`;
+  if (hours < 24) return `Active ${hours} hr${hours === 1 ? '' : 's'} ago`;
+  if (days === 1) return 'Active yesterday';
+  if (days < 7) return `Active ${days} days ago`;
+
+  return `Active ${date.toLocaleDateString([], { day: 'numeric', month: 'short' })}`;
+};
+
 const Avatar = ({ user }) => {
   const [failed, setFailed] = useState(false);
   if (user?.photoURL && !failed) {
@@ -91,7 +112,11 @@ const ConnectPage = () => {
 
   useEffect(() => {
     const onPresence = ({ uid, isOnline }) => {
-      setPeople((current) => current.map((person) => person.uid === uid ? { ...person, isOnline } : person));
+      setPeople((current) => current.map((person) => (
+        person.uid === uid
+          ? { ...person, isOnline, lastActive: isOnline ? person.lastActive : new Date().toISOString() }
+          : person
+      )));
     };
     socket.on('social-presence', onPresence);
     return () => socket.off('social-presence', onPresence);
@@ -199,7 +224,7 @@ const ConnectPage = () => {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white">
       <SocialNav />
-      <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:p-7">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -239,7 +264,7 @@ const ConnectPage = () => {
                     <Link to={`/profile/${encodeURIComponent(person.uid)}`} className="block truncate text-base font-black text-slate-950 hover:text-teal-700 dark:text-white dark:hover:text-teal-300">
                       {person.displayName || 'Vaani User'}
                     </Link>
-                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{person.isOnline ? 'Online now' : 'Recently active'}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{formatLastActive(person.lastActive, person.isOnline)}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {(person.languages || []).slice(0, 3).map((language) => (
                         <span key={language} className="rounded-lg bg-teal-50 px-2 py-1 text-[10px] font-black text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">{language}</span>
