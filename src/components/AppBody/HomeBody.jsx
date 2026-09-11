@@ -102,6 +102,9 @@ const DUMMY_ROOMS = [
     Language: 'English', Title: '💼 Business English mock interview', Topic: 'Career practice',
     description: 'Practice interview questions, workplace English and clear answers.',
     participants: roomPeople('sarah', 'ahmed', 'amit'),
+    hostIsMember: true,
+    isPremiumRoom: true,
+    roomAnimationId: 'cosmic',
   },
 ];
 
@@ -111,6 +114,8 @@ const normalizeLanguage = (value) => {
   const clean = typeof value === 'string' && value.trim() ? value.trim() : 'Unknown';
   return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
 };
+
+const isMemberRoom = (room) => room?.hostIsMember === true || room?.isPremiumRoom === true;
 
 const getLanguageFlagUrl = (language) => {
   const key = String(language || '').trim().toLowerCase();
@@ -203,23 +208,25 @@ const HomeBody = () => {
   const filteredRooms = useMemo(() => {
     const text = deferredSearchText.trim().toLowerCase();
 
-    return allRooms.filter((room) => {
-      const title = String(room?.Title || room?.title || '').toLowerCase();
-      const language = normalizeLanguage(room?.Language || room?.language).toLowerCase();
-      const level = String(room?.Level || room?.level || '').toLowerCase();
-      const owner = String(room?.ownerName || room?.hostName || '').toLowerCase();
+    return allRooms
+      .filter((room) => {
+        const title = String(room?.Title || room?.title || '').toLowerCase();
+        const language = normalizeLanguage(room?.Language || room?.language).toLowerCase();
+        const level = String(room?.Level || room?.level || '').toLowerCase();
+        const owner = String(room?.ownerName || room?.hostName || '').toLowerCase();
 
-      const matchesText = !text
-        || title.includes(text)
-        || language.includes(text)
-        || level.includes(text)
-        || owner.includes(text);
+        const matchesText = !text
+          || title.includes(text)
+          || language.includes(text)
+          || level.includes(text)
+          || owner.includes(text);
 
-      const matchesLanguage = !selectedLanguage
-        || language === selectedLanguage.toLowerCase();
+        const matchesLanguage = !selectedLanguage
+          || language === selectedLanguage.toLowerCase();
 
-      return matchesText && matchesLanguage;
-    });
+        return matchesText && matchesLanguage;
+      })
+      .sort((a, b) => Number(isMemberRoom(b)) - Number(isMemberRoom(a)));
   }, [allRooms, deferredSearchText, selectedLanguage]);
 
   const paginatedRooms = useMemo(
