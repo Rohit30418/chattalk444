@@ -1,0 +1,52 @@
+/*
+ * Header + page top-spacing normalization.
+ *
+ * The main header now stays in normal document flow at the top of the page
+ * and sticks to the viewport only after the user scrolls to it. This removes
+ * the need for every page to reserve a second header-sized padding area.
+ */
+
+/* Header.jsx currently uses Tailwind's fixed utility. Override it globally so
+   it behaves as a natural-flow sticky header without changing its visuals. */
+header.fixed.inset-x-0.top-0 {
+  position: sticky !important;
+  top: 0 !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100%;
+}
+
+/* Rooms used to reserve space for a permanently fixed header. */
+div[class*="pt-[86px]"][class*="lg:pt-[104px]"] {
+  padding-top: 1.5rem !important;
+}
+
+/* Desktop community navigation had another full header-height spacer. */
+.relative.z-40.hidden[class*="pt-[82px]"] {
+  padding-top: 0 !important;
+}
+
+/* Homepage hero also included fixed-header compensation. Keep only the normal
+   visual breathing room above the hero content. */
+.vaani-home > section:first-of-type > div[class*="pt-28"] {
+  padding-top: 2rem !important;
+}
+
+/* Sticky header should not cover hash targets such as Pricing / Luna AI. */
+html {
+  scroll-padding-top: 76px;
+}
+
+@media (min-width: 1024px) {
+  html {
+    scroll-padding-top: 90px;
+  }
+
+  div[class*="pt-[86px]"][class*="lg:pt-[104px]"] {
+    padding-top: 2rem !important;
+  }
+
+  .vaani-home > section:first-of-type > div[class*="pt-28"] {
+    padding-top: 2.5rem !important;
+  }
+}
