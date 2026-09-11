@@ -37,6 +37,54 @@ html {
   scroll-padding-top: 76px;
 }
 
+/*
+ * Messages behaves like an app screen rather than a long webpage.
+ * Keep the conversation card inside the visible viewport so the composer is
+ * always reachable without scrolling the whole page. Only the messages list
+ * itself should scroll.
+ */
+main.min-h-screen:has(
+    > main.min-h-screen
+      > .relative.z-40.hidden
+      a[href="/messages"][aria-current="page"]
+  ) {
+  min-height: 0 !important;
+  height: calc(100dvh - 140px);
+  overflow: hidden;
+}
+
+main.min-h-screen:has(
+    > .relative.z-40.hidden
+      a[href="/messages"][aria-current="page"]
+  ) {
+  display: flex;
+  min-height: 0 !important;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+main.min-h-screen:has(
+    > .relative.z-40.hidden
+      a[href="/messages"][aria-current="page"]
+  ) > .mx-auto.w-full.max-w-7xl {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+main.min-h-screen:has(
+    > .relative.z-40.hidden
+      a[href="/messages"][aria-current="page"]
+  ) > .mx-auto.w-full.max-w-7xl > .grid {
+  min-height: 0 !important;
+  height: auto !important;
+  flex: 1 1 auto;
+}
+
 @media (min-width: 1024px) {
   html {
     scroll-padding-top: 90px;
@@ -48,5 +96,19 @@ html {
 
   .vaani-home > section:first-of-type > div[class*="pt-28"] {
     padding-top: 2.5rem !important;
+  }
+
+  /* Desktop has no fixed bottom navigation, so only subtract the 82px header. */
+  main.min-h-screen:has(
+      > main.min-h-screen
+        > .relative.z-40.hidden
+        a[href="/messages"][aria-current="page"]
+    ) {
+    height: calc(100dvh - 82px);
+  }
+
+  /* The global footer belongs to long pages; chat should stay app-like. */
+  body:has(a[href="/messages"][aria-current="page"]) footer {
+    display: none;
   }
 }
