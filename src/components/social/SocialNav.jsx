@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 const pageItems = [
   { to: '/rooms', label: 'Rooms', icon: 'fa-microphone-lines' },
   { to: '/connect', label: 'Connect', icon: 'fa-user-group' },
   { to: '/messages', label: 'Chat', icon: 'fa-message' },
+];
+
+const CONNECT_PROMPTS = [
+  '👋 Meet new people',
+  '💬 Chat & connect',
+  '🌍 Find language buddies',
+  '🤝 Get to know learners',
 ];
 
 const PeopleIcon = ({ className = '' }) => (
@@ -46,18 +53,54 @@ const DesktopSocialBar = () => (
 
 const RoomsPeopleButton = () => {
   const navigate = useNavigate();
+  const [promptIndex, setPromptIndex] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+
+    const timer = window.setInterval(() => {
+      setPromptIndex((current) => (current + 1) % CONNECT_PROMPTS.length);
+    }, 4600);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate('/connect')}
-      className="fixed right-5 top-1/2 z-[80] hidden -translate-y-1/2 items-center gap-2 rounded-full border border-teal-200 bg-white px-4 py-3 text-sm font-black text-teal-700 shadow-lg transition-colors hover:border-teal-300 hover:bg-teal-50 dark:border-teal-400/20 dark:bg-[#0b1220] dark:text-teal-300 dark:hover:bg-[#101a2a] lg:flex"
-      aria-label="Open Vaani Connect"
-      title="Connect with learners"
-    >
-      <PeopleIcon className="h-5 w-5" />
-      <span>Connect</span>
-    </button>
+    <>
+      <style>{`
+        @keyframes vaaniConnectHint {
+          0% { opacity: 0; transform: translateY(6px) scale(.96); }
+          12%, 82% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-4px) scale(.98); }
+        }
+        .vaani-connect-hint { animation: vaaniConnectHint 4.5s ease-in-out both; }
+        @media (prefers-reduced-motion: reduce) {
+          .vaani-connect-hint { animation: none; opacity: 1; }
+        }
+      `}</style>
+
+      <div className="fixed bottom-7 right-7 z-[80] hidden items-end gap-3 lg:flex">
+        <div
+          key={promptIndex}
+          className="vaani-connect-hint pointer-events-none mb-1 rounded-2xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-black text-slate-800 shadow-lg dark:border-teal-400/20 dark:bg-[#0b1220] dark:text-white"
+          aria-hidden="true"
+        >
+          {CONNECT_PROMPTS[promptIndex]}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/connect')}
+          className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-white bg-teal-700 text-white shadow-[0_16px_34px_rgba(15,118,110,0.28)] transition-colors hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-300 dark:border-[#050713] dark:bg-teal-600 dark:hover:bg-teal-500"
+          aria-label="Open Vaani Connect"
+          title="Discover people on Vaani"
+        >
+          <PeopleIcon className="h-7 w-7" />
+          <span className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full border-2 border-white bg-emerald-400 dark:border-[#050713]" aria-hidden="true" />
+        </button>
+      </div>
+    </>
   );
 };
 
