@@ -23,6 +23,11 @@ const SocialProfilePage = () => {
     }
   }, [userId]);
 
+  const refreshProfileSocial = useCallback(async () => {
+    await loadSocial();
+    window.dispatchEvent(new CustomEvent('vaani-social-refresh'));
+  }, [loadSocial]);
+
   useEffect(() => {
     loadSocial();
   }, [loadSocial]);
@@ -34,13 +39,13 @@ const SocialProfilePage = () => {
       const following = social?.relationship?.isFollowing === true;
       if (following) await api.delete(`/api/social/follow/${encodeURIComponent(userId)}`);
       else await api.post(`/api/social/follow/${encodeURIComponent(userId)}`);
-      await loadSocial();
+      await refreshProfileSocial();
     } catch (err) {
       setError(err.userMessage || 'Could not update follow.');
     } finally {
       setBusy('');
     }
-  }, [busy, loadSocial, social?.relationship?.isFollowing, user?.uid, userId]);
+  }, [busy, refreshProfileSocial, social?.relationship?.isFollowing, user?.uid, userId]);
 
   const updateConnection = useCallback(async () => {
     if (!user?.uid || !userId || busy) return;
@@ -54,13 +59,13 @@ const SocialProfilePage = () => {
       } else {
         await api.post(`/api/social/connect/${encodeURIComponent(userId)}`);
       }
-      await loadSocial();
+      await refreshProfileSocial();
     } catch (err) {
       setError(err.userMessage || 'Could not update connection.');
     } finally {
       setBusy('');
     }
-  }, [busy, loadSocial, social?.relationship, user?.uid, userId]);
+  }, [busy, refreshProfileSocial, social?.relationship, user?.uid, userId]);
 
   const message = useCallback(async () => {
     if (!user?.uid || !userId || busy) return;
@@ -128,9 +133,6 @@ const SocialProfilePage = () => {
               Message
             </button>
           </div>
-          {!user?.uid && (
-            <p className="mt-2 text-center text-[10px] font-bold text-slate-500">Sign in to follow, connect or message.</p>
-          )}
         </div>
       )}
     </>
