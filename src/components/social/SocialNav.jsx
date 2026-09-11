@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom';
 const items = [
   { to: '/rooms', label: 'Rooms', icon: 'fa-microphone-lines' },
   { to: '/connect', label: 'Connect', icon: 'fa-user-group' },
-  { to: '/messages', label: 'Messages', icon: 'fa-message' },
+  { to: '/messages', label: 'Chat', icon: 'fa-message' },
 ];
 
 const SocialNav = () => (
