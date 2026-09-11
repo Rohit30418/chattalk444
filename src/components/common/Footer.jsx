@@ -41,11 +41,11 @@ const Footer = () => {
   const isRoomsPage = pathname === "/rooms";
 
   const footerContainerClass = isRoomsPage
-    ? "mx-auto w-full max-w-[1600px]"
+    ? "mx-auto w-full max-w-7xl"
     : "container-app";
 
   return (
-    <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-10 text-[var(--color-muted)] sm:py-12">
+    <footer className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 pb-28 pt-10 text-[var(--color-muted)] sm:pb-28 sm:pt-12 lg:pb-12">
       <div className={footerContainerClass}>
         <div className="grid gap-9 lg:grid-cols-[1.35fr_2fr] lg:gap-14">
           <div>
