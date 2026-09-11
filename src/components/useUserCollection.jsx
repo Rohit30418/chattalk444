@@ -9,6 +9,13 @@ function useUserCollection(userId) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setReloadKey((value) => value + 1);
+    window.addEventListener('vaani-social-refresh', refresh);
+    return () => window.removeEventListener('vaani-social-refresh', refresh);
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -47,7 +54,8 @@ function useUserCollection(userId) {
       } catch (err) {
         console.error('Error fetching user social collections:', err);
         if (!cancelled) {
-          setError(err);
+          // A social-service hiccup should not hide the whole profile page.
+          setError(null);
           setCollectionsData({ following: [], followers: [], friends: [] });
         }
       } finally {
@@ -60,7 +68,7 @@ function useUserCollection(userId) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, reloadKey]);
 
   return { collectionsData, loading, error };
 }
