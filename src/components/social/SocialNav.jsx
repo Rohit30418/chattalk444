@@ -8,8 +8,8 @@ const pageItems = [
 ];
 
 const DesktopSocialBar = () => (
-  <div className="relative z-40 pt-[68px] lg:pt-[82px]">
-    <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-[#07111f] sm:px-6 lg:px-8">
+  <div className="relative z-40 hidden pt-[82px] lg:block">
+    <div className="border-b border-slate-200 bg-white px-8 py-3 dark:border-white/10 dark:bg-[#07111f]">
       <nav
         className="mx-auto flex w-full max-w-7xl items-center gap-2 overflow-x-auto"
         aria-label="Vaani community navigation"
@@ -42,9 +42,9 @@ const RoomsPeopleButton = () => {
     <button
       type="button"
       onClick={() => navigate('/connect')}
-      className="fixed bottom-5 right-4 z-[80] flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-teal-700 shadow-lg transition-colors hover:border-teal-300 hover:bg-teal-50 dark:border-white/10 dark:bg-[#0b1220] dark:text-teal-300 dark:hover:bg-[#101a2a] sm:bottom-auto sm:right-5 sm:top-1/2 sm:h-14 sm:w-14 sm:-translate-y-1/2"
+      className="fixed right-5 top-1/2 z-[80] hidden h-14 w-14 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-teal-700 shadow-lg transition-colors hover:border-teal-300 hover:bg-teal-50 dark:border-white/10 dark:bg-[#0b1220] dark:text-teal-300 dark:hover:bg-[#101a2a] lg:flex"
       aria-label="Open Vaani people"
-      title="People"
+      title="Connect"
     >
       <i className="fa-solid fa-user-group text-base" aria-hidden="true" />
     </button>
