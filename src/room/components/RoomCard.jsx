@@ -79,6 +79,11 @@ const normalizeRoomTheme = (value) => {
   return ['cosmic', 'aurora', 'sunset'].includes(theme) ? theme : 'cosmic';
 };
 
+const normalizeProfileTheme = (value) => {
+  const theme = cleanText(value, 'aurora').toLowerCase();
+  return ['aurora', 'gold', 'galaxy'].includes(theme) ? theme : 'aurora';
+};
+
 const ProfilePhoto = memo(({ src, name, className = 'h-6 w-6', rounded = 'rounded-full' }) => {
   const [failed, setFailed] = useState(false);
 
@@ -105,7 +110,7 @@ const ProfilePhoto = memo(({ src, name, className = 'h-6 w-6', rounded = 'rounde
 
 ProfilePhoto.displayName = 'ProfilePhoto';
 
-const AvatarStack = memo(({ roomId, participants, activeCount, ownerName, ownerPhoto, memberHost }) => {
+const AvatarStack = memo(({ roomId, participants, activeCount, ownerName, ownerPhoto, memberHost, profileTheme }) => {
   const withOwner = useMemo(() => {
     const list = Array.isArray(participants) ? [...participants] : [];
     if (ownerPhoto && !list.some((item) => getParticipantPhoto(item) === ownerPhoto)) {
@@ -141,7 +146,7 @@ const AvatarStack = memo(({ roomId, participants, activeCount, ownerName, ownerP
 
         if (index === 0 && memberHost) {
           return (
-            <span key={key} className="vaani-profile-frame vaani-profile-theme-aurora !p-[2px]">
+            <span key={key} className={`vaani-profile-frame vaani-profile-theme-${profileTheme} !p-[2px]`}>
               {avatar}
             </span>
           );
@@ -169,10 +174,18 @@ const RoomCard = ({ roomdata }) => {
   const level = cleanText(room.Level || room.level, 'All levels');
   const ownerName = cleanText(room.ownerName || room.hostName || room.createdByName, 'Host');
   const ownerPhoto = cleanText(room.ownerPhoto || room.hostPhoto || room.ownerPhotoURL || room.photoURL, '');
+  const ownerUid = cleanText(room.ownerUid || room.hostId || room.createdBy, '');
 
   const isDemoPremiumRoom = roomId === 'room_008';
-  const hostIsMember = room.hostIsMember === true || room.isPremiumRoom === true || isDemoPremiumRoom;
-  const roomTheme = normalizeRoomTheme(room.roomAnimationId || (isDemoPremiumRoom ? 'cosmic' : 'aurora'));
+  const isOwnRoom = Boolean(user?.uid && ownerUid && user.uid === ownerUid);
+  const ownMembershipMakesPremium = isOwnRoom && user?.isMember === true;
+  const hostIsMember = room.hostIsMember === true || room.isPremiumRoom === true || isDemoPremiumRoom || ownMembershipMakesPremium;
+  const roomTheme = normalizeRoomTheme(
+    room.roomAnimationId || (ownMembershipMakesPremium ? user?.roomAnimationId : '') || (isDemoPremiumRoom ? 'cosmic' : 'aurora')
+  );
+  const profileTheme = normalizeProfileTheme(
+    room.hostProfileAnimationId || (ownMembershipMakesPremium ? user?.profileAnimationId : '') || 'aurora'
+  );
 
   const participants = useMemo(() => getParticipants(room), [room]);
   const activeCount = Math.max(0, safeNumber(room.participantsCount ?? room.activeCount ?? room.memberCount ?? participants.length, participants.length));
@@ -241,7 +254,7 @@ const RoomCard = ({ roomdata }) => {
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
           <span className="inline-flex items-center gap-2">
             {hostIsMember ? (
-              <span className="vaani-profile-frame vaani-profile-theme-aurora !p-[2px]">
+              <span className={`vaani-profile-frame vaani-profile-theme-${profileTheme} !p-[2px]`}>
                 <ProfilePhoto src={ownerPhoto} name={ownerName} className="h-7 w-7" />
               </span>
             ) : (
@@ -271,6 +284,7 @@ const RoomCard = ({ roomdata }) => {
           ownerName={ownerName}
           ownerPhoto={ownerPhoto}
           memberHost={hostIsMember}
+          profileTheme={profileTheme}
         />
 
         {isFull ? (
