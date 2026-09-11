@@ -1,17 +1,22 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './components/AppBody/Header';
+import RoomsPremiumPopup from './components/AppBody/RoomsPremiumPopup';
 import Footer from './components/common/Footer';
+import MobileBottomNav from './components/common/MobileBottomNav';
 import { ScrollToHash } from './ScrollToID';
+
 const Layout = () => {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-[#050713] dark:text-white">
+    <div className="min-h-screen bg-slate-50 pb-20 text-slate-950 transition-colors duration-300 dark:bg-[#050713] dark:text-white lg:pb-0">
       <Header />
       <ScrollToHash />
       <main className="min-h-screen">
         <Outlet />
       </main>
       <Footer />
+      <RoomsPremiumPopup />
+      <MobileBottomNav />
     </div>
   );
 };
