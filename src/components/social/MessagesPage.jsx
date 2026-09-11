@@ -22,6 +22,27 @@ const formatTime = (value) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+const formatLastActive = (value, isOnline = false) => {
+  if (isOnline) return 'Online now';
+  if (!value) return 'Offline';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Offline';
+
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (minutes < 1) return 'Active just now';
+  if (minutes < 60) return `Active ${minutes} min ago`;
+  if (hours < 24) return `Active ${hours} hr${hours === 1 ? '' : 's'} ago`;
+  if (days === 1) return 'Active yesterday';
+  if (days < 7) return `Active ${days} days ago`;
+
+  return `Active ${date.toLocaleDateString([], { day: 'numeric', month: 'short' })}`;
+};
+
 const MessagesPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -129,13 +150,43 @@ const MessagesPage = () => {
       setTypingUid(payload?.isTyping ? payload.uid : '');
     };
 
+    const onPresence = ({ uid, isOnline }) => {
+      const lastActive = isOnline ? undefined : new Date().toISOString();
+
+      setConversations((current) => current.map((conversation) => {
+        if (conversation.otherUser?.uid !== uid) return conversation;
+        return {
+          ...conversation,
+          otherUser: {
+            ...conversation.otherUser,
+            isOnline,
+            ...(lastActive ? { lastActive } : {}),
+          },
+        };
+      }));
+
+      setActiveConversation((current) => {
+        if (current?.otherUser?.uid !== uid) return current;
+        return {
+          ...current,
+          otherUser: {
+            ...current.otherUser,
+            isOnline,
+            ...(lastActive ? { lastActive } : {}),
+          },
+        };
+      });
+    };
+
     socket.on('social-message', onMessage);
     socket.on('social-message-sent', onMessage);
     socket.on('social-typing', onTyping);
+    socket.on('social-presence', onPresence);
     return () => {
       socket.off('social-message', onMessage);
       socket.off('social-message-sent', onMessage);
       socket.off('social-typing', onTyping);
+      socket.off('social-presence', onPresence);
     };
   }, [activeId, loadConversations]);
 
@@ -222,10 +273,10 @@ const MessagesPage = () => {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white">
       <SocialNav />
-      <div className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-6 lg:px-8 lg:py-6">
+      <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 lg:px-8 lg:py-6">
         {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
 
-        <div className="grid min-h-[680px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] lg:h-[calc(100dvh-170px)] lg:min-h-[620px] lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
+        <div className="grid min-h-[680px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] lg:h-[calc(100dvh-170px)] lg:min-h-[620px] lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[350px_minmax(0,1fr)]">
           <aside className={`${activeConversation ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-r border-slate-200 dark:border-white/10`}>
             <div className="border-b border-slate-200 p-5 dark:border-white/10">
               <div className="flex items-center justify-between gap-3">
@@ -282,7 +333,7 @@ const MessagesPage = () => {
                   <Avatar user={activeConversation.otherUser} />
                   <div className="min-w-0 flex-1">
                     <Link to={`/profile/${encodeURIComponent(activeConversation.otherUser?.uid || '')}`} className="truncate text-sm font-black hover:text-teal-700 dark:hover:text-teal-300">{activeConversation.otherUser?.displayName || 'Vaani User'}</Link>
-                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{typingUid ? 'Typing...' : activeConversation.otherUser?.isOnline ? 'Online now' : 'Vaani learner'}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{typingUid ? 'Typing...' : formatLastActive(activeConversation.otherUser?.lastActive, activeConversation.otherUser?.isOnline)}</p>
                   </div>
                   <Link to={`/profile/${encodeURIComponent(activeConversation.otherUser?.uid || '')}`} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-teal-300 hover:text-teal-700 dark:border-white/10 dark:text-slate-300"><i className="fa-regular fa-user text-xs" /></Link>
                 </div>
@@ -297,14 +348,14 @@ const MessagesPage = () => {
                       <p className="mt-1 max-w-sm text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Start a private conversation. Be respectful and keep language practice friendly.</p>
                     </div>
                   ) : (
-                    <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
+                    <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
                       {messages.map((message) => {
                         const mine = message.senderUid === user.uid;
                         return (
                           <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[82%] rounded-2xl px-4 py-2.5 sm:max-w-[70%] ${mine ? 'rounded-br-md bg-teal-700 text-white' : 'rounded-bl-md border border-slate-200 bg-white text-slate-800 dark:border-white/10 dark:bg-[#101626] dark:text-slate-100'}`}>
-                              <p className="whitespace-pre-wrap break-words text-sm font-medium leading-6">{message.text}</p>
-                              <p className={`mt-1 text-right text-[9px] font-bold ${mine ? 'text-teal-100/80' : 'text-slate-400'}`}>{formatTime(message.createdAt)}</p>
+                            <div className={`min-w-[92px] max-w-[82%] rounded-[1.15rem] px-3.5 py-2.5 sm:max-w-[72%] ${mine ? 'rounded-br-md bg-teal-700' : 'rounded-bl-md border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101626]'}`}>
+                              <p className={`whitespace-pre-wrap break-words text-sm font-medium leading-5 ${mine ? '!text-white' : 'text-slate-800 dark:text-slate-100'}`}>{message.text}</p>
+                              <p className={`mt-1.5 text-right text-[10px] font-bold ${mine ? '!text-teal-50/90' : 'text-slate-400'}`}>{formatTime(message.createdAt)}</p>
                             </div>
                           </div>
                         );
@@ -315,7 +366,7 @@ const MessagesPage = () => {
                 </div>
 
                 <form onSubmit={sendMessage} className="border-t border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#0b1220] sm:p-4">
-                  <div className="mx-auto flex max-w-4xl items-end gap-2">
+                  <div className="mx-auto flex max-w-3xl items-end gap-2">
                     <textarea
                       value={draft}
                       onChange={handleDraftChange}
