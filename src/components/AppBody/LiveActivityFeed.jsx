@@ -1,56 +1,71 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
+
+const face = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=80&h=80&q=82`;
 
 const activities = [
-  { id: 1, name: 'Jin', action: 'is speaking in', room: 'Anime Talk', time: 'Just now', icon: 'fa-microphone', tone: 'bg-emerald-500' },
-  { id: 2, name: 'John', action: 'created room', room: 'Rap God', time: '1m ago', icon: 'fa-plus', tone: 'bg-sky-500' },
-  { id: 3, name: 'Sarah', action: 'joined', room: 'English Cafe', time: '1m ago', icon: 'fa-door-open', tone: 'bg-teal-500' },
-  { id: 4, name: 'Raj', action: 'is speaking in', room: 'Anime Talk', time: '2m ago', icon: 'fa-microphone', tone: 'bg-emerald-600' },
-  { id: 5, name: 'Mike', action: 'reached Lvl 5', room: '', time: '5m ago', icon: 'fa-fire', tone: 'bg-amber-500' },
+  { id: 1, name: 'Raj', action: 'is speaking in', room: 'Anime Talk', time: '2 min ago', photoURL: face('photo-1507591064344-4c6ce005b128') },
+  { id: 2, name: 'Sarah', action: 'joined', room: 'English Cafe', time: '5 min ago', photoURL: face('photo-1531123897727-8f129e1688ce') },
+  { id: 3, name: 'John', action: 'created a room', room: 'Rap God', time: '9 min ago', photoURL: face('photo-1500648767791-00dcc994a43e') },
+  { id: 4, name: 'Mike', action: 'reached Level 5', room: '', time: '28 min ago', photoURL: face('photo-1506794778202-cad84cf45f1d') },
 ];
+
+const ActivityAvatar = ({ item }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (item.photoURL && !failed) {
+    return (
+      <img
+        src={item.photoURL}
+        alt={item.name}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover dark:border-white/10"
+      />
+    );
+  }
+
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-xs font-black text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+      {item.name?.charAt(0)?.toUpperCase() || 'V'}
+    </span>
+  );
+};
 
 const LiveActivityFeed = memo(() => {
   return (
-    <div className="w-full rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#101626]">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
-            Happening Now
-          </h3>
-          <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Recent learner activity
-          </p>
+    <section className="mt-6 rounded-[1.6rem] border border-teal-100 bg-teal-50/60 p-4 dark:border-teal-400/10 dark:bg-teal-500/[0.05] sm:p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
+            <i className="fa-solid fa-bolt text-sm" aria-hidden="true" />
+          </div>
+          <div>
+            <h3 className="text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-lg">Happening Now</h3>
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Live activity from the Vaani community</p>
+          </div>
         </div>
-        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+        <span className="hidden items-center gap-2 text-[11px] font-black text-teal-700 dark:text-teal-300 sm:inline-flex">
+          Live community <span className="h-2 w-2 rounded-full bg-emerald-500" />
+        </span>
       </div>
 
-      <div className="relative space-y-5 pl-1">
-        <div className="absolute bottom-3 left-[15px] top-3 w-px bg-slate-200 dark:bg-white/10" />
-
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-4 lg:overflow-visible">
         {activities.map((item) => (
-          <div key={item.id} className="relative flex gap-3 pl-1">
-            <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-white text-white dark:border-[#101626] ${item.tone}`}>
-              <i className={`fa-solid ${item.icon} text-[10px]`} aria-hidden="true" />
-            </div>
-
-            <div className="min-w-0 pt-0.5">
-              <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                {item.time}
-              </span>
-              <p className="mt-1 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">
-                <span className="font-black text-slate-900 dark:text-white">{item.name}</span>{' '}
-                {item.action}
+          <div key={item.id} className="flex min-w-[230px] items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 dark:border-white/10 dark:bg-[#101626] lg:min-w-0">
+            <ActivityAvatar item={item} />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span className="font-black text-slate-950 dark:text-white">{item.name}</span> {item.action}
               </p>
-              {item.room && (
-                <span className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-                  {item.room}
-                </span>
-              )}
+              {item.room && <p className="mt-0.5 truncate text-[11px] font-bold text-teal-700 dark:text-teal-300">{item.room}</p>}
+              <p className="mt-0.5 text-[10px] font-semibold text-slate-400">{item.time}</p>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 });
 
