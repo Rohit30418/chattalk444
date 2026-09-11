@@ -80,6 +80,22 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+
+    const identify = () => {
+      socket.emit('social-identify', { uid: user.uid });
+    };
+
+    if (!socket.connected) socket.connect();
+    if (socket.connected) identify();
+    socket.on('connect', identify);
+
+    return () => {
+      socket.off('connect', identify);
+    };
+  }, [user?.uid]);
+
   const login = useCallback(async (email, password) => {
     try {
       const { data } = await axios.post(
