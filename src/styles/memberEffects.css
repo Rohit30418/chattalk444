@@ -1,0 +1,169 @@
+/* Vaani-built member effects: no external animation assets required. */
+
+.vaani-member-room {
+  --member-a: #14b8a6;
+  --member-b: #f59e0b;
+  --member-c: #8b5cf6;
+  position: relative;
+  isolation: isolate;
+}
+
+.vaani-member-room::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: .2;
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--member-a) 65%, transparent) 0 10%, transparent 26%),
+    radial-gradient(circle at 82% 22%, color-mix(in srgb, var(--member-b) 55%, transparent) 0 8%, transparent 28%),
+    radial-gradient(circle at 50% 88%, color-mix(in srgb, var(--member-c) 52%, transparent) 0 12%, transparent 34%),
+    linear-gradient(120deg, transparent 10%, color-mix(in srgb, var(--member-a) 14%, transparent) 42%, transparent 72%);
+  background-size: 160% 160%, 170% 170%, 155% 155%, 220% 220%;
+  animation: vaaniRoomFlow 7s ease-in-out infinite alternate;
+}
+
+.vaani-member-room::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--vaani-angle, 0deg), var(--member-a), var(--member-b), var(--member-c), var(--member-a));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: vaaniBorderSpin 4.8s linear infinite;
+}
+
+.vaani-room-theme-cosmic {
+  --member-a: #22d3ee;
+  --member-b: #8b5cf6;
+  --member-c: #f59e0b;
+}
+
+.vaani-room-theme-aurora {
+  --member-a: #14b8a6;
+  --member-b: #34d399;
+  --member-c: #60a5fa;
+}
+
+.vaani-room-theme-sunset {
+  --member-a: #f59e0b;
+  --member-b: #fb7185;
+  --member-c: #8b5cf6;
+}
+
+.vaani-member-star {
+  display: inline-flex;
+  transform-origin: center;
+  animation: vaaniStarBlink 1.15s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, .45));
+}
+
+.vaani-profile-frame {
+  --profile-a: #14b8a6;
+  --profile-b: #f59e0b;
+  --profile-c: #8b5cf6;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 4px;
+  isolation: isolate;
+}
+
+.vaani-profile-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  background: conic-gradient(from var(--vaani-angle, 0deg), var(--profile-a), var(--profile-b), var(--profile-c), var(--profile-a));
+  animation: vaaniBorderSpin 3.4s linear infinite;
+}
+
+.vaani-profile-frame::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  z-index: -3;
+  border-radius: inherit;
+  background: conic-gradient(from var(--vaani-angle, 0deg), var(--profile-a), transparent 24%, var(--profile-b), transparent 58%, var(--profile-c), transparent 86%, var(--profile-a));
+  opacity: .45;
+  filter: blur(8px);
+  animation: vaaniBorderSpin 4.5s linear infinite reverse;
+}
+
+.vaani-profile-theme-aurora {
+  --profile-a: #14b8a6;
+  --profile-b: #22d3ee;
+  --profile-c: #8b5cf6;
+}
+
+.vaani-profile-theme-gold {
+  --profile-a: #f59e0b;
+  --profile-b: #fde68a;
+  --profile-c: #fb7185;
+}
+
+.vaani-profile-theme-galaxy {
+  --profile-a: #60a5fa;
+  --profile-b: #8b5cf6;
+  --profile-c: #ec4899;
+}
+
+.vaani-member-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.vaani-member-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-130%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent);
+  animation: vaaniBadgeShine 3.8s ease-in-out infinite;
+}
+
+@property --vaani-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes vaaniBorderSpin {
+  to { --vaani-angle: 360deg; }
+}
+
+@keyframes vaaniRoomFlow {
+  0% { background-position: 0% 10%, 100% 0%, 45% 100%, 0% 50%; opacity: .16; }
+  50% { background-position: 24% 18%, 76% 20%, 58% 76%, 55% 50%; opacity: .26; }
+  100% { background-position: 36% 0%, 62% 30%, 42% 64%, 100% 50%; opacity: .2; }
+}
+
+@keyframes vaaniStarBlink {
+  0%, 100% { opacity: .35; transform: scale(.88) rotate(-8deg); }
+  50% { opacity: 1; transform: scale(1.18) rotate(8deg); }
+}
+
+@keyframes vaaniBadgeShine {
+  0%, 64% { transform: translateX(-130%) skewX(-18deg); }
+  82%, 100% { transform: translateX(130%) skewX(-18deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vaani-member-room::before,
+  .vaani-member-room::after,
+  .vaani-member-star,
+  .vaani-profile-frame::before,
+  .vaani-profile-frame::after,
+  .vaani-member-badge::after {
+    animation: none !important;
+  }
+}
