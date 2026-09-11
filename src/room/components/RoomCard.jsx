@@ -249,7 +249,7 @@ const RoomCard = ({ roomdata }) => {
           </span>
         </div>
 
-        {!hostIsMember && (
+        {!hostIsMember && activeCount > 0 && (
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
           </span>
@@ -276,7 +276,7 @@ const RoomCard = ({ roomdata }) => {
             {activeCount}/{maxPeople} speaking
           </span>
 
-          {hostIsMember && (
+          {hostIsMember && activeCount > 0 && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/90 px-2 py-1 text-[10px] font-black text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
             </span>
