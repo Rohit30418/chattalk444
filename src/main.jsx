@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './styles/index.css'
 import './styles/room-theme.css'
+import './styles/header-layout.css'
 
 const storedTheme = localStorage.getItem('theme')
 const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
