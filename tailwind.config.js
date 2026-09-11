@@ -10,8 +10,11 @@ export default {
       colors: {
         primary: "#f30a31",
         secondary:"#9570d9"
+      },
+      maxWidth: {
+        '8xl': '80rem',
+      },
     },
   },
   plugins: [],
-}
 }
