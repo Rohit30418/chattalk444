@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import getUserData from "../../hooks/getUserData";
 import useUserCollection from "../useUserCollection";
 import { useAuth } from "../auth/AppWrapper";
+import "../../styles/memberEffects.css";
 
 const statConfig = [
   { type: "followers", label: "Followers", icon: "fa-user-group" },
@@ -60,6 +61,11 @@ const getInitials = (name = "Vaani User") =>
     .join("") || "VU";
 
 const getUserId = (user) => user?.uid || user?.id || user?.userId || user?._id || "";
+
+const normalizeProfileTheme = (value) => {
+  const theme = cleanText(value, "aurora").toLowerCase();
+  return ["aurora", "gold", "galaxy"].includes(theme) ? theme : "aurora";
+};
 
 const Avatar = ({ src, name, className = "h-12 w-12", ring = false }) => {
   const [failed, setFailed] = useState(false);
@@ -242,6 +248,8 @@ const MyProfile = () => {
     userInfo?.bio || userInfo?.about || userInfo?.description,
     "Learning languages, meeting new people, and building confidence through real conversations."
   );
+  const isMember = userInfo?.isMember === true;
+  const profileTheme = normalizeProfileTheme(userInfo?.profileAnimationId);
 
   const languages = useMemo(
     () =>
@@ -473,6 +481,12 @@ const MyProfile = () => {
               <i className="fa-solid fa-language text-teal-200" aria-hidden="true" />
               Language learner
             </span>
+            {isMember && (
+              <span className="vaani-member-badge inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-400/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100">
+                <span className="vaani-member-star" aria-hidden="true">✦</span>
+                Vaani Member
+              </span>
+            )}
             {isOnline && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-500/20 px-2.5 py-1.5 text-[10px] font-black text-emerald-100">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
@@ -486,12 +500,23 @@ const MyProfile = () => {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex min-w-0 flex-col sm:flex-row sm:items-end sm:gap-5">
               <div className="relative -mt-14 shrink-0 sm:-mt-16 lg:-mt-20">
-                <Avatar
-                  src={photoURL}
-                  name={displayName}
-                  ring
-                  className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl lg:h-36 lg:w-36 lg:text-4xl"
-                />
+                {isMember ? (
+                  <span className={`vaani-profile-frame vaani-profile-theme-${profileTheme}`}>
+                    <Avatar
+                      src={photoURL}
+                      name={displayName}
+                      ring
+                      className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl lg:h-36 lg:w-36 lg:text-4xl"
+                    />
+                  </span>
+                ) : (
+                  <Avatar
+                    src={photoURL}
+                    name={displayName}
+                    ring
+                    className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl lg:h-36 lg:w-36 lg:text-4xl"
+                  />
+                )}
                 {isOnline && (
                   <span
                     className="absolute bottom-2 right-2 h-5 w-5 rounded-full border-[3px] border-white bg-emerald-500 dark:border-[#0b1220]"
@@ -505,12 +530,22 @@ const MyProfile = () => {
                   <h1 className="truncate text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
                     {displayName}
                   </h1>
-                  <span
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"
-                    title="Vaani learner"
-                  >
-                    <i className="fa-solid fa-check text-[9px]" aria-hidden="true" />
-                  </span>
+                  {isMember ? (
+                    <span
+                      className="vaani-member-badge inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300"
+                      title="Vaani Member"
+                    >
+                      <span className="vaani-member-star" aria-hidden="true">✦</span>
+                      Vaani Member
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"
+                      title="Vaani learner"
+                    >
+                      <i className="fa-solid fa-check text-[9px]" aria-hidden="true" />
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
