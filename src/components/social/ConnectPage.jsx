@@ -4,8 +4,14 @@ import api from '../../services/api';
 import socket from '../../services/socket';
 import { useAuth } from '../auth/AppWrapper';
 import SocialNav from './SocialNav';
+import '../../styles/memberEffects.css';
 
 const initials = (name = 'Vaani User') => name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'VU';
+
+const normalizeProfileTheme = (value) => {
+  const theme = typeof value === 'string' ? value.trim().toLowerCase() : 'aurora';
+  return ['aurora', 'gold', 'galaxy'].includes(theme) ? theme : 'aurora';
+};
 
 const formatLastActive = (value, isOnline = false) => {
   if (isOnline) return 'Online now';
@@ -49,6 +55,18 @@ const Avatar = ({ user }) => {
   );
 };
 
+const MemberAvatar = ({ person }) => {
+  const avatar = <Avatar user={person} />;
+  if (person?.isMember !== true) return avatar;
+
+  const theme = normalizeProfileTheme(person?.profileAnimationId);
+  return (
+    <span className={`vaani-profile-frame vaani-profile-theme-${theme} !rounded-[1.15rem] !p-[2px]`}>
+      {avatar}
+    </span>
+  );
+};
+
 const ConnectPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -86,6 +104,7 @@ const ConnectPage = () => {
             const profile = await api.get(`/api/social/profile/${encodeURIComponent(person.uid)}`);
             return {
               ...person,
+              ...(profile.data?.user || {}),
               relationship: profile.data?.relationship || {},
               counts: profile.data?.counts || {},
             };
@@ -95,7 +114,8 @@ const ConnectPage = () => {
         })
       );
 
-      setPeople((current) => append ? [...current, ...hydrated] : hydrated);
+      const prioritized = hydrated.sort((a, b) => Number(b?.isMember === true) - Number(a?.isMember === true));
+      setPeople((current) => append ? [...current, ...prioritized] : prioritized);
       setPage(nextPage);
       setHasMore(Boolean(data?.hasMore));
     } catch (err) {
@@ -253,11 +273,27 @@ const ConnectPage = () => {
           {people.map((person) => {
             const busy = busyUid === person.uid;
             const state = person.relationship || {};
+            const isMember = person.isMember === true;
+
             return (
-              <article key={person.uid} className="rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:hover:border-teal-400/30">
-                <div className="flex items-start gap-4">
+              <article
+                key={person.uid}
+                className={`relative overflow-hidden rounded-[1.6rem] border bg-white p-5 shadow-sm transition-colors dark:bg-[#101626] ${
+                  isMember
+                    ? 'border-amber-300/70 ring-1 ring-amber-200/40 dark:border-amber-400/25 dark:ring-amber-400/10'
+                    : 'border-slate-200 hover:border-teal-300 dark:border-white/10 dark:hover:border-teal-400/30'
+                }`}
+              >
+                {isMember && (
+                  <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300">
+                    <span className="vaani-member-star text-xs" aria-hidden="true">✦</span>
+                    Member
+                  </div>
+                )}
+
+                <div className={`flex items-start gap-4 ${isMember ? 'pr-16' : ''}`}>
                   <div className="relative shrink-0">
-                    <Avatar user={person} />
+                    <MemberAvatar person={person} />
                     <span className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#101626] ${person.isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
                   </div>
                   <div className="min-w-0 flex-1">
