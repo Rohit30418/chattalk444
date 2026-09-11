@@ -9,7 +9,6 @@ import { addRoomModalToggle, togglePopup } from '../../redux/action';
 import { getRoomData } from '../../hooks/getRoom';
 import { Popup } from '../common/Popup';
 import SkeletonLoader from './SkeletonLoader';
-import LiveActivityFeed from './LiveActivityFeed';
 import { useAuth } from '../auth/AppWrapper';
 
 const face = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=120&h=120&q=82`;
@@ -359,8 +358,6 @@ const HomeBody = () => {
               </button>
             ))}
           </div>
-
-          <LiveActivityFeed />
 
           <div className="mt-5 flex items-center justify-between gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 sm:text-sm">
             <p>
