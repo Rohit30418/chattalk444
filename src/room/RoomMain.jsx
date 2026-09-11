@@ -5,8 +5,9 @@ import Swal from 'sweetalert2';
 
 import { resetRoomUiState, toggleChatSidebar } from '../redux/action';
 import getUserData from '../hooks/getUserData';
-import { getRoomData } from '../hooks/getRoom';
+import { getRoomData, isExpiredEmptyRoom } from '../hooks/getRoom';
 import api from '../services/api';
+import socket from '../services/socket';
 
 import RoomErrorBoundary from './components/RoomErrorBoundary';
 import LoadingScreen from './components/LoadingScreen';
@@ -22,6 +23,8 @@ import ChatPanel from './components/ChatPanel';
 import DeviceSettingsModal from './components/DeviceSettingsModal';
 import useMeetingTimer from './hooks/useMeetingTimer';
 import useRoomController from './hooks/useRoomController';
+
+const ROOM_HEARTBEAT_MS = 60 * 1000;
 
 const RoomMain = ({ uId, user }) => {
   const { id } = useParams();
@@ -91,7 +94,7 @@ const RoomMain = ({ uId, user }) => {
 
       const roomData = rooms?.find((entry) => entry.id === id || entry._id === id);
 
-      if (roomData) {
+      if (roomData && !isExpiredEmptyRoom(roomData)) {
         if (!cancelled) {
           setCurrentRoomData(roomData);
           setIsHost(Boolean(uId && (roomData.ownerUid === uId || roomData.hostId === uId)));
@@ -102,6 +105,16 @@ const RoomMain = ({ uId, user }) => {
 
       try {
         const { data } = await api.get(`/api/rooms/${id}`);
+
+        if (isExpiredEmptyRoom(data)) {
+          if (!cancelled) {
+            setCurrentRoomData(null);
+            setIsHost(false);
+            setRoomError('This room expired because it stayed empty for two minutes.');
+            setRoomLoading(false);
+          }
+          return;
+        }
 
         if (!cancelled) {
           setCurrentRoomData(data);
@@ -128,6 +141,52 @@ const RoomMain = ({ uId, user }) => {
   useEffect(() => () => {
     dispatch(resetRoomUiState());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!id || !uId || !currUserData || roomLoading || roomError) return undefined;
+
+    let stopped = false;
+
+    const touchRoom = async () => {
+      if (stopped) return;
+
+      try {
+        await api.post(`/api/rooms/${id}/join`, {
+          userId: uId,
+          uid: uId,
+          name: currUserData.displayName || 'User',
+          displayName: currUserData.displayName || 'User',
+          photo: currUserData.photoURL || '',
+          photoURL: currUserData.photoURL || '',
+        });
+      } catch (error) {
+        if (!stopped) {
+          console.warn('[Room heartbeat]', error?.userMessage || error?.message || error);
+        }
+      }
+    };
+
+    const leaveRoom = () => {
+      socket.emit('leave-room', { roomId: id, userId: uId });
+    };
+
+    touchRoom();
+    const heartbeat = window.setInterval(touchRoom, ROOM_HEARTBEAT_MS);
+    window.addEventListener('pagehide', leaveRoom);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(heartbeat);
+      window.removeEventListener('pagehide', leaveRoom);
+      leaveRoom();
+    };
+  }, [
+    id,
+    uId,
+    currUserData,
+    roomLoading,
+    roomError,
+  ]);
 
   const room = useRoomController({
     id,
@@ -232,7 +291,6 @@ const RoomMain = ({ uId, user }) => {
       <RoomStyles />
 
       <div className="relative flex h-[100dvh] w-screen overflow-hidden bg-[#050713] text-white">
-        {/* Ambient background */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-40 -top-40 h-[30rem] w-[30rem] rounded-full bg-blue-600/15 blur-[140px]" />
           <div className="absolute -bottom-44 -right-44 h-[34rem] w-[34rem] rounded-full bg-violet-600/15 blur-[150px]" />
@@ -261,12 +319,6 @@ const RoomMain = ({ uId, user }) => {
             onRetryMedia={() => room.initLocalMedia()}
           />
 
-          {/* 
-            Layout fix:
-            - main = video area
-            - ChatPanel = separate side column
-            - ControlDock is inside main, so it overlays only video, not chat.
-          */}
           <div className="relative flex min-h-0 flex-1 overflow-hidden">
             <main
               className={`
