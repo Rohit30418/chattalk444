@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../components/auth/AppWrapper';
@@ -20,13 +20,6 @@ const FLAG_MAP = {
   russian: 'RU',
   global: 'US',
 };
-
-const PLACEHOLDER_AVATAR_CLASSES = [
-  'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300',
-  'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
-  'bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300',
-  'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
-];
 
 const cleanText = (value, fallback = '') => (
   typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -55,113 +48,89 @@ const getFlagCode = (language) => {
 
 const getLevelClasses = (level) => {
   const value = cleanText(level).toLowerCase();
-
-  if (value.includes('advanced')) {
-    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300';
-  }
-  if (value.includes('intermediate')) {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300';
-  }
-  if (value.includes('beginner')) {
-    return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300';
-  }
+  if (value.includes('advanced')) return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300';
+  if (value.includes('intermediate')) return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300';
+  if (value.includes('beginner')) return 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300';
   return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
 };
 
 const getParticipantName = (participant, index) => (
-  participant?.displayName
-  || participant?.name
-  || participant?.username
-  || participant?.email
-  || `Participant ${index + 1}`
+  participant?.displayName || participant?.name || participant?.username || participant?.email || `Participant ${index + 1}`
 );
 
 const getParticipantPhoto = (participant) => (
   participant?.photoURL || participant?.photo || participant?.avatar || ''
 );
 
-const getInitial = (name) => {
-  const cleaned = cleanText(name);
-  return cleaned ? cleaned.charAt(0).toUpperCase() : '?';
-};
+const getInitials = (name = 'Vaani User') => name
+  .split(' ')
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0]?.toUpperCase())
+  .join('') || 'VU';
 
-const PlaceholderAvatarStack = memo(({ roomId, activeCount }) => {
-  const visibleCount = Math.min(activeCount, 4);
+const ProfilePhoto = memo(({ src, name, className = 'h-6 w-6', rounded = 'rounded-full' }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={name || 'Profile'}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className={`${className} ${rounded} shrink-0 border border-slate-200 bg-slate-100 object-cover dark:border-white/10 dark:bg-slate-800`}
+      />
+    );
+  }
 
   return (
-    <div className="flex -space-x-2" aria-label={`${activeCount} active participants`}>
-      {Array.from({ length: visibleCount }, (_, index) => (
-        <div
-          key={`${roomId}-placeholder-${index}`}
-          className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[11px] dark:border-[#101626] ${PLACEHOLDER_AVATAR_CLASSES[index % PLACEHOLDER_AVATAR_CLASSES.length]}`}
-          aria-hidden="true"
-        >
-          <i className="fa-solid fa-user text-[10px]" />
-        </div>
-      ))}
-
-      {activeCount > 4 && (
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200">
-          +{activeCount - 4}
-        </div>
-      )}
-    </div>
+    <span className={`${className} ${rounded} flex shrink-0 items-center justify-center border border-slate-200 bg-slate-100 text-[9px] font-black text-slate-600 dark:border-white/10 dark:bg-slate-800 dark:text-slate-300`}>
+      {getInitials(name)}
+    </span>
   );
 });
 
-PlaceholderAvatarStack.displayName = 'PlaceholderAvatarStack';
+ProfilePhoto.displayName = 'ProfilePhoto';
 
-const AvatarStack = memo(({ roomId, participants, activeCount }) => {
-  if (activeCount <= 0) {
+const AvatarStack = memo(({ roomId, participants, activeCount, ownerName, ownerPhoto }) => {
+  const withOwner = useMemo(() => {
+    const list = Array.isArray(participants) ? [...participants] : [];
+    if (ownerPhoto && !list.some((item) => getParticipantPhoto(item) === ownerPhoto)) {
+      list.unshift({ uid: `${roomId}-owner`, displayName: ownerName, photoURL: ownerPhoto });
+    }
+    return list;
+  }, [ownerName, ownerPhoto, participants, roomId]);
+
+  if (!withOwner.length) {
     return (
-      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500">
-        <i className="fa-solid fa-user-plus text-[10px]" aria-hidden="true" />
+      <div className="flex -space-x-2" aria-label={`${activeCount} active participants`}>
+        {Array.from({ length: Math.min(Math.max(activeCount, 1), 3) }, (_, index) => (
+          <span key={`${roomId}-placeholder-${index}`} className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[9px] font-black text-slate-500 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-300">
+            {index + 1}
+          </span>
+        ))}
+        {activeCount > 3 && (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[9px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200">+{activeCount - 3}</span>
+        )}
       </div>
     );
   }
 
-  if (!participants.length) {
-    return <PlaceholderAvatarStack roomId={roomId} activeCount={activeCount} />;
-  }
-
-  const visible = participants.slice(0, 4);
+  const visible = withOwner.slice(0, 4);
 
   return (
-    <div className="flex -space-x-2">
+    <div className="flex -space-x-2" aria-label={`${activeCount} active participants`}>
       {visible.map((participant, index) => {
         const key = participant?.uid || participant?.userId || participant?._id || participant?.id || `${roomId}-${index}`;
         const name = getParticipantName(participant, index);
         const photo = getParticipantPhoto(participant);
-
-        if (photo) {
-          return (
-            <img
-              key={key}
-              src={photo}
-              alt={name}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="h-9 w-9 rounded-full border-2 border-white bg-slate-100 object-cover dark:border-[#101626] dark:bg-slate-800"
-            />
-          );
-        }
-
-        return (
-          <div
-            key={key}
-            title={name}
-            className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[11px] font-black dark:border-[#101626] ${PLACEHOLDER_AVATAR_CLASSES[index % PLACEHOLDER_AVATAR_CLASSES.length]}`}
-          >
-            {getInitial(name)}
-          </div>
-        );
+        return <ProfilePhoto key={key} src={photo} name={name} className="h-8 w-8" />;
       })}
-
-      {activeCount > 4 && (
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200">
-          +{activeCount - 4}
-        </div>
+      {activeCount > visible.length && (
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[9px] font-black text-slate-600 dark:border-[#101626] dark:bg-slate-800 dark:text-slate-200">+{activeCount - visible.length}</span>
       )}
     </div>
   );
@@ -171,34 +140,24 @@ AvatarStack.displayName = 'AvatarStack';
 
 const RoomCard = ({ roomdata }) => {
   const { user } = useAuth();
-  const loginStatus = Boolean(user);
   const room = roomdata || {};
   const roomId = getRoomId(room);
+  const loginStatus = Boolean(user);
 
   const title = cleanText(room.Title || room.title || room.name, 'Untitled room');
   const language = cleanText(room.Language || room.language, 'Global');
   const level = cleanText(room.Level || room.level, 'All levels');
-  const topic = cleanText(room.Topic || room.topic || room.category, 'Live practice');
-  const owner = cleanText(room.ownerName || room.hostName || room.createdByName, 'Host');
+  const ownerName = cleanText(room.ownerName || room.hostName || room.createdByName, 'Host');
+  const ownerPhoto = cleanText(room.ownerPhoto || room.hostPhoto || room.ownerPhotoURL || room.photoURL, '');
+  const description = cleanText(
+    room.description || room.Description || room.about || room.TopicDescription,
+    `Join the conversation and practice ${language} with other Vaani learners.`
+  );
 
   const participants = useMemo(() => getParticipants(room), [room]);
-
-  const activeCount = Math.max(
-    0,
-    safeNumber(
-      room.participantsCount ?? room.activeCount ?? room.memberCount ?? participants.length,
-      participants.length
-    )
-  );
-
-  const maxPeople = Math.max(
-    1,
-    safeNumber(room.MaximumPeople ?? room.maximumPeople ?? room.maxPeople ?? room.capacity, 5)
-  );
-
+  const activeCount = Math.max(0, safeNumber(room.participantsCount ?? room.activeCount ?? room.memberCount ?? participants.length, participants.length));
+  const maxPeople = Math.max(1, safeNumber(room.MaximumPeople ?? room.maximumPeople ?? room.maxPeople ?? room.capacity, 5));
   const isFull = activeCount >= maxPeople;
-  const seatsLeft = Math.max(maxPeople - activeCount, 0);
-  const capacityPercent = Math.min(100, Math.round((activeCount / maxPeople) * 100));
 
   const handleJoinClick = useCallback((event) => {
     if (!loginStatus) {
@@ -210,13 +169,10 @@ const RoomCard = ({ roomdata }) => {
   if (!roomId) return null;
 
   return (
-    <article
-      className="flex min-h-[228px] flex-col rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#101626]"
-      style={{ contain: 'layout paint style' }}
-    >
+    <article className="flex min-h-[260px] flex-col rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-teal-200 dark:border-white/10 dark:bg-[#101626] dark:hover:border-teal-400/20" style={{ contain: 'layout paint style' }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="inline-flex max-w-[140px] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+          <span className="inline-flex max-w-[145px] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
             <img
               src={`https://flagsapi.com/${getFlagCode(language)}/flat/64.png`}
               alt=""
@@ -224,82 +180,56 @@ const RoomCard = ({ roomdata }) => {
               loading="lazy"
               decoding="async"
               className="h-3.5 w-3.5 shrink-0 object-contain"
-              onError={(event) => {
-                event.currentTarget.style.display = 'none';
-              }}
+              onError={(event) => { event.currentTarget.style.display = 'none'; }}
             />
             <span className="truncate">{language}</span>
           </span>
-
-          <span className={`inline-flex max-w-[140px] truncate rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${getLevelClasses(level)}`}>
+          <span className={`inline-flex max-w-[145px] truncate rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${getLevelClasses(level)}`}>
             {level.replace('#', '')}
           </span>
         </div>
 
         <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          Live
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
         </span>
       </div>
 
-      <div className="mt-4 min-w-0 flex-1">
-        <div className="mb-3 flex items-center gap-2">
-          {isFull && (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-              Full
-            </span>
-          )}
-          <span className="truncate rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">
-            {topic}
-          </span>
-        </div>
+      <div className="mt-4 flex-1">
+        <h3 className="line-clamp-2 text-lg font-black leading-snug text-slate-950 dark:text-white sm:text-xl">{title}</h3>
 
-        <h3 className="line-clamp-2 text-lg font-black leading-snug text-slate-950 dark:text-white sm:text-xl">
-          {title}
-        </h3>
-
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-          <span className="inline-flex items-center gap-1.5">
-            <i className="fa-solid fa-user-tie text-[9px] text-slate-400" aria-hidden="true" />
-            {owner}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-2">
+            <ProfilePhoto src={ownerPhoto} name={ownerName} className="h-6 w-6" />
+            <span>{ownerName}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <i className="fa-solid fa-user-group text-[9px] text-slate-400" aria-hidden="true" />
             {activeCount}/{maxPeople} speaking
           </span>
-          <span className={isFull ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}>
-            {isFull ? 'No seats left' : `${seatsLeft} seat${seatsLeft === 1 ? '' : 's'} left`}
-          </span>
         </div>
 
-        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.06]">
-          <div
-            className={`h-full rounded-full ${isFull ? 'bg-amber-500' : 'bg-teal-600 dark:bg-teal-400'}`}
-            style={{ width: `${capacityPercent}%` }}
-          />
-        </div>
+        <p className="mt-4 line-clamp-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{description}</p>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <AvatarStack roomId={roomId} participants={participants} activeCount={activeCount} />
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-white/[0.07]">
+        <AvatarStack
+          roomId={roomId}
+          participants={participants}
+          activeCount={activeCount}
+          ownerName={ownerName}
+          ownerPhoto={ownerPhoto}
+        />
 
         {isFull ? (
-          <button
-            type="button"
-            disabled
-            className="rounded-xl bg-amber-50 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-          >
-            Full
-          </button>
+          <button type="button" disabled className="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">Room Full</button>
         ) : (
           <Link
             to={`/room/${roomId}`}
             onClick={handleJoinClick}
-            className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-[11px] font-black uppercase tracking-wide text-white transition-colors hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
             aria-label={`Join ${title}`}
           >
-            Join
-            <i className="fa-solid fa-arrow-right text-[10px]" aria-hidden="true" />
+            Join Room
           </Link>
         )}
       </div>
