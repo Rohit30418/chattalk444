@@ -2,15 +2,34 @@ import { useEffect, useState, useCallback } from 'react';
 import socket from '../services/socket';
 import api from '../services/api';
 
+const EMPTY_ROOM_TTL_MS = 2 * 60 * 1000;
+
 const getDateValue = (room) => {
   const value = room?.lastActive || room?.createdAt || 0;
   const dateValue = new Date(value).getTime();
   return Number.isFinite(dateValue) ? dateValue : Number(value) || 0;
 };
 
+const getParticipantCount = (room) => {
+  const value = Number(room?.participantsCount ?? room?.activeCount ?? room?.memberCount ?? 0);
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+};
+
+export const isExpiredEmptyRoom = (room, now = Date.now()) => {
+  if (!room) return true;
+  if (getParticipantCount(room) > 0) return false;
+
+  const lastActive = getDateValue(room);
+  if (!lastActive) return false;
+
+  return now - lastActive >= EMPTY_ROOM_TTL_MS;
+};
+
 const sortRooms = (roomList) => (
   Array.isArray(roomList)
-    ? [...roomList].sort((a, b) => getDateValue(b) - getDateValue(a))
+    ? [...roomList]
+        .filter((room) => !isExpiredEmptyRoom(room))
+        .sort((a, b) => getDateValue(b) - getDateValue(a))
     : []
 );
 
@@ -47,9 +66,14 @@ export const getRoomData = () => {
       setError(null);
     };
 
+    const expiryTimer = window.setInterval(() => {
+      setRooms((current) => sortRooms(current));
+    }, 5000);
+
     socket.on('dashboard-update', handleDashboardUpdate);
 
     return () => {
+      window.clearInterval(expiryTimer);
       socket.off('dashboard-update', handleDashboardUpdate);
       socket.emit('leave-dashboard');
     };
