@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import getUserData from "../../hooks/getUserData";
 import useUserCollection from "../useUserCollection";
 import { useAuth } from "../auth/AppWrapper";
+import MemberAppearancePanel from "./MemberAppearancePanel";
 import "../../styles/memberEffects.css";
 
 const statConfig = [
@@ -249,6 +250,7 @@ const MyProfile = () => {
     "Learning languages, meeting new people, and building confidence through real conversations."
   );
   const isMember = userInfo?.isMember === true;
+  const isOwnProfile = Boolean(authUser?.uid && authUser.uid === userId);
   const profileTheme = normalizeProfileTheme(userInfo?.profileAnimationId);
 
   const languages = useMemo(
@@ -605,6 +607,16 @@ const MyProfile = () => {
 
       <div className="grid w-full gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:px-8 xl:grid-cols-[360px_minmax(0,1fr)] xl:px-10">
         <aside className="space-y-5">
+          {isOwnProfile && isMember && (
+            <MemberAppearancePanel
+              userInfo={userInfo}
+              authUser={authUser}
+              onUpdated={(updatedUser) => {
+                setUserInfo((current) => ({ ...(current || {}), ...updatedUser }));
+              }}
+            />
+          )}
+
           <section className="rounded-[1.5rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-[#101626]">
             <SectionHeader icon="fa-user" title="About" subtitle="A little about this learner" />
             <p className="text-sm font-medium leading-7 text-slate-600 dark:text-slate-300">
