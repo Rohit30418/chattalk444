@@ -4,6 +4,7 @@ import api from '../../services/api';
 import socket from '../../services/socket';
 import { useAuth } from '../auth/AppWrapper';
 import SocialNav from './SocialNav';
+import MemberAvatar from '../common/MemberAvatar';
 
 const initials = (name = 'Vaani User') => name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'VU';
 
@@ -329,14 +330,49 @@ const MessagesPage = () => {
             {activeConversation ? (
               <>
                 <div className="flex h-18 shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10 sm:px-5">
-                  <button type="button" onClick={() => { setActiveConversation(null); setSearchParams({}); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 lg:hidden dark:border-white/10 dark:text-slate-300"><i className="fa-solid fa-arrow-left text-xs" /></button>
-                  <Avatar user={activeConversation.otherUser} />
-                  <div className="min-w-0 flex-1">
-                    <Link to={`/profile/${encodeURIComponent(activeConversation.otherUser?.uid || '')}`} className="truncate text-sm font-black hover:text-teal-700 dark:hover:text-teal-300">{activeConversation.otherUser?.displayName || 'Vaani User'}</Link>
-                    <p className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{typingUid ? 'Typing...' : formatLastActive(activeConversation.otherUser?.lastActive, activeConversation.otherUser?.isOnline)}</p>
-                  </div>
-                  <Link to={`/profile/${encodeURIComponent(activeConversation.otherUser?.uid || '')}`} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:border-teal-300 hover:text-teal-700 dark:border-white/10 dark:text-slate-300"><i className="fa-regular fa-user text-xs" /></Link>
-                </div>
+
+  <button
+    type="button"
+    onClick={() => {
+      setActiveConversation(null);
+      setSearchParams({});
+    }}
+    className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 lg:hidden dark:border-white/10 dark:text-slate-300"
+  >
+    <i className="fa-solid fa-arrow-left text-xs" />
+  </button>
+
+  <MemberAvatar
+    user={activeConversation.otherUser}
+    className="h-11 w-11"
+  />
+
+  <div className="min-w-0 flex-1">
+    <Link
+      to={`/profile/${encodeURIComponent(activeConversation.otherUser?.uid || '')}`}
+      className="truncate text-sm font-black hover:text-teal-700 dark:hover:text-teal-300"
+    >
+      {activeConversation.otherUser?.displayName || 'Vaani User'}
+    </Link>
+
+    <p className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+      {typingUid
+        ? 'Typing...'
+        : formatLastActive(
+            activeConversation.otherUser?.lastActive,
+            activeConversation.otherUser?.isOnline
+          )}
+    </p>
+  </div>
+
+  <Link
+    to={`/profile/${encodeURIComponent(activeConversation.otherUser?.uid || '')}`}
+    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500"
+  >
+    <i className="fa-regular fa-user text-xs" />
+  </Link>
+
+</div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/70 px-4 py-5 dark:bg-[#070b13] sm:px-6">
                   {loadingMessages ? (
