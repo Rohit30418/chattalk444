@@ -17,21 +17,21 @@ export const PROFILE_DECORATIONS = [
 ];
 
 export const PROFILE_BANNERS = [
-  { id: 'purple-moon', label: 'Purple Moon', src: '/member-assets/banners/purple-moon.webm' },
-  { id: 'sakura-bridge', label: 'Sakura Bridge', src: '/member-assets/banners/sakura-bridge.webm' },
-  { id: 'sakura-canopy', label: 'Sakura Canopy', src: '/member-assets/banners/sakura-canopy.webm' },
-  { id: 'red-eyes-gaze', label: 'Red Eyes', src: '/member-assets/banners/red-eyes-gaze.webm' },
-  { id: 'shadow-aura', label: 'Shadow Aura', src: '/member-assets/banners/shadow-aura.webm' },
-  { id: 'broken-clock', label: 'Broken Clock', src: '/member-assets/banners/broken-clock.webm' },
-  { id: 'glow-butterfly', label: 'Glow Butterfly', src: '/member-assets/banners/glow-butterfly.webm' },
-  { id: 'black-hair', label: 'Black Hair', src: '/member-assets/banners/black-hair.webm' },
-  { id: 'blurred-sedan', label: 'Blurred Sedan', src: '/member-assets/banners/blurred-sedan.webm' },
-  { id: 'goth-smoker', label: 'Goth Smoker', src: '/member-assets/banners/goth-smoker.webm' },
-  { id: 'itachi-akatsu', label: 'Akatsuki', src: '/member-assets/banners/itachi-akatsu.webm' },
-  { id: 'red-forest', label: 'Red Forest', src: '/member-assets/banners/red-forest.webm' },
-  { id: 'sunflower-dusk', label: 'Sunflower Dusk', src: '/member-assets/banners/sunflower-dusk.webm' },
-  { id: 'surreal', label: 'Surreal', src: '/member-assets/banners/surreal.webm' },
-  { id: 'wing-shadow', label: 'Wing Shadow', src: '/member-assets/banners/wing-shadow.webm' },
+  { id: 'purple-moon', label: 'Purple Moon', src: '/member-assets/banners/purple-moon.webp' },
+  { id: 'sakura-bridge', label: 'Sakura Bridge', src: '/member-assets/banners/sakura-bridge.webp' },
+  { id: 'sakura-canopy', label: 'Sakura Canopy', src: '/member-assets/banners/sakura-canopy.webp' },
+  { id: 'red-eyes-gaze', label: 'Red Eyes', src: '/member-assets/banners/red-eyes-gaze.webp' },
+  { id: 'shadow-aura', label: 'Shadow Aura', src: '/member-assets/banners/shadow-aura.webp' },
+  { id: 'broken-clock', label: 'Broken Clock', src: '/member-assets/banners/broken-clock.webp' },
+  { id: 'glow-butterfly', label: 'Glow Butterfly', src: '/member-assets/banners/glow-butterfly.webp' },
+  { id: 'black-hair', label: 'Black Hair', src: '/member-assets/banners/black-hair.webp' },
+  { id: 'blurred-sedan', label: 'Blurred Sedan', src: '/member-assets/banners/blurred-sedan.webp' },
+  { id: 'goth-smoker', label: 'Goth Smoker', src: '/member-assets/banners/goth-smoker.webp' },
+  { id: 'itachi-akatsu', label: 'Akatsuki', src: '/member-assets/banners/itachi-akatsu.webp' },
+  { id: 'red-forest', label: 'Red Forest', src: '/member-assets/banners/red-forest.webp' },
+  { id: 'sunflower-dusk', label: 'Sunflower Dusk', src: '/member-assets/banners/sunflower-dusk.webp' },
+  { id: 'surreal', label: 'Surreal', src: '/member-assets/banners/surreal.webp' },
+  { id: 'wing-shadow', label: 'Wing Shadow', src: '/member-assets/banners/wing-shadow.webp' },
 ];
 
 const decorationMap = new Map(PROFILE_DECORATIONS.map((item) => [item.id, item]));

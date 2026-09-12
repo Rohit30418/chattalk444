@@ -208,9 +208,9 @@ const GlobalMemberVisuals = () => {
       <MemberBannerVideo
         bannerId={profileMember.profileBannerId}
         eager
-        className="h-full w-full object-cover"
+        className="h-full w-full"
       />
-      <div className="absolute inset-0 bg-slate-950/20" />
+      <div className="absolute inset-0 bg-slate-950/10" />
     </div>,
     bannerTarget
   );

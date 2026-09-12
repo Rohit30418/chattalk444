@@ -1,63 +1,78 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getProfileBanner } from '../../utils/memberAssets';
 
-const cache = new Map();
-
-const decodeBase64Video = (text) => {
-  const binary = window.atob(text.trim());
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return URL.createObjectURL(new Blob([bytes], { type: 'video/webm' }));
-};
-
+/*
+ * Historical filename kept to avoid touching every import. The component now
+ * renders animated WebP banners with <img>, not video/WebM.
+ */
 const MemberBannerVideo = ({ bannerId, className = '', eager = false }) => {
   const banner = getProfileBanner(bannerId);
-  const [src, setSrc] = useState(cache.get(banner.id) || '');
+  const rootRef = useRef(null);
+  const [shouldLoad, setShouldLoad] = useState(eager);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    if (cache.has(banner.id)) {
-      setSrc(cache.get(banner.id));
+    setFailed(false);
+  }, [banner.id]);
+
+  useEffect(() => {
+    if (eager) {
+      setShouldLoad(true);
       return undefined;
     }
 
-    fetch(`${banner.src}.b64.txt`)
-      .then((response) => {
-        if (!response.ok) throw new Error('Banner asset not found');
-        return response.text();
-      })
-      .then((text) => {
-        if (cancelled) return;
-        const objectUrl = decodeBase64Video(text);
-        cache.set(banner.id, objectUrl);
-        setSrc(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setSrc('');
-      });
+    const element = rootRef.current;
+    if (!element || !('IntersectionObserver' in window)) {
+      setShouldLoad(true);
+      return undefined;
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [banner.id, banner.src]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '180px' }
+    );
 
-  if (!src) {
-    return <div className={`bg-[linear-gradient(120deg,#071b2b,#0f766e_55%,#312e81)] ${className}`} />;
-  }
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [banner.id, eager]);
 
   return (
-    <video
-      src={src}
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload={eager ? 'auto' : 'metadata'}
+    <div
+      ref={rootRef}
+      className={`relative overflow-hidden bg-[linear-gradient(120deg,#071b2b,#0f766e_55%,#312e81)] ${className}`}
       aria-hidden="true"
-      className={className}
-    />
+    >
+      {shouldLoad && !failed && (
+        <>
+          {/* Fill the wide profile area without stretching the detailed layer. */}
+          <img
+            src={banner.src}
+            alt=""
+            loading={eager ? 'eager' : 'lazy'}
+            decoding="async"
+            fetchPriority={eager ? 'high' : 'auto'}
+            onError={() => setFailed(true)}
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-65 blur-2xl"
+          />
+
+          {/* Keep the original artwork sharp and uncropped in the foreground. */}
+          <img
+            src={banner.src}
+            alt=""
+            loading={eager ? 'eager' : 'lazy'}
+            decoding="async"
+            fetchPriority={eager ? 'high' : 'auto'}
+            onError={() => setFailed(true)}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+        </>
+      )}
+    </div>
   );
 };
 
