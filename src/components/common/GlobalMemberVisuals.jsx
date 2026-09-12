@@ -63,12 +63,57 @@ const addDecoration = (target, member) => {
 
 const addDecorationAroundImage = (image, member) => {
   if (!image || member?.isMember !== true) return;
+
+  const decoration = getProfileDecoration(member.profileDecorationId, member.profileAnimationId);
+  if (!decoration?.src) return;
+
   const parent = image.parentElement;
   if (!parent) return;
 
+  // MessagesPage sometimes renders the avatar image directly inside the whole
+  // chat header. Never use that large parent as the decoration's dimensions.
+  // Instead, keep the decoration as a sibling but position it exactly over the
+  // avatar's own box. This also works for the small conversation-list avatars.
   parent.style.position = 'relative';
   parent.style.overflow = 'visible';
-  addDecoration(parent, member);
+
+  if (!parent.classList.contains('vaani-profile-frame')) {
+    parent.classList.remove('vaani-has-runtime-decoration');
+  }
+
+  const selector = ':scope > .vaani-runtime-decoration[data-vaani-image-overlay="true"]';
+  let overlay = parent.querySelector(selector);
+
+  if (overlay && overlay.dataset.vaaniDecorationId !== decoration.id) {
+    overlay.remove();
+    overlay = null;
+  }
+
+  if (!overlay) {
+    overlay = document.createElement('img');
+    overlay.src = decoration.src;
+    overlay.alt = '';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.dataset.vaaniDecorationId = decoration.id;
+    overlay.dataset.vaaniImageOverlay = 'true';
+    overlay.className = 'vaani-runtime-decoration';
+    Object.assign(overlay.style, {
+      position: 'absolute',
+      objectFit: 'contain',
+      pointerEvents: 'none',
+      zIndex: '30',
+      transform: 'scale(1.22)',
+      transformOrigin: 'center',
+    });
+    parent.appendChild(overlay);
+  }
+
+  // Setting the parent to position:relative makes offsetLeft/offsetTop resolve
+  // against this exact container, including the wide active-chat header case.
+  overlay.style.left = `${image.offsetLeft}px`;
+  overlay.style.top = `${image.offsetTop}px`;
+  overlay.style.width = `${image.offsetWidth}px`;
+  overlay.style.height = `${image.offsetHeight}px`;
 };
 
 const clearRuntimeDecorations = () => {
