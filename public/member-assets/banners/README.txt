@@ -1,0 +1,1 @@
+Vaani member profile banner assets. Binary WebM files are committed alongside this note.
