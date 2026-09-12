@@ -13,6 +13,7 @@ import { AuthProvider } from './components/auth/AppWrapper';
 import MemberRoute from './components/auth/MemberRoute';
 import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
+import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import ErrorBoundary from './ErrorBoundary';
 
 const HomePage = lazy(() => import('./Home/HomePage'));
@@ -144,6 +145,8 @@ function App() {
   return (
     <Provider store={store}>
       <AuthProvider>
+        <GlobalMemberVisuals />
+
         <ToastContainer
           theme="colored"
           position="top-right"
