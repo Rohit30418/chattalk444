@@ -58,13 +58,29 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
 
     try {
       setSaving(true);
-      const { data } = await api.patch(`/api/users/${encodeURIComponent(authUser.uid)}/member-style`, {
+
+      const [{ data: appearanceData }, { data: roomData }] = await Promise.all([
+        api.patch('/api/social/member-appearance', {
+          profileDecorationId,
+          profileBannerId,
+        }),
+        api.patch(`/api/users/${encodeURIComponent(authUser.uid)}/member-style`, {
+          roomAnimationId,
+        }),
+      ]);
+
+      const updatedUser = {
+        ...(roomData?.user || {}),
+        ...(appearanceData?.user || {}),
         profileDecorationId,
         profileBannerId,
         roomAnimationId,
-      });
+      };
 
-      if (data?.user) onUpdated?.(data.user);
+      onUpdated?.(updatedUser);
+      window.dispatchEvent(new CustomEvent('vaani-member-style-updated', {
+        detail: { user: updatedUser },
+      }));
       toast.success('Member appearance updated');
     } catch (error) {
       toast.error(error.userMessage || 'Could not update member appearance');
