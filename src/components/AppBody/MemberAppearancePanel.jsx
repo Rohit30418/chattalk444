@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import { useAuth } from '../auth/AppWrapper';
 import MemberAvatar from '../common/MemberAvatar';
 import MemberBannerVideo from '../common/MemberBannerVideo';
 import {
@@ -22,6 +23,7 @@ const normalizeRoomTheme = (value) => (
 );
 
 const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
+  const { refreshUser } = useAuth();
   const [profileDecorationId, setProfileDecorationId] = useState(
     normalizeProfileDecorationId(userInfo?.profileDecorationId, userInfo?.profileAnimationId)
   );
@@ -59,28 +61,41 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
     try {
       setSaving(true);
 
-      const [{ data: appearanceData }, { data: roomData }] = await Promise.all([
-        api.patch('/api/social/member-appearance', {
-          profileDecorationId,
-          profileBannerId,
-        }),
-        api.patch(`/api/users/${encodeURIComponent(authUser.uid)}/member-style`, {
-          roomAnimationId,
-        }),
-      ]);
+      // Avatar decorations and profile banners are handled by the social
+      // appearance endpoint. Hosted-room animation remains on the existing
+      // member-style endpoint. Keep the calls sequential so one save cannot
+      // race and overwrite fields written by the other.
+      const appearanceResponse = await api.patch('/api/social/member-appearance', {
+        profileDecorationId,
+        profileBannerId,
+      });
 
-      const updatedUser = {
-        ...(roomData?.user || {}),
-        ...(appearanceData?.user || {}),
+      const roomResponse = await api.patch(
+        `/api/users/${encodeURIComponent(authUser.uid)}/member-style`,
+        { roomAnimationId }
+      );
+
+      const mergedUser = {
+        ...(userInfo || {}),
+        ...(appearanceResponse.data?.user || appearanceResponse.data?.publicUser || {}),
+        ...(roomResponse.data?.user || {}),
         profileDecorationId,
         profileBannerId,
         roomAnimationId,
       };
 
-      onUpdated?.(updatedUser);
+      // Refresh AuthContext/localStorage as well so the header and every other
+      // avatar location immediately use the newly selected decoration.
+      const refreshedUser = await refreshUser?.();
+      const finalUser = refreshedUser
+        ? { ...mergedUser, ...refreshedUser }
+        : mergedUser;
+
+      onUpdated?.(finalUser);
       window.dispatchEvent(new CustomEvent('vaani-member-style-updated', {
-        detail: { user: updatedUser },
+        detail: { user: finalUser },
       }));
+
       toast.success('Member appearance updated');
     } catch (error) {
       toast.error(error.userMessage || 'Could not update member appearance');
@@ -122,7 +137,7 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
                 onClick={() => setProfileDecorationId(item.id)}
                 className={`flex min-h-[92px] flex-col items-center justify-center rounded-2xl border p-2 text-center transition-colors ${
                   selected
-                    ? 'border-teal-400 bg-teal-50 dark:border-teal-400/40 dark:bg-teal-500/10'
+                    ? 'border-teal-400 bg-teal-50 ring-1 ring-teal-300/40 dark:border-teal-400/40 dark:bg-teal-500/10'
                     : 'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.03]'
                 }`}
               >
@@ -134,6 +149,11 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
                 <span className="mt-1.5 line-clamp-1 text-[10px] font-black text-slate-800 dark:text-slate-100">
                   {item.label}
                 </span>
+                {selected && (
+                  <span className="mt-1 text-[8px] font-black uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                    Selected
+                  </span>
+                )}
               </button>
             );
           })}
@@ -153,15 +173,16 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
                 type="button"
                 onClick={() => setProfileBannerId(item.id)}
                 className={`overflow-hidden rounded-2xl border text-left transition-colors ${
-                  selected ? 'border-teal-400 ring-1 ring-teal-300/50' : 'border-slate-200 dark:border-white/10'
+                  selected ? 'border-teal-400 ring-2 ring-teal-300/40' : 'border-slate-200 dark:border-white/10'
                 }`}
               >
                 <MemberBannerVideo
                   bannerId={item.id}
                   className="aspect-[16/7] w-full bg-slate-900 object-cover"
                 />
-                <span className="block truncate bg-white px-2.5 py-2 text-[10px] font-black text-slate-800 dark:bg-[#0b1220] dark:text-slate-100">
-                  {item.label}
+                <span className="flex items-center justify-between gap-2 bg-white px-2.5 py-2 text-[10px] font-black text-slate-800 dark:bg-[#0b1220] dark:text-slate-100">
+                  <span className="truncate">{item.label}</span>
+                  {selected && <i className="fa-solid fa-circle-check shrink-0 text-teal-600" aria-hidden="true" />}
                 </span>
               </button>
             );
