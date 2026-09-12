@@ -117,6 +117,22 @@
   --profile-c: #ec4899;
 }
 
+/* Once a real APNG decoration is attached, hide the old CSS aura frame.
+   This prevents every selection from still looking like the Aurora theme. */
+.vaani-profile-frame.vaani-has-runtime-decoration {
+  padding: 0 !important;
+}
+
+.vaani-profile-frame.vaani-has-runtime-decoration::before,
+.vaani-profile-frame.vaani-has-runtime-decoration::after {
+  display: none !important;
+}
+
+.vaani-runtime-decoration,
+.vaani-avatar-decoration {
+  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, .22));
+}
+
 .vaani-member-badge {
   position: relative;
   overflow: hidden;
@@ -129,6 +145,53 @@
   transform: translateX(-130%) skewX(-18deg);
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent);
   animation: vaaniBadgeShine 3.8s ease-in-out infinite;
+}
+
+/* Premium profile layout --------------------------------------------------
+   MyProfile has its own sticky header (z-[120]). Scope these selectors to
+   that header so no room/home layout is affected. */
+main > header[class*="z-[120]"] + section {
+  width: min(calc(100% - 32px), 1280px);
+  margin: 20px auto 0;
+  overflow: hidden;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 28px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, .08);
+}
+
+main > header[class*="z-[120]"] + section > div.relative {
+  height: clamp(210px, 24vw, 280px) !important;
+}
+
+main > header[class*="z-[120]"] + section + div.grid {
+  width: min(calc(100% - 32px), 1280px) !important;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 24px !important;
+}
+
+.dark main > header[class*="z-[120]"] + section {
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+}
+
+@media (max-width: 639px) {
+  main > header[class*="z-[120]"] + section {
+    width: calc(100% - 20px);
+    margin-top: 10px;
+    border-radius: 22px;
+  }
+
+  main > header[class*="z-[120]"] + section > div.relative {
+    height: 190px !important;
+  }
+
+  main > header[class*="z-[120]"] + section + div.grid {
+    width: calc(100% - 20px) !important;
+    padding-top: 16px !important;
+  }
 }
 
 @property --vaani-angle {
