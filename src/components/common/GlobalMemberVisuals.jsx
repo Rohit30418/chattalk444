@@ -24,17 +24,34 @@ const profileUidFromElement = (element, fallbackUid = '') => {
 };
 
 const addDecoration = (target, member) => {
-  if (!target || member?.isMember !== true) return;
-  if (target.querySelector(':scope > .vaani-runtime-decoration')) return;
+  if (!target) return;
+
+  const existing = target.querySelector(':scope > .vaani-runtime-decoration');
+  if (member?.isMember !== true) {
+    existing?.remove();
+    return;
+  }
 
   const decoration = getProfileDecoration(member.profileDecorationId, member.profileAnimationId);
-  if (!decoration?.src) return;
+  if (!decoration?.src) {
+    existing?.remove();
+    return;
+  }
 
   target.style.position = 'relative';
   target.style.overflow = 'visible';
 
+  if (existing) {
+    if (existing.dataset.decorationId !== decoration.id || existing.src !== decoration.src) {
+      existing.src = decoration.src;
+      existing.dataset.decorationId = decoration.id;
+    }
+    return;
+  }
+
   const image = document.createElement('img');
   image.src = decoration.src;
+  image.dataset.decorationId = decoration.id;
   image.alt = '';
   image.setAttribute('aria-hidden', 'true');
   image.className = 'vaani-runtime-decoration';
@@ -53,9 +70,9 @@ const addDecoration = (target, member) => {
 };
 
 const addDecorationAroundImage = (image, member) => {
-  if (!image || member?.isMember !== true) return;
+  if (!image) return;
   const parent = image.parentElement;
-  if (!parent || parent.querySelector(':scope > .vaani-runtime-decoration')) return;
+  if (!parent) return;
 
   parent.style.position = 'relative';
   parent.style.overflow = 'visible';
@@ -138,7 +155,6 @@ const GlobalMemberVisuals = () => {
               const other = conversation?.otherUser;
               if (!other?.uid || !other?.photoURL) return;
               const member = other.profileDecorationId ? other : await getMember(other.uid);
-              if (member?.isMember !== true) return;
               [...document.querySelectorAll('img')]
                 .filter((image) => image.src === other.photoURL || image.getAttribute('src') === other.photoURL)
                 .forEach((image) => addDecorationAroundImage(image, member));
@@ -157,19 +173,29 @@ const GlobalMemberVisuals = () => {
       timer = window.setTimeout(scan, 80);
     };
 
+    const handleStyleUpdate = (event) => {
+      const updatedUser = event?.detail?.user;
+      if (updatedUser?.uid) {
+        cacheRef.current.set(updatedUser.uid, updatedUser);
+      }
+
+      document.querySelectorAll('.vaani-runtime-decoration').forEach((node) => node.remove());
+      scheduleScan();
+    };
+
     const observer = new MutationObserver(scheduleScan);
     observer.observe(document.body, { childList: true, subtree: true });
     scheduleScan();
 
     window.addEventListener('popstate', scheduleScan);
-    window.addEventListener('vaani-member-style-updated', scheduleScan);
+    window.addEventListener('vaani-member-style-updated', handleStyleUpdate);
 
     return () => {
       stopped = true;
       window.clearTimeout(timer);
       observer.disconnect();
       window.removeEventListener('popstate', scheduleScan);
-      window.removeEventListener('vaani-member-style-updated', scheduleScan);
+      window.removeEventListener('vaani-member-style-updated', handleStyleUpdate);
     };
   }, [user?.uid, user?.profileDecorationId, user?.profileAnimationId]);
 
