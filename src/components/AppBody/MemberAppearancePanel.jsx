@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import MemberAvatar from '../common/MemberAvatar';
+import MemberBannerVideo from '../common/MemberBannerVideo';
 import {
   PROFILE_BANNERS,
   PROFILE_DECORATIONS,
@@ -139,13 +140,8 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
                   selected ? 'border-teal-400 ring-1 ring-teal-300/50' : 'border-slate-200 dark:border-white/10'
                 }`}
               >
-                <video
-                  src={item.src}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
+                <MemberBannerVideo
+                  bannerId={item.id}
                   className="aspect-[16/7] w-full bg-slate-900 object-cover"
                 />
                 <span className="block truncate bg-white px-2.5 py-2 text-[10px] font-black text-slate-800 dark:bg-[#0b1220] dark:text-slate-100">
