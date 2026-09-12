@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+// In local Vite development, keep browser requests same-origin and let
+// vite.config.js proxy /api to the configured backend. This avoids CORS
+// problems when testing the production Render API from localhost.
+export const backendUrl = import.meta.env.DEV ? '' : configuredBackendUrl;
 
 const api = axios.create({
   baseURL: backendUrl,
@@ -9,8 +14,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-
 
 api.interceptors.request.use((config) => {
   try {
