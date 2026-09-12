@@ -1,10 +1,11 @@
 import { io } from 'socket.io-client';
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const socketUrl = import.meta.env.DEV ? undefined : configuredBackendUrl;
 
-const socket = io(backendUrl, {
+const socket = io(socketUrl, {
   autoConnect: false,
-  transports: ["websocket", "polling"],
+  transports: ['websocket', 'polling'],
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 800,
