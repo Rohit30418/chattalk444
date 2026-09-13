@@ -1,10 +1,14 @@
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import api from '../../services/api';
+import MemberAvatar from '../../components/common/MemberAvatar';
 
 const qualityClass = {
   good: 'bg-emerald-500/85 text-white',
   fair: 'bg-amber-500/85 text-white',
   poor: 'bg-red-500/85 text-white',
 };
+
+const profileCache = new Map();
 
 const FloatingReaction = memo(({ emoji, onDone }) => {
   useEffect(() => {
@@ -48,6 +52,36 @@ const VideoTile = memo(({
   onPin,
 }) => {
   const internalVideoRef = useRef(null);
+  const [memberProfile, setMemberProfile] = useState(() => (uid ? profileCache.get(uid) || null : null));
+
+  useEffect(() => {
+    if (!uid) {
+      setMemberProfile(null);
+      return undefined;
+    }
+
+    const cached = profileCache.get(uid);
+    if (cached) {
+      setMemberProfile(cached);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    api.get(`/api/users/${encodeURIComponent(uid)}`)
+      .then(({ data }) => {
+        if (!data) return;
+        profileCache.set(uid, data);
+        if (!cancelled) setMemberProfile(data);
+      })
+      .catch(() => {
+        // Room media should keep working even if member appearance lookup fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
 
   const bindVideo = useCallback((node) => {
     if (!node) return;
@@ -94,6 +128,9 @@ const VideoTile = memo(({
     ? 'group relative h-24 w-36 shrink-0 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] transition-colors duration-150 sm:h-28 sm:w-44'
     : `group relative h-full w-full overflow-hidden rounded-2xl border bg-[var(--color-surface-2)] transition-colors duration-150 ${isSpeaking ? 'border-[var(--color-secondary)] ring-2 ring-[var(--color-secondary)]/30' : 'border-[var(--color-border)] hover:border-[var(--color-border-strong)]'}`;
 
+  const avatarSrc = memberProfile?.photoURL || photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid || displayName || 'user'}`;
+  const avatarName = memberProfile?.displayName || displayName || 'Participant';
+
   return (
     <div className={tileClass} onDoubleClick={() => onFullscreen?.(isLocal ? 'local' : uid)}>
       <video
@@ -112,11 +149,14 @@ const VideoTile = memo(({
               <span className="absolute inset-0 scale-125 animate-ping rounded-full bg-[var(--color-primary)]/10" aria-hidden="true" />
             </>
           )}
-          <img
-            src={photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid || displayName || 'user'}`}
-            className={`relative z-10 rounded-full border-4 border-[var(--color-border)] bg-[var(--color-surface)] object-cover ${isThumbnail ? 'h-12 w-12' : 'h-20 w-20 sm:h-28 sm:w-28'}`}
-            alt={displayName || 'Participant'}
-            referrerPolicy="no-referrer"
+          <MemberAvatar
+            user={memberProfile || { uid, displayName: avatarName, photoURL: avatarSrc }}
+            src={avatarSrc}
+            name={avatarName}
+            className={`relative z-10 ${isThumbnail ? 'h-16 w-16' : 'h-24 w-24 sm:h-36 sm:w-36'}`}
+            avatarClassName="border-4 border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm"
+            roundedClass="rounded-full"
+            loading="eager"
           />
         </div>
         {!isThumbnail && <p className="mt-4 text-sm font-semibold text-[var(--color-soft)]">Camera off</p>}
