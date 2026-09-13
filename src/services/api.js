@@ -30,6 +30,15 @@ api.interceptors.request.use((config) => {
     // Invalid localStorage should never block API calls.
   }
 
+  // Never try to set the Origin header manually. Browsers own this forbidden
+  // header and will attach the correct production origin automatically.
+  if (config.headers?.Origin) {
+    delete config.headers.Origin;
+  }
+  if (config.headers?.origin) {
+    delete config.headers.origin;
+  }
+
   return config;
 });
 
