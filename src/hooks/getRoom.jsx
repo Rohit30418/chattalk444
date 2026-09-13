@@ -3,6 +3,9 @@ import socket from '../services/socket';
 import api from '../services/api';
 
 const EMPTY_ROOM_TTL_MS = 2 * 60 * 1000;
+const ROOM_FETCH_RETRY_DELAYS = [0, 900, 2200];
+
+const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const getDateValue = (room) => {
   const value = room?.lastActive || room?.createdAt || 0;
@@ -39,19 +42,40 @@ export const getRoomData = () => {
   const [error, setError] = useState(null);
 
   const fetchRooms = useCallback(async () => {
-    try {
-      const { data } = await api.get('/api/rooms');
-      setRooms(sortRooms(data));
-      setError(null);
-    } catch (err) {
-      setError(err);
-    } finally {
-      setLoading(false);
+    let lastError = null;
+
+    setLoading(true);
+
+    for (let attempt = 0; attempt < ROOM_FETCH_RETRY_DELAYS.length; attempt += 1) {
+      const delay = ROOM_FETCH_RETRY_DELAYS[attempt];
+      if (delay) await wait(delay);
+
+      try {
+        const { data } = await api.get('/api/rooms');
+        setRooms(sortRooms(data));
+        setError(null);
+        setLoading(false);
+        return data;
+      } catch (err) {
+        lastError = err;
+      }
     }
+
+    // Keep any already-rendered room data instead of wiping the page during a
+    // short Render restart/network blip. Socket/dashboard recovery can clear it.
+    setError(lastError);
+    setLoading(false);
+    return null;
   }, []);
 
   useEffect(() => {
-    fetchRooms();
+    let disposed = false;
+
+    const safeFetchRooms = () => {
+      if (!disposed) fetchRooms();
+    };
+
+    safeFetchRooms();
 
     if (!socket.connected) {
       socket.connect();
@@ -61,9 +85,21 @@ export const getRoomData = () => {
     socket.emit('request-dashboard-sync');
 
     const handleDashboardUpdate = (activeRoomsList) => {
+      if (disposed) return;
       setRooms(sortRooms(activeRoomsList));
       setLoading(false);
       setError(null);
+    };
+
+    const handleSocketConnect = () => {
+      if (disposed) return;
+      socket.emit('join-dashboard');
+      socket.emit('request-dashboard-sync');
+      safeFetchRooms();
+    };
+
+    const handleOnline = () => {
+      safeFetchRooms();
     };
 
     const expiryTimer = window.setInterval(() => {
@@ -71,10 +107,15 @@ export const getRoomData = () => {
     }, 5000);
 
     socket.on('dashboard-update', handleDashboardUpdate);
+    socket.on('connect', handleSocketConnect);
+    window.addEventListener('online', handleOnline);
 
     return () => {
+      disposed = true;
       window.clearInterval(expiryTimer);
+      window.removeEventListener('online', handleOnline);
       socket.off('dashboard-update', handleDashboardUpdate);
+      socket.off('connect', handleSocketConnect);
       socket.emit('leave-dashboard');
     };
   }, [fetchRooms]);
