@@ -172,9 +172,10 @@ const RoomMain = ({ uId, user }) => {
     return () => {
       stopped = true;
       window.clearInterval(heartbeat);
-      // Do not emit leave-room here. Explicit leave is handled by useRoomController,
-      // while closing/reloading the tab is handled by Socket.IO's disconnect event.
-      // Emitting here as well caused duplicate leave events and could crash the backend.
+      // Never emit leave-room from this effect cleanup. A normal leave is sent
+      // once by useRoomController.handleHangup; tab close/reload is handled by
+      // Socket.IO disconnect on the backend. Keeping this cleanup side-effect
+      // free prevents duplicate leave races during React navigation/remounts.
     };
   }, [
     id,
