@@ -166,19 +166,15 @@ const RoomMain = ({ uId, user }) => {
       }
     };
 
-    const leaveRoom = () => {
-      socket.emit('leave-room', { roomId: id, userId: uId });
-    };
-
     touchRoom();
     const heartbeat = window.setInterval(touchRoom, ROOM_HEARTBEAT_MS);
-    window.addEventListener('pagehide', leaveRoom);
 
     return () => {
       stopped = true;
       window.clearInterval(heartbeat);
-      window.removeEventListener('pagehide', leaveRoom);
-      leaveRoom();
+      // Do not emit leave-room here. Explicit leave is handled by useRoomController,
+      // while closing/reloading the tab is handled by Socket.IO's disconnect event.
+      // Emitting here as well caused duplicate leave events and could crash the backend.
     };
   }, [
     id,
