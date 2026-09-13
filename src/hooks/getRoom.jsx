@@ -61,9 +61,9 @@ export const getRoomData = () => {
       }
     }
 
-    // Keep any already-rendered room data instead of wiping the page during a
-    // short Render restart/network blip. Socket/dashboard recovery can clear it.
-    setError(lastError);
+    // A short backend restart should not replace the entire rooms page with an
+    // error screen. Keep the current list and wait for socket/online recovery.
+    setError((currentError) => currentError || lastError);
     setLoading(false);
     return null;
   }, []);
@@ -120,5 +120,9 @@ export const getRoomData = () => {
     };
   }, [fetchRooms]);
 
-  return { rooms, loading, error, refetch: fetchRooms };
+  // Only surface an error if we have never received any usable room data.
+  // Existing rooms stay visible through short backend/network interruptions.
+  const visibleError = rooms.length === 0 ? error : null;
+
+  return { rooms, loading, error: visibleError, refetch: fetchRooms };
 };
