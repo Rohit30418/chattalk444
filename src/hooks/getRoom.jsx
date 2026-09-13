@@ -40,6 +40,7 @@ export const getRoomData = () => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const fetchRooms = useCallback(async () => {
     let lastError = null;
@@ -54,6 +55,7 @@ export const getRoomData = () => {
         const { data } = await api.get('/api/rooms');
         setRooms(sortRooms(data));
         setError(null);
+        setHasLoadedOnce(true);
         setLoading(false);
         return data;
       } catch (err) {
@@ -62,8 +64,8 @@ export const getRoomData = () => {
     }
 
     // A short backend restart should not replace the entire rooms page with an
-    // error screen. Keep the current list and wait for socket/online recovery.
-    setError((currentError) => currentError || lastError);
+    // error screen after the page has already loaded successfully once.
+    setError(lastError);
     setLoading(false);
     return null;
   }, []);
@@ -89,6 +91,7 @@ export const getRoomData = () => {
       setRooms(sortRooms(activeRoomsList));
       setLoading(false);
       setError(null);
+      setHasLoadedOnce(true);
     };
 
     const handleSocketConnect = () => {
@@ -120,9 +123,7 @@ export const getRoomData = () => {
     };
   }, [fetchRooms]);
 
-  // Only surface an error if we have never received any usable room data.
-  // Existing rooms stay visible through short backend/network interruptions.
-  const visibleError = rooms.length === 0 ? error : null;
+  const visibleError = hasLoadedOnce ? null : error;
 
   return { rooms, loading, error: visibleError, refetch: fetchRooms };
 };
