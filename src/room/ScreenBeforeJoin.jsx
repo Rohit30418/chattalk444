@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 import useAddMembers from "../hooks/useAddMembers";
 import { tooglePrescreenRoom, setMediaPrefs } from "../redux/action";
 import { useAuth } from "../components/auth/AppWrapper";
+import MemberAvatar from "../components/common/MemberAvatar";
 
 const PERM = {
   IDLE: "idle",
@@ -549,14 +550,17 @@ const ScreenBeforeJoin = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="relative">
+                    <div className="relative flex items-center justify-center">
                       {/* Optimization: removed blur-2xl, replaced with radial gradient ring */}
                       <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,var(--color-primary-soft)_0%,transparent_70%)] opacity-80 transform-gpu" />
-                      <img
+                      <MemberAvatar
+                        user={userData}
                         src={userData?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData?.uid || "user"}`}
-                        alt={displayName}
-                        className="relative h-20 w-20 rounded-full border-4 border-[var(--color-surface)] bg-[var(--color-surface)] object-cover shadow-sm sm:h-24 sm:w-24"
-                        referrerPolicy="no-referrer"
+                        name={displayName}
+                        className="relative h-24 w-24 sm:h-32 sm:w-32"
+                        avatarClassName="border-4 border-[var(--color-surface)] bg-[var(--color-surface)] shadow-sm"
+                        roundedClass="rounded-full"
+                        loading="eager"
                       />
                     </div>
                     <div>
