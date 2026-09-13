@@ -16,14 +16,52 @@ import GradientSpinner from './components/common/GradientSpinner';
 import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import ErrorBoundary from './ErrorBoundary';
 
-const HomePage = lazy(() => import('./Home/HomePage'));
-const Mainbody = lazy(() => import('./components/AppBody/Mainbody'));
-const Room = lazy(() => import('./room/Room'));
-const SocialProfilePage = lazy(() => import('./components/social/SocialProfilePage'));
-const ConnectPage = lazy(() => import('./components/social/ConnectPage'));
-const MessagesPage = lazy(() => import('./components/social/MessagesPage'));
-const AiCharacter = lazy(() => import('./components/ai/AiCharacter'));
-const NotFound = lazy(() => import('./NotFound'));
+const CHUNK_RELOAD_KEY = 'vaani_chunk_reload_attempt';
+
+const isChunkLoadError = (error) => {
+  const message = String(error?.message || error || '');
+
+  return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk|dynamically imported module/i.test(message);
+};
+
+// Vite gives lazy-loaded files a content hash. If a user keeps an older tab open
+// while a new deployment goes live, that tab may request a chunk that no longer
+// exists. Reload once to pick up the new index/chunk manifest instead of showing
+// React Router's "Unexpected Application Error" screen.
+const lazyWithRetry = (importer) => lazy(async () => {
+  try {
+    const module = await importer();
+    sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+    return module;
+  } catch (error) {
+    if (typeof window !== 'undefined' && isChunkLoadError(error)) {
+      const alreadyReloaded = sessionStorage.getItem(CHUNK_RELOAD_KEY) === '1';
+
+      if (!alreadyReloaded) {
+        sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('__vaani_refresh', Date.now().toString());
+        window.location.replace(url.toString());
+
+        return new Promise(() => {});
+      }
+
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+    }
+
+    throw error;
+  }
+});
+
+const HomePage = lazyWithRetry(() => import('./Home/HomePage'));
+const Mainbody = lazyWithRetry(() => import('./components/AppBody/Mainbody'));
+const Room = lazyWithRetry(() => import('./room/Room'));
+const SocialProfilePage = lazyWithRetry(() => import('./components/social/SocialProfilePage'));
+const ConnectPage = lazyWithRetry(() => import('./components/social/ConnectPage'));
+const MessagesPage = lazyWithRetry(() => import('./components/social/MessagesPage'));
+const AiCharacter = lazyWithRetry(() => import('./components/ai/AiCharacter'));
+const NotFound = lazyWithRetry(() => import('./NotFound'));
 
 const SuspenseLayout = ({ children }) => {
   const { pathname, search } = useLocation();
@@ -31,6 +69,15 @@ const SuspenseLayout = ({ children }) => {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [pathname, search]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+
+    if (url.searchParams.has('__vaani_refresh')) {
+      url.searchParams.delete('__vaani_refresh');
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, []);
 
   return (
     <Suspense fallback={<GradientSpinner />}>
