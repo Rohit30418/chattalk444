@@ -39,26 +39,25 @@ const MemberNameplate = ({
   compact = false,
 }) => {
   const finalUid = uid || user?.uid || user?.id || user?.userId || '';
-  const [resolvedUser, setResolvedUser] = useState(user || null);
+  const [resolvedUser, setResolvedUser] = useState(() => (
+    (finalUid && profileCache.get(finalUid)) || user || null
+  ));
 
   useEffect(() => {
-    setResolvedUser(user || null);
-  }, [user]);
+    const cached = finalUid ? profileCache.get(finalUid) : null;
+    setResolvedUser(cached ? { ...(user || {}), ...cached } : (user || null));
+  }, [finalUid, user]);
 
   useEffect(() => {
+    if (!finalUid) return undefined;
+
     let cancelled = false;
 
-    const knownUser = resolvedUser || user;
-    const needsLookup = Boolean(
-      finalUid
-      && knownUser?.isMember !== false
-      && !(knownUser?.isMember === true && knownUser?.messageDecorationId)
-    );
-
-    if (!needsLookup) return undefined;
-
-    // A nameplate lookup must be fresh. Member appearance can change on the
-    // profile page while this module-level cache survives route changes.
+    // Always validate a member nameplate against the latest saved profile once
+    // for this mounted nameplate. Conversation/auth objects can legitimately be
+    // stale after a style save, which previously made Aurora survive even when
+    // another decoration had already been stored on the backend. Concurrent
+    // lookups for the same uid are deduplicated by inflightProfiles above.
     loadProfile(finalUid, { force: true }).then((profile) => {
       if (!cancelled && profile) {
         setResolvedUser((current) => ({ ...(current || {}), ...profile }));
@@ -68,7 +67,7 @@ const MemberNameplate = ({
     return () => {
       cancelled = true;
     };
-  }, [finalUid, resolvedUser?.isMember, resolvedUser?.messageDecorationId, user]);
+  }, [finalUid]);
 
   useEffect(() => {
     const applyUpdatedUser = (updatedUser) => {
