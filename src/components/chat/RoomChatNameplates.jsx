@@ -7,22 +7,27 @@ import '../../styles/memberEffects.css';
 const profileCache = new Map();
 const profileRequests = new Map();
 
-const fetchProfile = async (uid) => {
+const fetchProfile = async (uid, { force = false } = {}) => {
   if (!uid) return null;
-  if (profileCache.has(uid)) return profileCache.get(uid);
 
-  if (!profileRequests.has(uid)) {
-    profileRequests.set(
-      uid,
-      api.get(`/api/users/${encodeURIComponent(uid)}`)
-        .then(({ data }) => {
-          profileCache.set(uid, data);
-          return data;
-        })
-        .catch(() => null)
-        .finally(() => profileRequests.delete(uid))
-    );
+  if (profileRequests.has(uid)) {
+    return profileRequests.get(uid);
   }
+
+  if (!force && profileCache.has(uid)) {
+    return profileCache.get(uid);
+  }
+
+  profileRequests.set(
+    uid,
+    api.get(`/api/users/${encodeURIComponent(uid)}`)
+      .then(({ data }) => {
+        profileCache.set(uid, data);
+        return data;
+      })
+      .catch(() => null)
+      .finally(() => profileRequests.delete(uid))
+  );
 
   return profileRequests.get(uid);
 };
@@ -138,14 +143,14 @@ const RoomChatNameplates = ({ rootRef, currentUserId }) => {
       if (name) memberByName.set(name, profile);
     };
 
-    const rememberMessageSender = async (message) => {
+    const rememberMessageSender = async (message, forceFresh = false) => {
       if (!message || message.role === 'bot') return;
 
       const uid = message.senderId || message.userid;
       const name = message.displayName || message.senderName || '';
       if (!uid) return;
 
-      const profile = await fetchProfile(uid);
+      const profile = await fetchProfile(uid, { force: forceFresh });
       if (stopped || profile?.isMember !== true) return;
 
       if (name) memberByName.set(name, profile);
@@ -161,7 +166,10 @@ const RoomChatNameplates = ({ rootRef, currentUserId }) => {
     const loadCurrentMember = async () => {
       if (!currentUserId) return;
 
-      const profile = await fetchProfile(currentUserId);
+      // Always refresh the current user when room chat mounts. The module cache
+      // survives route changes, so without this a style saved on the profile
+      // page can keep showing the previously cached Aurora nameplate.
+      const profile = await fetchProfile(currentUserId, { force: true });
       if (stopped || profile?.isMember !== true) return;
 
       currentMember = profile;
@@ -173,7 +181,11 @@ const RoomChatNameplates = ({ rootRef, currentUserId }) => {
       try {
         const { data } = await api.get(`/api/chat/${encodeURIComponent(roomId)}`);
         const messages = Array.isArray(data) ? data : [];
-        await Promise.all(messages.map(rememberMessageSender));
+
+        // Refresh each distinct sender from the API on room entry. Concurrent
+        // messages from the same sender share profileRequests, so this does not
+        // create one request per message.
+        await Promise.all(messages.map((message) => rememberMessageSender(message, true)));
       } catch {
         // Chat remains fully usable when optional nameplate enrichment fails.
       }
