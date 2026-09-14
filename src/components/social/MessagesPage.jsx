@@ -35,6 +35,10 @@ const formatLastActive = (value, isOnline = false) => {
   return `Active ${date.toLocaleDateString([], { day: 'numeric', month: 'short' })}`;
 };
 
+const notifyUnreadChanged = () => {
+  window.dispatchEvent(new CustomEvent('vaani-chat-unread-changed'));
+};
+
 const MessagesPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,16 +68,12 @@ const MessagesPage = () => {
       const { data } = await api.get('/api/social/conversations');
       const list = Array.isArray(data?.conversations) ? data.conversations : [];
       setConversations(list);
-
-      if (!activeId && list[0]?.id) {
-        setSearchParams({ conversation: list[0].id }, { replace: true });
-      }
     } catch (err) {
       setError(err.userMessage || 'Could not load conversations.');
     } finally {
       setLoadingList(false);
     }
-  }, [activeId, setSearchParams, user?.uid]);
+  }, [user?.uid]);
 
   useEffect(() => {
     loadConversations();
@@ -83,6 +83,7 @@ const MessagesPage = () => {
     if (!activeId || !user?.uid) {
       setActiveConversation(null);
       setMessages([]);
+      setTypingUid('');
       return;
     }
 
@@ -102,6 +103,7 @@ const MessagesPage = () => {
         setConversations((current) => current.map((item) => (
           item.id === activeId ? { ...item, unread: 0 } : item
         )));
+        notifyUnreadChanged();
       } catch (err) {
         if (!cancelled) setError(err.userMessage || 'Could not load messages.');
       } finally {
@@ -143,7 +145,9 @@ const MessagesPage = () => {
         setMessages((current) => (
           current.some((item) => item.id === message.id) ? current : [...current, message]
         ));
-        api.post(`/api/social/conversations/${encodeURIComponent(conversationId)}/read`).catch(() => {});
+        api.post(`/api/social/conversations/${encodeURIComponent(conversationId)}/read`)
+          .catch(() => {})
+          .finally(notifyUnreadChanged);
       }
     };
 
@@ -220,6 +224,14 @@ const MessagesPage = () => {
   const selectConversation = useCallback((conversation) => {
     if (!conversation?.id) return;
     setSearchParams({ conversation: conversation.id });
+  }, [setSearchParams]);
+
+  const showConversationList = useCallback(() => {
+    setActiveConversation(null);
+    setMessages([]);
+    setTypingUid('');
+    setDraft('');
+    setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
   const handleDraftChange = useCallback((event) => {
@@ -414,10 +426,7 @@ const MessagesPage = () => {
                 <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10 sm:px-5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveConversation(null);
-                      setSearchParams({});
-                    }}
+                    onClick={showConversationList}
                     className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 lg:hidden dark:border-white/10 dark:text-slate-300"
                     aria-label="Back to conversations"
                   >
@@ -556,7 +565,7 @@ const MessagesPage = () => {
                 </div>
                 <h2 className="mt-5 text-xl font-black">Your private conversations</h2>
                 <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-                  Choose a conversation or find someone new from the Connect tab.
+                  Choose a conversation from the list or find someone new from the Connect tab.
                 </p>
                 <Link to="/connect" className="mt-5 rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white">
                   Find people
