@@ -85,6 +85,32 @@ main.min-h-screen:has(
   flex: 1 1 auto;
 }
 
+/*
+ * Header profile menu is a desktop-style anchored dropdown by default.
+ * On phones, turn it into a viewport-safe inset panel. This keeps the
+ * notification controls readable and prevents the menu from clipping off
+ * either edge of narrow screens.
+ */
+@media (max-width: 639px) {
+  header.fixed.inset-x-0.top-0
+    .relative
+    > .absolute.right-0.mt-3.w-80 {
+    position: fixed !important;
+    z-index: 220 !important;
+    top: 76px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 92px) !important;
+    margin-top: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    border-radius: 1.35rem !important;
+  }
+}
+
 @media (min-width: 1024px) {
   html {
     scroll-padding-top: 90px;
