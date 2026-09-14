@@ -232,6 +232,7 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
                   user={{ ...previewUser, messageDecorationId: item.id }}
                   name={authUser?.displayName || userInfo?.displayName || 'Vaani Member'}
                   compact
+                  resolveProfile={false}
                   className="max-w-full text-[10px] font-black"
                 />
                 <span className="mt-2 block text-[10px] font-black text-slate-900 dark:text-white">
