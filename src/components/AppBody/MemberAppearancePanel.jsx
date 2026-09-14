@@ -96,9 +96,17 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
       };
 
       const refreshedUser = await refreshUser?.();
-      const finalUser = refreshedUser
-        ? { ...mergedUser, ...refreshedUser }
-        : mergedUser;
+      const finalUser = {
+        ...(refreshedUser ? { ...mergedUser, ...refreshedUser } : mergedUser),
+        // The selection just confirmed by the save request is authoritative for
+        // the local UI. Keep it last so a briefly stale auth refresh cannot make
+        // the app visually fall back to Aurora after a successful save.
+        profileDecorationId,
+        profileBannerId,
+        messageDecorationId,
+        roomAnimationId,
+        isMember: true,
+      };
 
       onUpdated?.(finalUser);
       window.dispatchEvent(new CustomEvent('vaani-member-style-updated', {
