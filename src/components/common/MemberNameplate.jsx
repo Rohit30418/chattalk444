@@ -44,19 +44,26 @@ const MemberNameplate = ({
   name,
   className = '',
   compact = false,
+  resolveProfile = true,
 }) => {
   const finalUid = uid || user?.uid || user?.id || user?.userId || '';
-  const [resolvedUser, setResolvedUser] = useState(() => (
-    (finalUid && profileCache.get(finalUid)) || user || null
-  ));
+  const [resolvedUser, setResolvedUser] = useState(() => {
+    if (!resolveProfile) return user || null;
+    return (finalUid && profileCache.get(finalUid)) || user || null;
+  });
 
   useEffect(() => {
+    if (!resolveProfile) {
+      setResolvedUser(user || null);
+      return;
+    }
+
     const cached = finalUid ? profileCache.get(finalUid) : null;
     setResolvedUser(cached ? { ...(user || {}), ...cached } : (user || null));
-  }, [finalUid, user]);
+  }, [finalUid, resolveProfile, user]);
 
   useEffect(() => {
-    if (!finalUid) return undefined;
+    if (!resolveProfile || !finalUid) return undefined;
 
     let cancelled = false;
 
@@ -72,9 +79,11 @@ const MemberNameplate = ({
     return () => {
       cancelled = true;
     };
-  }, [finalUid]);
+  }, [finalUid, resolveProfile]);
 
   useEffect(() => {
+    if (!resolveProfile) return undefined;
+
     const applyUpdatedUser = (updatedUser) => {
       if (!updatedUser?.uid || updatedUser.uid !== finalUid) return;
 
@@ -92,9 +101,11 @@ const MemberNameplate = ({
     return () => {
       window.removeEventListener('vaani-member-style-updated', onLocalStyleUpdated);
     };
-  }, [finalUid]);
+  }, [finalUid, resolveProfile]);
 
-  const finalUser = { ...(user || {}), ...(resolvedUser || {}) };
+  const finalUser = resolveProfile
+    ? { ...(user || {}), ...(resolvedUser || {}) }
+    : (user || {});
   const finalName = name || finalUser.displayName || finalUser.name || 'Vaani User';
 
   if (finalUser.isMember !== true) {
