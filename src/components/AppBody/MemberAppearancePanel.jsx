@@ -4,9 +4,12 @@ import api from '../../services/api';
 import { useAuth } from '../auth/AppWrapper';
 import MemberAvatar from '../common/MemberAvatar';
 import MemberBannerVideo from '../common/MemberBannerVideo';
+import MemberNameplate from '../common/MemberNameplate';
 import {
+  MESSAGE_DECORATIONS,
   PROFILE_BANNERS,
   PROFILE_DECORATIONS,
+  normalizeMessageDecorationId,
   normalizeProfileBannerId,
   normalizeProfileDecorationId,
 } from '../../utils/memberAssets';
@@ -30,6 +33,9 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
   const [profileBannerId, setProfileBannerId] = useState(
     normalizeProfileBannerId(userInfo?.profileBannerId)
   );
+  const [messageDecorationId, setMessageDecorationId] = useState(
+    normalizeMessageDecorationId(userInfo?.messageDecorationId)
+  );
   const [roomAnimationId, setRoomAnimationId] = useState(
     normalizeRoomTheme(userInfo?.roomAnimationId)
   );
@@ -40,8 +46,10 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
       normalizeProfileDecorationId(userInfo?.profileDecorationId, userInfo?.profileAnimationId)
     );
     setProfileBannerId(normalizeProfileBannerId(userInfo?.profileBannerId));
+    setMessageDecorationId(normalizeMessageDecorationId(userInfo?.messageDecorationId));
     setRoomAnimationId(normalizeRoomTheme(userInfo?.roomAnimationId));
   }, [
+    userInfo?.messageDecorationId,
     userInfo?.profileAnimationId,
     userInfo?.profileBannerId,
     userInfo?.profileDecorationId,
@@ -53,7 +61,8 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
     ...(authUser || {}),
     isMember: true,
     profileDecorationId,
-  }), [authUser, profileDecorationId, userInfo]);
+    messageDecorationId,
+  }), [authUser, messageDecorationId, profileDecorationId, userInfo]);
 
   const saveStyle = async () => {
     if (!authUser?.uid || saving) return;
@@ -61,13 +70,14 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
     try {
       setSaving(true);
 
-      // Avatar decorations and profile banners are handled by the social
-      // appearance endpoint. Hosted-room animation remains on the existing
-      // member-style endpoint. Keep the calls sequential so one save cannot
-      // race and overwrite fields written by the other.
+      // Avatar decorations, profile banners and chat nameplates are handled by
+      // the social appearance endpoint. Hosted-room animation stays on the
+      // existing member-style endpoint. Keep the calls sequential so saves
+      // cannot race and overwrite each other.
       const appearanceResponse = await api.patch('/api/social/member-appearance', {
         profileDecorationId,
         profileBannerId,
+        messageDecorationId,
       });
 
       const roomResponse = await api.patch(
@@ -81,11 +91,10 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
         ...(roomResponse.data?.user || {}),
         profileDecorationId,
         profileBannerId,
+        messageDecorationId,
         roomAnimationId,
       };
 
-      // Refresh AuthContext/localStorage as well so the header and every other
-      // avatar location immediately use the newly selected decoration.
       const refreshedUser = await refreshUser?.();
       const finalUser = refreshedUser
         ? { ...mergedUser, ...refreshedUser }
@@ -116,7 +125,7 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
             Customize your appearance
           </h2>
           <p className="mt-1 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">
-            Your avatar decoration follows you across Vaani. Your banner appears only on your full profile.
+            Your avatar decoration and animated nameplate follow you across Vaani. Your banner stays on your full profile.
           </p>
         </div>
 
@@ -183,6 +192,45 @@ const MemberAppearancePanel = ({ userInfo, authUser, onUpdated }) => {
                 <span className="flex items-center justify-between gap-2 bg-white px-2.5 py-2 text-[10px] font-black text-slate-800 dark:bg-[#0b1220] dark:text-slate-100">
                   <span className="truncate">{item.label}</span>
                   {selected && <i className="fa-solid fa-circle-check shrink-0 text-teal-600" aria-hidden="true" />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          Message nameplate
+        </p>
+        <p className="mt-1 text-[10px] font-medium leading-4 text-slate-500 dark:text-slate-400">
+          Animated premium styling shown with your name in direct messages and room chat.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {MESSAGE_DECORATIONS.map((item) => {
+            const selected = messageDecorationId === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setMessageDecorationId(item.id)}
+                className={`rounded-2xl border p-3 text-left transition-colors ${
+                  selected
+                    ? 'border-teal-400 bg-teal-50 ring-1 ring-teal-300/40 dark:border-teal-400/40 dark:bg-teal-500/10'
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.03]'
+                }`}
+              >
+                <MemberNameplate
+                  user={{ ...previewUser, messageDecorationId: item.id }}
+                  name={authUser?.displayName || userInfo?.displayName || 'Vaani Member'}
+                  compact
+                  className="max-w-full text-[10px] font-black"
+                />
+                <span className="mt-2 block text-[10px] font-black text-slate-900 dark:text-white">
+                  {item.label}
+                </span>
+                <span className="mt-0.5 block text-[9px] font-medium leading-4 text-slate-500 dark:text-slate-400">
+                  {item.hint}
                 </span>
               </button>
             );
