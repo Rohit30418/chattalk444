@@ -14,6 +14,7 @@ import MemberRoute from './components/auth/MemberRoute';
 import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
 import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
+import PwaManager from './components/common/PwaManager';
 import ErrorBoundary from './ErrorBoundary';
 
 const CHUNK_RELOAD_KEY = 'vaani_chunk_reload_attempt';
@@ -24,10 +25,6 @@ const isChunkLoadError = (error) => {
   return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk|dynamically imported module/i.test(message);
 };
 
-// Vite gives lazy-loaded files a content hash. If a user keeps an older tab open
-// while a new deployment goes live, that tab may request a chunk that no longer
-// exists. Reload once to pick up the new index/chunk manifest instead of showing
-// React Router's "Unexpected Application Error" screen.
 const lazyWithRetry = (importer) => lazy(async () => {
   try {
     const module = await importer();
@@ -138,7 +135,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-
   {
     path: '/room/:id',
     element: (
@@ -147,7 +143,6 @@ const router = createBrowserRouter([
       </SuspenseLayout>
     ),
   },
-
   {
     path: '/profile/:userId',
     element: (
@@ -156,7 +151,6 @@ const router = createBrowserRouter([
       </SuspenseLayout>
     ),
   },
-
   {
     path: '/MyProfile/:userId',
     element: (
@@ -165,7 +159,6 @@ const router = createBrowserRouter([
       </SuspenseLayout>
     ),
   },
-
   {
     path: '/aiBot',
     element: (
@@ -176,12 +169,10 @@ const router = createBrowserRouter([
       </MemberRoute>
     ),
   },
-
   {
     path: '/ai-bot',
     element: <Navigate to="/aiBot" replace />,
   },
-
   {
     path: '*',
     element: <NotFound />,
@@ -193,6 +184,7 @@ function App() {
     <Provider store={store}>
       <AuthProvider>
         <GlobalMemberVisuals />
+        <PwaManager />
 
         <ToastContainer
           theme="colored"
