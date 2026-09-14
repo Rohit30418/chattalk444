@@ -6,6 +6,11 @@ import Swal from "sweetalert2";
 import { loginToggle } from "../../redux/action";
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import { useAuth } from "../auth/AppWrapper";
+import api from "../../services/api";
+import {
+  requestVaaniNotifications,
+  syncPushSubscription,
+} from "../../services/pwa";
 import "../../styles/memberEffects.css";
 
 const navItems = [
@@ -101,6 +106,11 @@ const Header = () => {
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof Notification === "undefined") return "unsupported";
+    return Notification.permission;
+  });
 
   const isRoomsPage = location.pathname === "/rooms";
   const containerWidth = isRoomsPage ? "max-w-8xl" : "max-w-7xl";
@@ -115,6 +125,42 @@ const Header = () => {
   const initials = useMemo(() => {
     return (displayName || "Learner").trim().charAt(0).toUpperCase();
   }, [displayName]);
+
+  const notificationStatus = useMemo(() => {
+    if (notificationPermission === "granted") {
+      return {
+        label: "Allowed",
+        text: "This browser can receive Vaani notifications.",
+        badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+        dotClass: "bg-emerald-500",
+      };
+    }
+
+    if (notificationPermission === "denied") {
+      return {
+        label: "Blocked",
+        text: "Enable notifications from your browser site settings.",
+        badgeClass: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300",
+        dotClass: "bg-red-500",
+      };
+    }
+
+    if (notificationPermission === "unsupported") {
+      return {
+        label: "Unavailable",
+        text: "Notifications are not supported in this browser.",
+        badgeClass: "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300",
+        dotClass: "bg-slate-400",
+      };
+    }
+
+    return {
+      label: "Not enabled",
+      text: "Allow notifications to get messages and connection alerts.",
+      badgeClass: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+      dotClass: "bg-amber-500",
+    };
+  }, [notificationPermission]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -147,6 +193,11 @@ const Header = () => {
   }, [location.pathname, location.hash]);
 
   useEffect(() => {
+    if (!isProfileOpen || typeof Notification === "undefined") return;
+    setNotificationPermission(Notification.permission);
+  }, [isProfileOpen]);
+
+  useEffect(() => {
     document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
@@ -176,6 +227,131 @@ const Header = () => {
       setIsProfileOpen(false);
     });
   }, [dispatch, logout]);
+
+  const allowNotifications = useCallback(async () => {
+    if (notificationBusy) return;
+
+    setNotificationBusy(true);
+    try {
+      const result = await requestVaaniNotifications();
+      setNotificationPermission(result.permission);
+
+      if (result.permission === "granted" && result.subscribed) {
+        await Swal.fire({
+          icon: "success",
+          title: "Notifications allowed",
+          text: "This device is now registered for Vaani notifications.",
+          confirmButtonColor: getCssVar("--color-primary"),
+          background: getCssVar("--color-surface"),
+          color: getCssVar("--color-text"),
+        });
+        return;
+      }
+
+      if (result.permission === "denied") {
+        await Swal.fire({
+          icon: "info",
+          title: "Notifications are blocked",
+          text: "Open your browser site settings and allow notifications for Vaani.",
+          confirmButtonColor: getCssVar("--color-primary"),
+          background: getCssVar("--color-surface"),
+          color: getCssVar("--color-text"),
+        });
+        return;
+      }
+
+      await Swal.fire({
+        icon: "error",
+        title: "Could not register this device",
+        text: "Please try again after the app finishes loading.",
+        confirmButtonColor: getCssVar("--color-primary"),
+        background: getCssVar("--color-surface"),
+        color: getCssVar("--color-text"),
+      });
+    } catch (error) {
+      console.error("[PWA] Notification permission failed:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Notification setup failed",
+        text: "Please try again in a moment.",
+        confirmButtonColor: getCssVar("--color-primary"),
+        background: getCssVar("--color-surface"),
+        color: getCssVar("--color-text"),
+      });
+    } finally {
+      setNotificationBusy(false);
+    }
+  }, [notificationBusy]);
+
+  const sendTestNotification = useCallback(async () => {
+    if (notificationBusy) return;
+
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      setNotificationPermission(
+        typeof Notification === "undefined" ? "unsupported" : Notification.permission
+      );
+      await allowNotifications();
+      return;
+    }
+
+    setNotificationBusy(true);
+    try {
+      const syncResult = await syncPushSubscription();
+      if (!syncResult?.subscribed) {
+        throw new Error("This device is not registered for push notifications yet.");
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager?.getSubscription?.();
+      const currentEndpoint = subscription?.endpoint || "";
+
+      let sent = false;
+
+      if (currentEndpoint) {
+        const { data } = await api.get("/api/social/push/devices", {
+          params: { currentEndpoint },
+        });
+        const currentDevice = data?.devices?.find((device) => device.isCurrent);
+
+        if (currentDevice?.id) {
+          const response = await api.post(
+            `/api/social/push/devices/${encodeURIComponent(currentDevice.id)}/test`
+          );
+          sent = Number(response?.data?.sent || 0) > 0;
+        }
+      }
+
+      if (!sent) {
+        const response = await api.post("/api/social/push/test");
+        sent = Number(response?.data?.sent || 0) > 0;
+      }
+
+      if (!sent) {
+        throw new Error("The push service did not confirm delivery.");
+      }
+
+      await Swal.fire({
+        icon: "success",
+        title: "Test notification sent",
+        text: "Check this device's notification tray.",
+        confirmButtonColor: getCssVar("--color-primary"),
+        background: getCssVar("--color-surface"),
+        color: getCssVar("--color-text"),
+      });
+    } catch (error) {
+      console.error("[PWA] Test notification failed:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Test notification failed",
+        text: error?.userMessage || error?.message || "Please try again in a moment.",
+        confirmButtonColor: getCssVar("--color-primary"),
+        background: getCssVar("--color-surface"),
+        color: getCssVar("--color-text"),
+      });
+    } finally {
+      setNotificationBusy(false);
+    }
+  }, [allowNotifications, notificationBusy]);
 
   const checkIsActive = useCallback((itemTo) => {
     const currentPath = location.pathname;
@@ -339,7 +515,7 @@ const Header = () => {
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-3 w-72 overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-[var(--color-text)] [box-shadow:var(--shadow-soft)]">
+                  <div className="absolute right-0 mt-3 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-[var(--color-text)] [box-shadow:var(--shadow-soft)]">
                     <div className="rounded-2xl bg-[var(--color-surface-2)] p-3">
                       <div className="flex items-center gap-2">
                         <p className="min-w-0 flex-1 truncate text-sm font-black text-[var(--color-text)]">
@@ -364,6 +540,55 @@ const Header = () => {
                       <UserIcon className="h-4 w-4 text-[var(--color-primary)]" />
                       View profile
                     </Link>
+
+                    <div className="mx-1 my-1 border-t border-[var(--color-border)]" />
+
+                    <div className="rounded-2xl px-3 py-2.5 transition-colors hover:bg-[var(--color-surface-2)]">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary-700)]">
+                          <i className="fa-solid fa-bell text-xs" aria-hidden="true" />
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-[var(--color-muted)]">
+                              Notifications
+                            </p>
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[9px] font-black ${notificationStatus.badgeClass}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${notificationStatus.dotClass}`} />
+                              {notificationStatus.label}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-[var(--color-soft)]">
+                            {notificationStatus.text}
+                          </p>
+                        </div>
+                      </div>
+
+                      {notificationPermission === "granted" ? (
+                        <button
+                          type="button"
+                          onClick={sendTestNotification}
+                          disabled={notificationBusy}
+                          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[11px] font-black text-[var(--color-primary-700)] transition-colors hover:border-[var(--color-border-strong)] hover:bg-[var(--color-primary-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <i className={`fa-solid ${notificationBusy ? "fa-spinner fa-spin" : "fa-paper-plane"} text-[10px]`} aria-hidden="true" />
+                          {notificationBusy ? "Sending test..." : "Send test notification"}
+                        </button>
+                      ) : notificationPermission === "default" ? (
+                        <button
+                          type="button"
+                          onClick={allowNotifications}
+                          disabled={notificationBusy}
+                          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-3 py-2 text-[11px] font-black text-[var(--color-on-primary)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <i className={`fa-solid ${notificationBusy ? "fa-spinner fa-spin" : "fa-bell"} text-[10px]`} aria-hidden="true" />
+                          {notificationBusy ? "Enabling..." : "Allow notifications"}
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="mx-1 my-1 border-t border-[var(--color-border)]" />
 
                     <button
                       type="button"
