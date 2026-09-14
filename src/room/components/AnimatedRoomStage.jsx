@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api';
 import MemberAvatar from '../../components/common/MemberAvatar';
@@ -19,6 +19,43 @@ const SLOT_POSITIONS = [
 ];
 
 const profileCache = new Map();
+
+const RemoteAudioPlayer = memo(({ stream }) => {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !stream) return undefined;
+
+    if (audio.srcObject !== stream) {
+      audio.srcObject = stream;
+    }
+
+    audio.muted = false;
+    audio.autoplay = true;
+
+    const play = () => {
+      audio.play?.().catch(() => {
+        // Browser autoplay policy can briefly block playback until the user
+        // interacts with the room. The next media event will retry it.
+      });
+    };
+
+    play();
+    audio.addEventListener('loadedmetadata', play);
+    audio.addEventListener('canplay', play);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', play);
+      audio.removeEventListener('canplay', play);
+      if (audio.srcObject === stream) audio.srcObject = null;
+    };
+  }, [stream]);
+
+  if (!stream) return null;
+
+  return <audio ref={audioRef} autoPlay playsInline className="hidden" aria-hidden="true" />;
+});
 
 const ReactionBubble = memo(({ reaction }) => (
   <span
@@ -76,8 +113,10 @@ const AudioSeat = memo(({ person, isRoomHost }) => {
 
   return (
     <div className="group relative flex min-w-[118px] flex-col items-center text-center">
+      {!person.isLocal && <RemoteAudioPlayer stream={person.stream} />}
+
       {(person.reactions || []).slice(-2).map((reaction) => (
-        <ReactionBubble key={reaction.id || `${reaction.emoji}-${Math.random()}`} reaction={reaction} />
+        <ReactionBubble key={reaction.id || `${reaction.emoji}-${reaction.createdAt || ''}`} reaction={reaction} />
       ))}
 
       {isRoomHost && (
