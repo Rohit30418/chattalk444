@@ -6,22 +6,27 @@ import '../../styles/memberEffects.css';
 const profileCache = new Map();
 const inflightProfiles = new Map();
 
-const loadProfile = async (uid) => {
+const loadProfile = async (uid, { force = false } = {}) => {
   if (!uid) return null;
-  if (profileCache.has(uid)) return profileCache.get(uid);
 
-  if (!inflightProfiles.has(uid)) {
-    inflightProfiles.set(
-      uid,
-      api.get(`/api/users/${encodeURIComponent(uid)}`)
-        .then(({ data }) => {
-          profileCache.set(uid, data);
-          return data;
-        })
-        .catch(() => null)
-        .finally(() => inflightProfiles.delete(uid))
-    );
+  if (inflightProfiles.has(uid)) {
+    return inflightProfiles.get(uid);
   }
+
+  if (!force && profileCache.has(uid)) {
+    return profileCache.get(uid);
+  }
+
+  inflightProfiles.set(
+    uid,
+    api.get(`/api/users/${encodeURIComponent(uid)}`)
+      .then(({ data }) => {
+        profileCache.set(uid, data);
+        return data;
+      })
+      .catch(() => null)
+      .finally(() => inflightProfiles.delete(uid))
+  );
 
   return inflightProfiles.get(uid);
 };
@@ -52,7 +57,9 @@ const MemberNameplate = ({
 
     if (!needsLookup) return undefined;
 
-    loadProfile(finalUid).then((profile) => {
+    // A nameplate lookup must be fresh. Member appearance can change on the
+    // profile page while this module-level cache survives route changes.
+    loadProfile(finalUid, { force: true }).then((profile) => {
       if (!cancelled && profile) {
         setResolvedUser((current) => ({ ...(current || {}), ...profile }));
       }
@@ -62,6 +69,25 @@ const MemberNameplate = ({
       cancelled = true;
     };
   }, [finalUid, resolvedUser?.isMember, resolvedUser?.messageDecorationId, user]);
+
+  useEffect(() => {
+    const applyUpdatedUser = (updatedUser) => {
+      if (!updatedUser?.uid || updatedUser.uid !== finalUid) return;
+
+      profileCache.set(updatedUser.uid, updatedUser);
+      setResolvedUser((current) => ({ ...(current || {}), ...updatedUser }));
+    };
+
+    const onLocalStyleUpdated = (event) => {
+      applyUpdatedUser(event?.detail?.user);
+    };
+
+    window.addEventListener('vaani-member-style-updated', onLocalStyleUpdated);
+
+    return () => {
+      window.removeEventListener('vaani-member-style-updated', onLocalStyleUpdated);
+    };
+  }, [finalUid]);
 
   const finalUser = { ...(user || {}), ...(resolvedUser || {}) };
   const finalName = name || finalUser.displayName || finalUser.name || 'Vaani User';
