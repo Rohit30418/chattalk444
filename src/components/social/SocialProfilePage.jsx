@@ -71,9 +71,10 @@ const SocialProfilePage = () => {
     if (!user?.uid || !userId || busy) return;
     try {
       setBusy('message');
-      const { data } = await api.post(`/api/social/conversations/${encodeURIComponent(userId)}`);
-      const id = data?.conversation?.id;
-      navigate(id ? `/messages?conversation=${encodeURIComponent(id)}` : '/messages');
+      // Ensure the conversation exists, but keep Chat as a list-first flow.
+      // The user explicitly chooses the conversation from the Messages list.
+      await api.post(`/api/social/conversations/${encodeURIComponent(userId)}`);
+      navigate('/messages');
     } catch (err) {
       setError(err.userMessage || 'Could not open conversation.');
     } finally {
