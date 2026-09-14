@@ -60,10 +60,20 @@ export const showVaaniNotification = async (payload) => {
   const registration = await registerVaaniPwa();
   if (!registration) return false;
 
-  registration.active?.postMessage({
-    type: 'SHOW_NOTIFICATION',
-    payload,
-  });
+  if (registration.active) {
+    registration.active.postMessage({
+      type: 'SHOW_NOTIFICATION',
+      payload,
+    });
+  } else {
+    await registration.showNotification(payload?.title || 'Vaani', {
+      body: payload?.body || 'You have a new update on Vaani.',
+      icon: '/vaani-icon.svg',
+      badge: '/vaani-icon.svg',
+      tag: payload?.tag || 'vaani-notification',
+      data: { url: payload?.url || '/' },
+    });
+  }
 
   return true;
 };
@@ -122,9 +132,13 @@ export const requestVaaniNotifications = async () => {
 };
 
 export const clearAppBadge = () => {
-  navigator.clearAppBadge?.().catch?.(() => {});
+  if (typeof navigator.clearAppBadge === 'function') {
+    navigator.clearAppBadge().catch(() => {});
+  }
 };
 
 export const bumpAppBadge = (count = 1) => {
-  navigator.setAppBadge?.(Math.max(1, Number(count) || 1)).catch?.(() => {});
+  if (typeof navigator.setAppBadge === 'function') {
+    navigator.setAppBadge(Math.max(1, Number(count) || 1)).catch(() => {});
+  }
 };
