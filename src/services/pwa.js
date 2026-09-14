@@ -12,6 +12,13 @@ const base64UrlToUint8Array = (value = '') => {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 };
 
+const arrayBufferMatches = (buffer, expected) => {
+  if (!buffer || !expected) return false;
+  const current = new Uint8Array(buffer);
+  if (current.length !== expected.length) return false;
+  return current.every((value, index) => value === expected[index]);
+};
+
 const hasSignedInUser = () => {
   try {
     const stored = JSON.parse(localStorage.getItem('userInfo') || 'null');
@@ -143,12 +150,30 @@ export const syncPushSubscription = async () => {
         return { subscribed: false, reason: 'server-not-configured' };
       }
 
+      const expectedKey = base64UrlToUint8Array(publicKey);
       let subscription = await registration.pushManager.getSubscription();
+
+      // A PushSubscription is permanently tied to the applicationServerKey
+      // that created it. If VAPID keys are rotated, replace the old browser
+      // subscription and remove its stale endpoint from the backend first.
+      if (
+        subscription
+        && !arrayBufferMatches(subscription.options?.applicationServerKey, expectedKey)
+      ) {
+        const staleEndpoint = subscription.endpoint;
+
+        await api.delete('/api/social/push/unsubscribe', {
+          data: { endpoint: staleEndpoint },
+        }).catch(() => {});
+
+        await subscription.unsubscribe().catch(() => false);
+        subscription = null;
+      }
 
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: base64UrlToUint8Array(publicKey),
+          applicationServerKey: expectedKey,
         });
       }
 
