@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Vaani">
+  <defs>
+    <linearGradient id="g" x1="80" y1="40" x2="430" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#5B4DFF"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="#050713"/>
+  <circle cx="256" cy="256" r="184" fill="url(#g)" opacity="0.18"/>
+  <path d="M134 156c0-22 18-40 40-40h164c22 0 40 18 40 40v132c0 22-18 40-40 40h-64l-70 67c-9 9-24 2-23-11l6-56h-13c-22 0-40-18-40-40V156Z" fill="url(#g)"/>
+  <path d="M190 211c0-12 10-22 22-22h88c12 0 22 10 22 22v13c0 12-10 22-22 22h-88c-12 0-22-10-22-22v-13Zm0 79c0-12 10-22 22-22h54c12 0 22 10 22 22v13c0 12-10 22-22 22h-54c-12 0-22-10-22-22v-13Z" fill="#fff"/>
+  <circle cx="333" cy="297" r="31" fill="#fff"/>
+  <path d="M333 277v40M313 297h40" stroke="#5B4DFF" stroke-width="12" stroke-linecap="round"/>
+</svg>
