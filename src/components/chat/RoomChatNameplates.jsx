@@ -36,6 +36,14 @@ const isSenderLabel = (node) => {
     && classes.includes('text-slate-400');
 };
 
+const isOwnMessageRow = (node) => (
+  node instanceof HTMLElement
+  && node.tagName === 'DIV'
+  && node.classList.contains('w-full')
+  && node.classList.contains('pb-4')
+  && node.classList.contains('justify-end')
+);
+
 const applyNameplate = (node, member) => {
   if (!node || member?.isMember !== true) return;
 
@@ -56,13 +64,44 @@ const applyNameplate = (node, member) => {
   }
 };
 
-const RoomChatNameplates = ({ rootRef }) => {
+const addOwnMessageNameplates = (root, member) => {
+  if (!root || member?.isMember !== true) return;
+
+  const displayName = member.displayName || member.name || 'You';
+
+  root.querySelectorAll('div').forEach((row) => {
+    if (!isOwnMessageRow(row)) return;
+
+    const messageColumn = [...row.querySelectorAll('div')].find((node) => (
+      node.classList.contains('relative')
+      && node.classList.contains('flex-col')
+      && node.classList.contains('items-end')
+    ));
+
+    if (!messageColumn) return;
+
+    let label = messageColumn.querySelector(':scope > [data-vaani-own-nameplate="true"]');
+
+    if (!label) {
+      label = document.createElement('span');
+      label.dataset.vaaniOwnNameplate = 'true';
+      label.className = 'mb-1 mr-1 text-[11px] font-black text-slate-400';
+      label.append(document.createTextNode(displayName));
+      messageColumn.prepend(label);
+    }
+
+    applyNameplate(label, member);
+  });
+};
+
+const RoomChatNameplates = ({ rootRef, currentUserId }) => {
   useEffect(() => {
     const roomId = window.location.pathname.match(/^\/room\/([^/?#]+)/i)?.[1] || '';
     if (!roomId) return undefined;
 
     let stopped = false;
     let scanTimer = 0;
+    let currentMember = null;
     const memberByName = new Map();
 
     const scan = () => {
@@ -82,6 +121,10 @@ const RoomChatNameplates = ({ rootRef }) => {
         const member = memberByName.get(rawName);
         if (member) applyNameplate(node, member);
       });
+
+      if (currentMember) {
+        addOwnMessageNameplates(root, currentMember);
+      }
     };
 
     const scheduleScan = () => {
@@ -89,17 +132,40 @@ const RoomChatNameplates = ({ rootRef }) => {
       scanTimer = window.setTimeout(scan, 40);
     };
 
+    const rememberMember = (profile) => {
+      if (profile?.isMember !== true) return;
+      const name = profile.displayName || profile.name || '';
+      if (name) memberByName.set(name, profile);
+    };
+
     const rememberMessageSender = async (message) => {
       if (!message || message.role === 'bot') return;
 
       const uid = message.senderId || message.userid;
       const name = message.displayName || message.senderName || '';
-      if (!uid || !name) return;
+      if (!uid) return;
 
       const profile = await fetchProfile(uid);
       if (stopped || profile?.isMember !== true) return;
 
-      memberByName.set(name, profile);
+      if (name) memberByName.set(name, profile);
+      rememberMember(profile);
+
+      if (uid === currentUserId) {
+        currentMember = profile;
+      }
+
+      scheduleScan();
+    };
+
+    const loadCurrentMember = async () => {
+      if (!currentUserId) return;
+
+      const profile = await fetchProfile(currentUserId);
+      if (stopped || profile?.isMember !== true) return;
+
+      currentMember = profile;
+      rememberMember(profile);
       scheduleScan();
     };
 
@@ -118,14 +184,23 @@ const RoomChatNameplates = ({ rootRef }) => {
       rememberMessageSender(message);
     };
 
+    const onMemberAppearance = (updatedUser) => {
+      if (!updatedUser?.uid) return;
+
+      profileCache.set(updatedUser.uid, updatedUser);
+      rememberMember(updatedUser);
+
+      if (updatedUser.uid === currentUserId) {
+        currentMember = updatedUser.isMember === true ? updatedUser : null;
+      }
+
+      scheduleScan();
+    };
+
     const onLocalStyleUpdated = (event) => {
       const updatedUser = event?.detail?.user;
       if (!updatedUser?.uid) return;
-      profileCache.set(updatedUser.uid, updatedUser);
-      if (updatedUser.isMember === true && updatedUser.displayName) {
-        memberByName.set(updatedUser.displayName, updatedUser);
-      }
-      scheduleScan();
+      onMemberAppearance(updatedUser);
     };
 
     const observer = new MutationObserver(scheduleScan);
@@ -134,7 +209,10 @@ const RoomChatNameplates = ({ rootRef }) => {
     }
 
     socket.on('receive-message', onMessage);
+    socket.on('social-member-appearance', onMemberAppearance);
     window.addEventListener('vaani-member-style-updated', onLocalStyleUpdated);
+
+    loadCurrentMember();
     loadHistoryMembers();
     scheduleScan();
 
@@ -143,9 +221,10 @@ const RoomChatNameplates = ({ rootRef }) => {
       window.clearTimeout(scanTimer);
       observer.disconnect();
       socket.off('receive-message', onMessage);
+      socket.off('social-member-appearance', onMemberAppearance);
       window.removeEventListener('vaani-member-style-updated', onLocalStyleUpdated);
     };
-  }, [rootRef]);
+  }, [currentUserId, rootRef]);
 
   return null;
 };
