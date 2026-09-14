@@ -34,8 +34,18 @@ export const PROFILE_BANNERS = [
   { id: 'wing-shadow', label: 'Wing Shadow', src: '/member-assets/banners/wing-shadow.webp' },
 ];
 
+export const MESSAGE_DECORATIONS = [
+  { id: 'aurora', label: 'Aurora', hint: 'Teal light flowing behind your name' },
+  { id: 'neon-wave', label: 'Neon Wave', hint: 'Electric cyan and violet pulse' },
+  { id: 'royal-gold', label: 'Royal Gold', hint: 'Warm premium gold shimmer' },
+  { id: 'fire', label: 'Fire', hint: 'Red, orange and ember glow' },
+  { id: 'galaxy', label: 'Galaxy', hint: 'Blue, violet and pink cosmic flow' },
+  { id: 'cyber-grid', label: 'Cyber Grid', hint: 'Teal digital scan-line motion' },
+];
+
 const decorationMap = new Map(PROFILE_DECORATIONS.map((item) => [item.id, item]));
 const bannerMap = new Map(PROFILE_BANNERS.map((item) => [item.id, item]));
+const messageDecorationMap = new Map(MESSAGE_DECORATIONS.map((item) => [item.id, item]));
 
 export const legacyDecorationId = (value) => {
   const theme = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -54,10 +64,19 @@ export const normalizeProfileBannerId = (value) => {
   return bannerMap.has(id) ? id : 'purple-moon';
 };
 
+export const normalizeMessageDecorationId = (value) => {
+  const id = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return messageDecorationMap.has(id) ? id : 'aurora';
+};
+
 export const getProfileDecoration = (value, legacyValue) => (
   decorationMap.get(normalizeProfileDecorationId(value, legacyValue)) || PROFILE_DECORATIONS[0]
 );
 
 export const getProfileBanner = (value) => (
   bannerMap.get(normalizeProfileBannerId(value)) || PROFILE_BANNERS[0]
+);
+
+export const getMessageDecoration = (value) => (
+  messageDecorationMap.get(normalizeMessageDecorationId(value)) || MESSAGE_DECORATIONS[0]
 );
