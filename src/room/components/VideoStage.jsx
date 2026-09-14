@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import VideoTile from './VideoTile';
+import AnimatedRoomStage from './AnimatedRoomStage';
 import { getGridClass } from '../utils/media';
 
 const ScreenStreamVideo = memo(({ stream, muted = false }) => {
@@ -50,6 +51,39 @@ const ScreenShareCard = memo(({ activeScreenShare, stream }) => {
   );
 });
 
+const ViewSwitcher = memo(({ value, onChange }) => (
+  <div className="absolute left-1/2 top-3 z-[70] flex -translate-x-1/2 items-center rounded-full border border-white/10 bg-[#07111f]/85 p-1 shadow-xl backdrop-blur-xl">
+    <button
+      type="button"
+      onClick={() => onChange('room')}
+      className={`flex items-center gap-2 rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] transition-colors sm:px-4 ${
+        value === 'room'
+          ? 'bg-emerald-500 text-[#04130f]'
+          : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
+      }`}
+      aria-pressed={value === 'room'}
+      title="Animated room view"
+    >
+      <i className="fa-solid fa-fire-flame-curved" />
+      <span>Room</span>
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange('video')}
+      className={`flex items-center gap-2 rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] transition-colors sm:px-4 ${
+        value === 'video'
+          ? 'bg-cyan-400 text-[#04131c]'
+          : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
+      }`}
+      aria-pressed={value === 'video'}
+      title="Video grid view"
+    >
+      <i className="fa-solid fa-table-cells-large" />
+      <span>Video</span>
+    </button>
+  </div>
+));
+
 const VideoStage = memo(({
   localTile,
   participants,
@@ -63,6 +97,8 @@ const VideoStage = memo(({
   commonTileProps,
   onExitFullscreen,
 }) => {
+  const [viewMode, setViewMode] = useState('room');
+
   const remoteScreenStream = useMemo(() => {
     if (!activeScreenShare || activeScreenShare.isLocal) return null;
     return remoteScreenStreams?.get?.(activeScreenShare.uid)?.stream || null;
@@ -127,6 +163,20 @@ const VideoStage = memo(({
     );
   }
 
+  if (viewMode === 'room') {
+    return (
+      <div className="relative h-full w-full">
+        <AnimatedRoomStage
+          localTile={localTile}
+          participants={participants}
+          totalCount={totalCount}
+          commonTileProps={commonTileProps}
+        />
+        <ViewSwitcher value={viewMode} onChange={setViewMode} />
+      </div>
+    );
+  }
+
   const pinnedParticipant = pinnedId && pinnedId !== 'local' ? participants.find((participant) => participant.uid === pinnedId) : null;
   const activeSpeaker = activeSpeakerUid ? participants.find((participant) => participant.uid === activeSpeakerUid) : null;
   const heroParticipant = pinnedId === 'local' ? 'local' : pinnedParticipant || activeSpeaker;
@@ -135,20 +185,26 @@ const VideoStage = memo(({
     const heroIsLocal = heroParticipant === 'local';
 
     return (
-      <div className="flex h-full w-full flex-col gap-3 p-2 sm:p-3">
-        <div className="min-h-0 flex-1">{heroIsLocal ? local : getRemoteTile(heroParticipant)}</div>
-        <div className="flex shrink-0 gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          {!heroIsLocal && localThumb}
-          {participants.filter((participant) => participant.uid !== heroParticipant.uid).map((participant) => getRemoteTile(participant, { isThumbnail: true }))}
+      <div className="relative h-full w-full">
+        <div className="flex h-full w-full flex-col gap-3 p-2 pt-14 sm:p-3 sm:pt-14">
+          <div className="min-h-0 flex-1">{heroIsLocal ? local : getRemoteTile(heroParticipant)}</div>
+          <div className="flex shrink-0 gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {!heroIsLocal && localThumb}
+            {participants.filter((participant) => participant.uid !== heroParticipant.uid).map((participant) => getRemoteTile(participant, { isThumbnail: true }))}
+          </div>
         </div>
+        <ViewSwitcher value={viewMode} onChange={setViewMode} />
       </div>
     );
   }
 
   return (
-    <div className={`grid h-full w-full content-center gap-2 p-2 sm:gap-3 sm:p-3 ${getGridClass(totalCount)}`} style={{ gridAutoRows: totalCount <= 1 ? '100%' : 'minmax(0,1fr)' }}>
-      {local}
-      {participants.map((participant) => getRemoteTile(participant))}
+    <div className="relative h-full w-full">
+      <div className={`grid h-full w-full content-center gap-2 p-2 pt-14 sm:gap-3 sm:p-3 sm:pt-14 ${getGridClass(totalCount)}`} style={{ gridAutoRows: totalCount <= 1 ? '100%' : 'minmax(0,1fr)' }}>
+        {local}
+        {participants.map((participant) => getRemoteTile(participant))}
+      </div>
+      <ViewSwitcher value={viewMode} onChange={setViewMode} />
     </div>
   );
 });
