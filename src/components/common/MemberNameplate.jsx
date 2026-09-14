@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { normalizeMessageDecorationId } from '../../utils/memberAssets';
+import '../../styles/memberEffects.css';
 
 const profileCache = new Map();
 const inflightProfiles = new Map();
