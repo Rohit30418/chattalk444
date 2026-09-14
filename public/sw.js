@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vaani-shell-v1';
+const CACHE_NAME = 'vaani-shell-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/vaani-icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -19,6 +19,22 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+const cacheResponse = (request, response) => {
+  if (!response?.ok) return;
+  const copy = response.clone();
+  caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+};
+
+const networkFirst = async (request, fallbackRequest = request) => {
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    cacheResponse(fallbackRequest, response);
+    return response;
+  } catch {
+    return caches.match(fallbackRequest);
+  }
+};
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -29,25 +45,32 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('/', copy)).catch(() => {});
-          return response;
-        })
-        .catch(() => caches.match('/'))
+      networkFirst(request, '/')
+        .then((response) => response || caches.match('/'))
     );
     return;
   }
 
+  const isCodeAsset = request.destination === 'script'
+    || request.destination === 'style'
+    || request.destination === 'worker'
+    || /\.(?:js|css|mjs)(?:$|\?)/i.test(url.pathname);
+
+  // App code must prefer the network so a newly deployed Vite bundle cannot be
+  // hidden behind an older PWA cache. Cached code remains only as an offline
+  // fallback.
+  if (isCodeAsset) {
+    event.respondWith(networkFirst(request).then((response) => response || caches.match(request)));
+    return;
+  }
+
+  // Images/fonts/icons are safe to serve quickly from cache and refresh in the
+  // background because they do not control application behavior.
   event.respondWith(
     caches.match(request).then((cached) => {
       const network = fetch(request)
         .then((response) => {
-          if (response?.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
-          }
+          cacheResponse(request, response);
           return response;
         })
         .catch(() => cached);
