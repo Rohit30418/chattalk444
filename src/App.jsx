@@ -15,6 +15,7 @@ import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
 import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import PwaManager from './components/common/PwaManager';
+import NotificationDevicesManager from './components/common/NotificationDevicesManager';
 import ErrorBoundary from './ErrorBoundary';
 
 const CHUNK_RELOAD_KEY = 'vaani_chunk_reload_attempt';
@@ -185,6 +186,7 @@ function App() {
       <AuthProvider>
         <GlobalMemberVisuals />
         <PwaManager />
+        <NotificationDevicesManager />
 
         <ToastContainer
           theme="colored"
