@@ -251,6 +251,18 @@ const RoomMain = ({ uId, user }) => {
     room.setPinnedId,
   ]);
 
+  const networkQuality = useMemo(() => {
+    if (room.connectionState !== 'connected') return 'offline';
+
+    const qualities = room.participantsArray
+      .map((participant) => participant?.quality)
+      .filter(Boolean);
+
+    if (qualities.includes('poor')) return 'poor';
+    if (qualities.includes('fair')) return 'fair';
+    return 'good';
+  }, [room.connectionState, room.participantsArray]);
+
   const isPageLoading = userLoading || roomLoading;
 
   if (isPageLoading) {
@@ -304,6 +316,7 @@ const RoomMain = ({ uId, user }) => {
             user={currUserData}
             raisedHand={room.raisedHand}
             connectionState={room.connectionState}
+            networkQuality={networkQuality}
             onCopyLink={copyLink}
             onToggleParticipants={() => room.setShowParticipants((value) => !value)}
             onOpenDeviceSettings={() => room.setShowDeviceSettings(true)}
