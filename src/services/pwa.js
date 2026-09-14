@@ -4,6 +4,8 @@ let deferredInstallPrompt = null;
 let registrationPromise = null;
 let pushRecoveryBound = false;
 let pushSyncInFlight = null;
+let serviceWorkerReloadBound = false;
+let shouldReloadForServiceWorkerUpdate = false;
 
 const base64UrlToUint8Array = (value = '') => {
   const padding = '='.repeat((4 - (value.length % 4)) % 4);
@@ -60,6 +62,17 @@ const bindPushRecovery = () => {
   window.setTimeout(attemptPushRecovery, 15000);
 };
 
+const bindServiceWorkerReload = () => {
+  if (serviceWorkerReloadBound || !('serviceWorker' in navigator)) return;
+  serviceWorkerReloadBound = true;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!shouldReloadForServiceWorkerUpdate) return;
+    shouldReloadForServiceWorkerUpdate = false;
+    window.location.reload();
+  });
+};
+
 export const isStandalonePwa = () => (
   window.matchMedia?.('(display-mode: standalone)').matches
   || window.navigator.standalone === true
@@ -69,15 +82,37 @@ export const registerVaaniPwa = () => {
   if (!('serviceWorker' in navigator)) return Promise.resolve(null);
 
   bindPushRecovery();
+  bindServiceWorkerReload();
 
   if (registrationPromise) return registrationPromise;
 
   registrationPromise = navigator.serviceWorker
-    .register('/sw.js', { scope: '/' })
+    .register('/sw.js', { scope: '/', updateViaCache: 'none' })
     .then((registration) => {
-      if (registration.waiting) {
+      const activateWaitingWorker = () => {
+        if (!registration.waiting) return;
+        shouldReloadForServiceWorkerUpdate = Boolean(navigator.serviceWorker.controller);
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
+      };
+
+      activateWaitingWorker();
+
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        if (!installing) return;
+
+        installing.addEventListener('statechange', () => {
+          if (installing.state !== 'installed') return;
+          if (!navigator.serviceWorker.controller) return;
+
+          shouldReloadForServiceWorkerUpdate = true;
+          registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+        });
+      });
+
+      // Do not wait for the browser's periodic update check. Vaani should know
+      // about a newly deployed service worker on normal app startup.
+      registration.update().catch(() => {});
       return registration;
     })
     .catch((error) => {
