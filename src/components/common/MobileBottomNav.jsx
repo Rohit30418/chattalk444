@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import useUnreadMessages from '../../hooks/useUnreadMessages';
 
 const Icon = ({ type, className = '' }) => {
   const common = {
@@ -65,29 +66,51 @@ const items = [
   { to: '/aiBot', label: 'Luna AI', icon: 'luna' },
 ];
 
-const MobileBottomNav = () => (
-  <>
-    <style>{`[aria-label="Rooms mobile navigation"]{display:none!important;}`}</style>
-    <nav
-      className="fixed inset-x-0 bottom-0 z-[90] border-t border-slate-200 bg-white px-2 pb-[max(.45rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#07111f] lg:hidden"
-      aria-label="Vaani mobile navigation"
-    >
-      <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            aria-label={item.label === 'Connect' ? 'Open Connect people page' : item.label}
-            className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-colors ${isActive ? 'bg-teal-700 text-white' : item.icon === 'connect' ? 'text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-500/10' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white'}`}
-          >
-            <Icon type={item.icon} className={item.icon === 'connect' ? 'h-6 w-6' : 'h-5 w-5'} />
-            <span className="w-full truncate text-center">{item.label}</span>
-          </NavLink>
-        ))}
-      </div>
-    </nav>
-  </>
-);
+const MobileBottomNav = () => {
+  const unreadCount = useUnreadMessages();
+
+  return (
+    <>
+      <style>{`[aria-label="Rooms mobile navigation"]{display:none!important;}`}</style>
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[90] border-t border-slate-200 bg-white px-2 pb-[max(.45rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#07111f] lg:hidden"
+        aria-label="Vaani mobile navigation"
+      >
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              aria-label={item.label === 'Connect' ? 'Open Connect people page' : item.label}
+              className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-colors ${isActive ? 'bg-teal-700 text-white' : item.icon === 'connect' ? 'text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-500/10' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white'}`}
+            >
+              {({ isActive }) => (
+                <>
+                  <span className="relative inline-flex">
+                    <Icon type={item.icon} className={item.icon === 'connect' ? 'h-6 w-6' : 'h-5 w-5'} />
+                    {item.to === '/messages' && unreadCount > 0 && (
+                      <span
+                        className={`absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[8px] font-black ${
+                          isActive
+                            ? 'bg-white text-teal-700'
+                            : 'bg-red-500 text-white'
+                        }`}
+                        aria-label={`${unreadCount} unread messages`}
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </span>
+                  <span className="w-full truncate text-center">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </>
+  );
+};
 
 export default MobileBottomNav;
