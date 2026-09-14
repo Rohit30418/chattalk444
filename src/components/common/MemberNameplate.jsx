@@ -4,7 +4,9 @@ import { normalizeMessageDecorationId } from '../../utils/memberAssets';
 import '../../styles/memberEffects.css';
 
 const profileCache = new Map();
+const profileFetchedAt = new Map();
 const inflightProfiles = new Map();
+const PROFILE_FRESH_MS = 10000;
 
 const loadProfile = async (uid, { force = false } = {}) => {
   if (!uid) return null;
@@ -13,8 +15,12 @@ const loadProfile = async (uid, { force = false } = {}) => {
     return inflightProfiles.get(uid);
   }
 
-  if (!force && profileCache.has(uid)) {
-    return profileCache.get(uid);
+  const cached = profileCache.get(uid);
+  const fetchedAt = Number(profileFetchedAt.get(uid) || 0);
+  const isFresh = cached && Date.now() - fetchedAt < PROFILE_FRESH_MS;
+
+  if (cached && (!force || isFresh)) {
+    return cached;
   }
 
   inflightProfiles.set(
@@ -22,9 +28,10 @@ const loadProfile = async (uid, { force = false } = {}) => {
     api.get(`/api/users/${encodeURIComponent(uid)}`)
       .then(({ data }) => {
         profileCache.set(uid, data);
+        profileFetchedAt.set(uid, Date.now());
         return data;
       })
-      .catch(() => null)
+      .catch(() => cached || null)
       .finally(() => inflightProfiles.delete(uid))
   );
 
@@ -53,11 +60,9 @@ const MemberNameplate = ({
 
     let cancelled = false;
 
-    // Always validate a member nameplate against the latest saved profile once
-    // for this mounted nameplate. Conversation/auth objects can legitimately be
-    // stale after a style save, which previously made Aurora survive even when
-    // another decoration had already been stored on the backend. Concurrent
-    // lookups for the same uid are deduplicated by inflightProfiles above.
+    // Validate mounted nameplates against the latest saved profile. A short
+    // freshness window prevents every newly rendered message bubble from
+    // generating another profile request during active chats.
     loadProfile(finalUid, { force: true }).then((profile) => {
       if (!cancelled && profile) {
         setResolvedUser((current) => ({ ...(current || {}), ...profile }));
@@ -74,6 +79,7 @@ const MemberNameplate = ({
       if (!updatedUser?.uid || updatedUser.uid !== finalUid) return;
 
       profileCache.set(updatedUser.uid, updatedUser);
+      profileFetchedAt.set(updatedUser.uid, Date.now());
       setResolvedUser((current) => ({ ...(current || {}), ...updatedUser }));
     };
 
