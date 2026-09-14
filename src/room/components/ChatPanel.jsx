@@ -1,4 +1,5 @@
 import { lazy, memo, Suspense, useCallback, useEffect, useRef } from 'react';
+import RoomChatNameplates from '../../components/chat/RoomChatNameplates';
 
 const Chat = lazy(() => import('../../components/chat/Chat'));
 
@@ -68,6 +69,8 @@ const ChatPanel = memo(({ isOpen, uId }) => {
       onClickCapture={handleClickCapture}
       onKeyDownCapture={handleKeyDownCapture}
     >
+      <RoomChatNameplates rootRef={panelRef} />
+
       <Suspense
         fallback={(
           <div className="flex h-full items-center justify-center bg-[var(--color-surface)]">
