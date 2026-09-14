@@ -69,7 +69,7 @@ const ChatPanel = memo(({ isOpen, uId }) => {
       onClickCapture={handleClickCapture}
       onKeyDownCapture={handleKeyDownCapture}
     >
-      <RoomChatNameplates rootRef={panelRef} />
+      <RoomChatNameplates rootRef={panelRef} currentUserId={uId} />
 
       <Suspense
         fallback={(
