@@ -149,6 +149,102 @@
   animation: vaaniBadgeShine 3.8s ease-in-out infinite;
 }
 
+/* Animated premium display-name treatment for room chat + direct messages. */
+.vaani-nameplate {
+  --np-a: #0f766e;
+  --np-b: #22d3ee;
+  --np-c: #8b5cf6;
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: .3rem;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid color-mix(in srgb, var(--np-a) 55%, transparent);
+  border-radius: 9999px;
+  padding: .22rem .62rem;
+  color: #fff;
+  text-shadow: 0 1px 7px rgba(0, 0, 0, .45);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--np-a) 20%, transparent);
+}
+
+.vaani-nameplate::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 18% 30%, color-mix(in srgb, var(--np-b) 72%, transparent), transparent 36%),
+    linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--np-a) 88%, #08111f),
+      color-mix(in srgb, var(--np-b) 76%, #08111f),
+      color-mix(in srgb, var(--np-c) 82%, #08111f),
+      color-mix(in srgb, var(--np-a) 88%, #08111f)
+    );
+  background-size: 220% 220%;
+  animation: vaaniNameplateFlow 4.2s ease-in-out infinite;
+}
+
+.vaani-nameplate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: translateX(-150%) skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
+  animation: vaaniNameplateShine 3.8s ease-in-out infinite;
+}
+
+.vaani-nameplate-compact {
+  padding: .12rem .46rem;
+}
+
+.vaani-nameplate-spark {
+  position: relative;
+  z-index: 2;
+  font-size: .72em;
+  line-height: 1;
+  animation: vaaniNameplateSpark 1.5s ease-in-out infinite;
+}
+
+.vaani-nameplate-aurora {
+  --np-a: #0f766e;
+  --np-b: #22d3ee;
+  --np-c: #8b5cf6;
+}
+
+.vaani-nameplate-neon-wave {
+  --np-a: #06b6d4;
+  --np-b: #6366f1;
+  --np-c: #d946ef;
+}
+
+.vaani-nameplate-royal-gold {
+  --np-a: #a16207;
+  --np-b: #f59e0b;
+  --np-c: #fde68a;
+}
+
+.vaani-nameplate-fire {
+  --np-a: #b91c1c;
+  --np-b: #f97316;
+  --np-c: #facc15;
+}
+
+.vaani-nameplate-galaxy {
+  --np-a: #1d4ed8;
+  --np-b: #7c3aed;
+  --np-c: #ec4899;
+}
+
+.vaani-nameplate-cyber-grid {
+  --np-a: #0f766e;
+  --np-b: #14b8a6;
+  --np-c: #22d3ee;
+}
+
 /* Premium profile layout --------------------------------------------------
    MyProfile has its own sticky header (z-[120]). Scope these selectors to
    that header so no room/home layout is affected. */
@@ -240,13 +336,31 @@ main > header[class*="z-[120]"] + section + div.grid {
   82%, 100% { transform: translateX(130%) skewX(-18deg); }
 }
 
+@keyframes vaaniNameplateFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes vaaniNameplateShine {
+  0%, 58% { transform: translateX(-150%) skewX(-20deg); }
+  78%, 100% { transform: translateX(150%) skewX(-20deg); }
+}
+
+@keyframes vaaniNameplateSpark {
+  0%, 100% { opacity: .55; transform: scale(.88) rotate(-8deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(8deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vaani-member-room::before,
   .vaani-member-room::after,
   .vaani-member-star,
   .vaani-profile-frame::before,
   .vaani-profile-frame::after,
-  .vaani-member-badge::after {
+  .vaani-member-badge::after,
+  .vaani-nameplate::before,
+  .vaani-nameplate::after,
+  .vaani-nameplate-spark {
     animation: none !important;
   }
 }
