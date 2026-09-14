@@ -8,6 +8,15 @@ const profileFetchedAt = new Map();
 const inflightProfiles = new Map();
 const PROFILE_FRESH_MS = 10000;
 
+const PREVIEW_PALETTES = {
+  aurora: ['#0f766e', '#22d3ee', '#8b5cf6'],
+  'neon-wave': ['#06b6d4', '#6366f1', '#d946ef'],
+  'royal-gold': ['#a16207', '#f59e0b', '#fde68a'],
+  fire: ['#b91c1c', '#f97316', '#facc15'],
+  galaxy: ['#1d4ed8', '#7c3aed', '#ec4899'],
+  'cyber-grid': ['#0f766e', '#14b8a6', '#22d3ee'],
+};
+
 const loadProfile = async (uid, { force = false } = {}) => {
   if (!uid) return null;
 
@@ -67,9 +76,6 @@ const MemberNameplate = ({
 
     let cancelled = false;
 
-    // Validate mounted nameplates against the latest saved profile. A short
-    // freshness window prevents every newly rendered message bubble from
-    // generating another profile request during active chats.
     loadProfile(finalUid, { force: true }).then((profile) => {
       if (!cancelled && profile) {
         setResolvedUser((current) => ({ ...(current || {}), ...profile }));
@@ -113,11 +119,21 @@ const MemberNameplate = ({
   }
 
   const theme = normalizeMessageDecorationId(finalUser.messageDecorationId);
+  const previewPalette = !resolveProfile ? PREVIEW_PALETTES[theme] : null;
+  const previewStyle = previewPalette
+    ? {
+        '--np-a': previewPalette[0],
+        '--np-b': previewPalette[1],
+        '--np-c': previewPalette[2],
+      }
+    : undefined;
 
   return (
     <span
       className={`vaani-nameplate vaani-nameplate-${theme} ${compact ? 'vaani-nameplate-compact' : ''} ${className}`}
+      style={previewStyle}
       title="Vaani member"
+      data-nameplate-theme={theme}
     >
       <span className="vaani-nameplate-spark" aria-hidden="true">✦</span>
       <span className="relative z-[2] min-w-0 truncate">{finalName}</span>
