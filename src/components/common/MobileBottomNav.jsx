@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import useUnreadMessages from '../../hooks/useUnreadMessages';
 
 const Icon = ({ type, className = '' }) => {
@@ -68,6 +68,16 @@ const items = [
 
 const MobileBottomNav = () => {
   const unreadCount = useUnreadMessages();
+  const navigate = useNavigate();
+
+  const handleNavClick = (event, item) => {
+    if (item.to !== '/messages') return;
+
+    // Chat is a top-level destination. Always clear any previously selected
+    // conversation so mobile users land on the conversation list first.
+    event.preventDefault();
+    navigate('/messages');
+  };
 
   return (
     <>
@@ -82,6 +92,7 @@ const MobileBottomNav = () => {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={(event) => handleNavClick(event, item)}
               aria-label={item.label === 'Connect' ? 'Open Connect people page' : item.label}
               className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-black transition-colors ${isActive ? 'bg-teal-700 text-white' : item.icon === 'connect' ? 'text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-teal-500/10' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white'}`}
             >
