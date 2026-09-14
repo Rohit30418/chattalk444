@@ -1,0 +1,49 @@
+{
+  "name": "Vaani - Language Exchange",
+  "short_name": "Vaani",
+  "description": "Practice languages with live rooms, private chat and Luna AI.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#050713",
+  "theme_color": "#5B4DFF",
+  "categories": ["education", "social", "communication"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/vaani-icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/vaani-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Rooms",
+      "short_name": "Rooms",
+      "url": "/rooms",
+      "icons": [{ "src": "/vaani-icon.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "url": "/messages",
+      "icons": [{ "src": "/vaani-icon.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Connect",
+      "short_name": "Connect",
+      "url": "/connect",
+      "icons": [{ "src": "/vaani-icon.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    }
+  ]
+}
