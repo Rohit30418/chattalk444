@@ -209,12 +209,13 @@ const PwaManager = () => {
     };
   }, [notify, user?.uid]);
 
-  const showInstall = installable && !isStandalonePwa();
+  const standalone = isStandalonePwa();
+  const showInstall = installable && !standalone;
   const showNotifications = Boolean(user?.uid && permission === 'default');
   const showRepair = Boolean(user?.uid && permission === 'granted' && pushSubscribed === false);
   const visible = useMemo(
-    () => showRepair || (!dismissed && (showInstall || showNotifications)),
-    [dismissed, showInstall, showNotifications, showRepair]
+    () => !standalone && (showRepair || (!dismissed && (showInstall || showNotifications))),
+    [dismissed, showInstall, showNotifications, showRepair, standalone]
   );
 
   const installApp = async () => {
@@ -259,10 +260,10 @@ const PwaManager = () => {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-[220] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 rounded-2xl border border-white/10 bg-[#0b1120]/95 p-3 text-white shadow-2xl backdrop-blur-xl sm:left-auto sm:right-4 sm:w-auto sm:min-w-[360px] sm:translate-x-0">
+    <div className="fixed bottom-4 left-1/2 z-[220] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 rounded-2xl border border-white/10 bg-[#071b2c]/95 p-3 text-white shadow-2xl backdrop-blur-xl sm:left-auto sm:right-4 sm:w-auto sm:min-w-[360px] sm:translate-x-0">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 via-indigo-500 to-violet-600 shadow-lg">
-          <i className="fa-solid fa-comment-dots text-white" aria-hidden="true" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-lg">
+          <img src="/vaani-icon.svg" alt="" aria-hidden="true" className="h-10 w-10" />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -281,7 +282,7 @@ const PwaManager = () => {
                 type="button"
                 onClick={installApp}
                 disabled={busy}
-                className="rounded-xl bg-white px-3 py-2 text-[11px] font-black text-slate-950 disabled:opacity-60"
+                className="rounded-xl bg-white px-3 py-2 text-[11px] font-black text-[#071b2c] disabled:opacity-60"
               >
                 <i className="fa-solid fa-download mr-1.5" aria-hidden="true" />
                 Install Vaani
@@ -293,7 +294,7 @@ const PwaManager = () => {
                 type="button"
                 onClick={enableNotifications}
                 disabled={busy}
-                className="rounded-xl bg-indigo-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-60"
+                className="rounded-xl bg-teal-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-60"
               >
                 <i className="fa-solid fa-bell mr-1.5" aria-hidden="true" />
                 {showRepair ? 'Register this device' : 'Enable notifications'}
