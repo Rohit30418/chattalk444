@@ -26,7 +26,7 @@ const Layout = () => {
       </main>
 
       {!isMobilePwa && <Footer />}
-      <RoomsPremiumPopup />
+      {!isMobilePwa && <RoomsPremiumPopup />}
 
       {isMobilePwa ? <MobilePwaBottomNav /> : <MobileBottomNav />}
     </div>
