@@ -4,6 +4,7 @@ import getUserData from "../../hooks/getUserData";
 import useUserCollection from "../useUserCollection";
 import { useAuth } from "../auth/AppWrapper";
 import MemberAppearancePanel from "./MemberAppearancePanel";
+import useMobilePwaMode from "../../hooks/useMobilePwaMode";
 import "../../styles/memberEffects.css";
 
 const statConfig = [
@@ -131,11 +132,12 @@ const EmptyState = ({ icon, title, text }) => (
   </div>
 );
 
-const MyProfile = () => {
+const MyProfile = ({ socialActions = null }) => {
   const navigate = useNavigate();
   const { user: authUser, logout } = useAuth();
   const { userId } = useParams();
   const { collectionsData = {}, loading, error } = useUserCollection(userId);
+  const isMobilePwa = useMobilePwaMode();
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState("");
@@ -236,7 +238,6 @@ const MyProfile = () => {
   }, [isPopupOpen, closePopup]);
 
   const displayName = cleanText(userInfo?.displayName || userInfo?.name, "Vaani User");
-  const email = cleanText(userInfo?.email, "Vaani learner");
   const photoURL = cleanText(
     userInfo?.photoURL || userInfo?.avatar || userInfo?.photo,
     ""
@@ -273,10 +274,6 @@ const MyProfile = () => {
   const location = cleanText(
     userInfo?.location || userInfo?.country || userInfo?.city,
     ""
-  );
-  const joinedLabel = cleanText(
-    userInfo?.joinedLabel || userInfo?.memberSince,
-    "Vaani member"
   );
 
   const learning = useMemo(() => {
@@ -364,15 +361,14 @@ const MyProfile = () => {
 
     return optionType.filter((user) => {
       const name = cleanText(user?.displayName || user?.name, "").toLowerCase();
-      const userEmail = cleanText(user?.email, "").toLowerCase();
-      return name.includes(query) || userEmail.includes(query);
+      return name.includes(query);
     });
   }, [optionType, popupSearch]);
 
   if (profileLoading || loading) {
     return (
       <main className="min-h-screen w-full bg-slate-50 dark:bg-[#050713]">
-        <div className="h-16 border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#07111f]" />
+        {!isMobilePwa && <div className="h-16 border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#07111f]" />}
         <div className="h-64 w-full bg-slate-200 dark:bg-white/[0.05] sm:h-80" />
         <div className="w-full px-5 pb-10 sm:px-8 lg:px-10">
           <div className="-mt-14 h-28 w-28 rounded-full border-4 border-white bg-slate-200 dark:border-[#0b1220] dark:bg-slate-800" />
@@ -411,57 +407,59 @@ const MyProfile = () => {
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white">
-      <header className="sticky top-0 z-[120] flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-white/10 dark:bg-[#07111f] sm:px-6 lg:px-8">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-black text-slate-700 transition-colors hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.07]"
-        >
-          <i className="fa-solid fa-arrow-left text-[10px]" aria-hidden="true" />
-          <span>Back</span>
-        </button>
-
-        <Link
-          to="/"
-          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 sm:flex"
-          aria-label="Vaani home"
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-700 text-white">
-            <i className="fa-solid fa-comments text-xs" aria-hidden="true" />
-          </span>
-          <span>
-            <span className="block text-sm font-black leading-none text-slate-950 dark:text-white">
-              Vaani
-            </span>
-            <span className="mt-1 block text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">
-              Profile
-            </span>
-          </span>
-        </Link>
-
-        {authUser ? (
+      {!isMobilePwa && (
+        <header className="sticky top-0 z-[120] flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-white/10 dark:bg-[#07111f] sm:px-6 lg:px-8">
           <button
             type="button"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 text-xs font-black text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+            onClick={handleBack}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-black text-slate-700 transition-colors hover:border-slate-300 hover:bg-white dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.07]"
           >
-            <i
-              className={`fa-solid ${isLoggingOut ? "fa-spinner fa-spin" : "fa-arrow-right-from-bracket"} text-[10px]`}
-              aria-hidden="true"
-            />
-            <span>{isLoggingOut ? "Signing out" : "Logout"}</span>
+            <i className="fa-solid fa-arrow-left text-[10px]" aria-hidden="true" />
+            <span>Back</span>
           </button>
-        ) : (
+
           <Link
-            to="/rooms"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-teal-700 px-3.5 text-xs font-black text-white transition-colors hover:bg-teal-800"
+            to="/"
+            className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 sm:flex"
+            aria-label="Vaani home"
           >
-            Rooms
-            <i className="fa-solid fa-arrow-right text-[10px]" aria-hidden="true" />
+            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-teal-100 bg-white dark:border-white/10">
+              <img src="/vaani-icon.svg" alt="" aria-hidden="true" className="h-9 w-9" />
+            </span>
+            <span>
+              <span className="block text-sm font-black leading-none text-slate-950 dark:text-white">
+                Vaani
+              </span>
+              <span className="mt-1 block text-[8px] font-black uppercase tracking-[0.18em] text-slate-400">
+                Profile
+              </span>
+            </span>
           </Link>
-        )}
-      </header>
+
+          {authUser ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 text-xs font-black text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+            >
+              <i
+                className={`fa-solid ${isLoggingOut ? "fa-spinner fa-spin" : "fa-arrow-right-from-bracket"} text-[10px]`}
+                aria-hidden="true"
+              />
+              <span>{isLoggingOut ? "Signing out" : "Logout"}</span>
+            </button>
+          ) : (
+            <Link
+              to="/rooms"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-teal-700 px-3.5 text-xs font-black text-white transition-colors hover:bg-teal-800"
+            >
+              Rooms
+              <i className="fa-solid fa-arrow-right text-[10px]" aria-hidden="true" />
+            </Link>
+          )}
+        </header>
+      )}
 
       <section className="w-full border-b border-slate-200 bg-white dark:border-white/10 dark:bg-[#0b1220]">
         <div className="relative h-56 w-full overflow-hidden bg-[#082f36] sm:h-72 lg:h-[340px]">
@@ -483,12 +481,6 @@ const MyProfile = () => {
               <i className="fa-solid fa-language text-teal-200" aria-hidden="true" />
               Language learner
             </span>
-            {isMember && (
-              <span className="vaani-member-badge inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-400/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100">
-                <span className="vaani-member-star" aria-hidden="true">✦</span>
-                Vaani Member
-              </span>
-            )}
             {isOnline && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-500/20 px-2.5 py-1.5 text-[10px] font-black text-emerald-100">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
@@ -528,54 +520,29 @@ const MyProfile = () => {
               </div>
 
               <div className="mt-4 min-w-0 pb-1 sm:mt-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-                    {displayName}
-                  </h1>
-                  {isMember ? (
-                    <span
-                      className="vaani-member-badge inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-300"
-                      title="Vaani Member"
-                    >
-                      <span className="vaani-member-star" aria-hidden="true">✦</span>
-                      Vaani Member
-                    </span>
-                  ) : (
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"
-                      title="Vaani learner"
-                    >
-                      <i className="fa-solid fa-check text-[9px]" aria-hidden="true" />
-                    </span>
-                  )}
-                </div>
+                <h1 className="truncate text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+                  {displayName}
+                </h1>
 
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  <span className="inline-flex items-center gap-2">
-                    <i className="fa-regular fa-envelope text-slate-400" aria-hidden="true" />
-                    {email}
-                  </span>
-                  {location && (
-                    <span className="inline-flex items-center gap-2">
-                      <i className="fa-solid fa-location-dot text-slate-400" aria-hidden="true" />
-                      {location}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-2">
-                    <i className="fa-regular fa-circle-check text-slate-400" aria-hidden="true" />
-                    {joinedLabel}
-                  </span>
-                </div>
+                {location && (
+                  <div className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <i className="fa-solid fa-location-dot text-slate-400" aria-hidden="true" />
+                    <span>{location}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <Link
-              to="/rooms"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-teal-800"
-            >
-              <i className="fa-solid fa-microphone-lines text-xs" aria-hidden="true" />
-              Find a room
-            </Link>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[290px]">
+              {socialActions}
+              <Link
+                to="/rooms"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-teal-800"
+              >
+                <i className="fa-solid fa-microphone-lines text-xs" aria-hidden="true" />
+                Find a room
+              </Link>
+            </div>
           </div>
 
           <div className="mt-7 grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/[0.03]">
@@ -789,7 +756,7 @@ const MyProfile = () => {
 
       {isPopupOpen && (
         <div
-          className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/60 p-3 sm:items-center sm:p-6"
+          className="fixed inset-0 z-[380] flex items-end justify-center bg-slate-950/60 p-3 sm:items-center sm:p-6"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) closePopup();
           }}
@@ -856,6 +823,10 @@ const MyProfile = () => {
                       user?.photoURL || user?.avatar || user?.photo,
                       ""
                     );
+                    const userLocation = cleanText(
+                      user?.location || user?.country || user?.city,
+                      "Vaani learner"
+                    );
 
                     return (
                       <li key={id || index}>
@@ -874,7 +845,7 @@ const MyProfile = () => {
                               {name}
                             </p>
                             <p className="mt-0.5 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
-                              {cleanText(user?.email, "Vaani learner")}
+                              {userLocation}
                             </p>
                           </div>
                           <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 dark:border-white/10 dark:text-slate-500">
@@ -891,7 +862,7 @@ const MyProfile = () => {
                   title={popupSearch ? "No matching connections" : `No ${popupType} yet`}
                   text={
                     popupSearch
-                      ? "Try a different name or email."
+                      ? "Try a different name."
                       : "Connections will appear here as this profile grows."
                   }
                 />
