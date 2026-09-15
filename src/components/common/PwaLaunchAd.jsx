@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AppWrapper';
 import useMobilePwaMode from '../../hooks/useMobilePwaMode';
 
@@ -81,6 +80,10 @@ const PwaLaunchAd = () => {
   if (!visible) return null;
 
   const close = () => setVisible(false);
+  const openPromotion = () => {
+    close();
+    window.location.assign(promotion.to);
+  };
 
   return (
     <div className="fixed inset-0 z-[500] flex min-h-[100dvh] flex-col bg-[#041311] text-white">
@@ -122,14 +125,14 @@ const PwaLaunchAd = () => {
           {promotion.text}
         </p>
 
-        <Link
-          to={promotion.to}
-          onClick={close}
+        <button
+          type="button"
+          onClick={openPromotion}
           className="mt-8 inline-flex min-w-48 items-center justify-center gap-2 rounded-2xl bg-teal-400 px-5 py-3.5 text-sm font-black text-[#041311] shadow-[0_14px_40px_rgba(45,212,191,.22)]"
         >
           <i className={`fa-solid ${promotion.icon}`} aria-hidden="true" />
           {promotion.cta}
-        </Link>
+        </button>
 
         <p className="mt-5 text-[10px] font-bold text-slate-500">
           Vaani members enjoy an ad-free app experience.
