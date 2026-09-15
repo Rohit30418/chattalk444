@@ -671,31 +671,38 @@ const ConnectPage = () => {
           </div>
 
           <div className="border-t border-slate-100 px-3 py-3 dark:border-white/[0.07] sm:px-5">
-            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:pb-0">
               {TAB_META.map((tab) => {
                 const active = activeTab === tab.id;
                 const count = tab.id === 'discover'
                   ? discoverTotal
                   : Number(tabCounts[tab.id] || 0);
+                const showRequestBadge = tab.id === 'requests' && count > 0;
 
                 return (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => changeTab(tab.id)}
-                    className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-black transition-colors ${
+                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-xs font-black shadow-sm transition-colors sm:h-auto sm:rounded-xl sm:px-3.5 sm:py-2.5 sm:shadow-none ${
                       active
-                        ? 'bg-teal-700 text-white shadow-sm'
-                        : 'bg-slate-50 text-slate-600 hover:bg-teal-50 hover:text-teal-700 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-teal-500/10 dark:hover:text-teal-300'
+                        ? 'border-teal-700 bg-teal-700 text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-teal-500/10 dark:hover:text-teal-300'
                     }`}
                   >
                     <i className={`fa-solid ${tab.icon} text-[10px]`} aria-hidden="true" />
                     {tab.label}
-                    <span className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] ${
-                      active ? 'bg-white/15 text-white' : 'bg-white text-slate-500 dark:bg-white/[0.07] dark:text-slate-300'
-                    }`}>
-                      {count > 99 ? '99+' : count}
-                    </span>
+                    {showRequestBadge ? (
+                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                        {count > 99 ? '99+' : count}
+                      </span>
+                    ) : (
+                      <span className={`hidden min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] sm:inline-flex ${
+                        active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500 dark:bg-white/[0.07] dark:text-slate-300'
+                      }`}>
+                        {count > 99 ? '99+' : count}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -724,7 +731,7 @@ const ConnectPage = () => {
           </div>
         </div>
 
-        <section className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visiblePeople.map((person) => {
             const isMember = person.isMember === true;
             const memberCardTheme = profileThemeToCardTheme(person.profileAnimationId);
