@@ -6,6 +6,7 @@ import api from '../../services/api';
 import socket from '../../services/socket';
 
 const MAX_NOTIFICATIONS = 50;
+const NOTIFICATION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const actorCache = new Map();
 
 const historyKey = (uid) => `vaani-inapp-notifications:${uid}`;
@@ -17,6 +18,37 @@ const safeParse = (value, fallback) => {
   } catch {
     return fallback;
   }
+};
+
+const notificationIdentity = (item = {}) => {
+  const actorUid = String(item.actorUid || '');
+
+  if (item.type === 'follow' && actorUid) return `follow:${actorUid}`;
+  if (item.type === 'connection-accepted' && actorUid) return `connection-accepted:${actorUid}`;
+  if (item.type === 'connection-request' && actorUid) return `connection-request:${actorUid}`;
+
+  return String(item.id || '');
+};
+
+const compactNotifications = (items, now = Date.now()) => {
+  const cutoff = now - NOTIFICATION_RETENTION_MS;
+  const seen = new Set();
+
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => {
+      const createdAt = new Date(item?.createdAt).getTime();
+      return Number.isFinite(createdAt) && createdAt >= cutoff;
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .reduce((result, item) => {
+      const identity = notificationIdentity(item);
+      if (!identity || seen.has(identity)) return result;
+
+      seen.add(identity);
+      result.push({ ...item, id: identity });
+      return result;
+    }, [])
+    .slice(0, MAX_NOTIFICATIONS);
 };
 
 const getActor = async (uid) => {
@@ -93,7 +125,8 @@ const InAppNotifications = () => {
 
   const save = useCallback((next) => {
     if (!uid) return;
-    localStorage.setItem(historyKey(uid), JSON.stringify(next.slice(0, MAX_NOTIFICATIONS)));
+    const compacted = compactNotifications(next);
+    localStorage.setItem(historyKey(uid), JSON.stringify(compacted));
   }, [uid]);
 
   const upsertNotification = useCallback((item, { announce = false } = {}) => {
@@ -110,26 +143,30 @@ const InAppNotifications = () => {
       read: item.read === true,
     };
 
+    normalized.id = notificationIdentity(normalized) || normalized.id;
+
     let isNew = false;
 
     setNotifications((current) => {
-      const index = current.findIndex((entry) => entry.id === normalized.id);
+      const active = compactNotifications(current);
+      const index = active.findIndex((entry) => entry.id === normalized.id);
       let next;
 
       if (index >= 0) {
-        const existing = current[index];
-        next = [...current];
+        const existing = active[index];
+        next = [...active];
         next[index] = {
           ...existing,
           ...normalized,
+          createdAt: item.createdAt || existing.createdAt,
           read: item.read === undefined ? existing.read : normalized.read,
         };
-        next.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       } else {
         isNew = true;
-        next = [normalized, ...current].slice(0, MAX_NOTIFICATIONS);
+        next = [normalized, ...active];
       }
 
+      next = compactNotifications(next);
       save(next);
       return next;
     });
@@ -149,8 +186,25 @@ const InAppNotifications = () => {
     }
 
     const stored = safeParse(localStorage.getItem(historyKey(uid)), []);
-    setNotifications(Array.isArray(stored) ? stored.slice(0, MAX_NOTIFICATIONS) : []);
+    const compacted = compactNotifications(stored);
+    setNotifications(compacted);
+    localStorage.setItem(historyKey(uid), JSON.stringify(compacted));
   }, [uid]);
+
+  useEffect(() => {
+    if (!uid) return undefined;
+
+    const pruneExpired = () => {
+      setNotifications((current) => {
+        const next = compactNotifications(current);
+        save(next);
+        return next;
+      });
+    };
+
+    const timer = window.setInterval(pruneExpired, 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [save, uid]);
 
   useEffect(() => {
     const findTarget = () => {
@@ -235,7 +289,7 @@ const InAppNotifications = () => {
       const name = actor?.displayName || 'Your connection';
 
       upsertNotification({
-        id: `connection-accepted:${otherUid}:${Math.floor(Date.now() / 60000)}`,
+        id: `connection-accepted:${otherUid}`,
         type: 'connection-accepted',
         title: 'Connection accepted',
         body: `You and ${name} are now connected.`,
@@ -250,7 +304,7 @@ const InAppNotifications = () => {
       const name = actor?.displayName || 'Someone';
 
       upsertNotification({
-        id: `follow:${followerUid}:${Math.floor(Date.now() / 60000)}`,
+        id: `follow:${followerUid}`,
         type: 'follow',
         title: 'New follower',
         body: `${name} started following you.`,
@@ -336,7 +390,7 @@ const InAppNotifications = () => {
         followers.forEach((person) => {
           if (!person?.uid || previousFollowers.has(person.uid)) return;
           upsertNotification({
-            id: `recovered-follow:${person.uid}:${Date.now()}`,
+            id: `follow:${person.uid}`,
             type: 'follow',
             title: 'New follower',
             body: `${person.displayName || 'Someone'} started following you.`,
@@ -348,7 +402,7 @@ const InAppNotifications = () => {
         friends.forEach((person) => {
           if (!person?.uid || previousFriends.has(person.uid)) return;
           upsertNotification({
-            id: `recovered-friend:${person.uid}:${Date.now()}`,
+            id: `connection-accepted:${person.uid}`,
             type: 'connection-accepted',
             title: 'New connection',
             body: `You and ${person.displayName || 'someone'} are now connected.`,
@@ -380,7 +434,7 @@ const InAppNotifications = () => {
 
   const updateNotifications = useCallback((updater) => {
     setNotifications((current) => {
-      const next = updater(current);
+      const next = compactNotifications(updater(compactNotifications(current)));
       save(next);
       return next;
     });
