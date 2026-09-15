@@ -16,6 +16,8 @@ import GradientSpinner from './components/common/GradientSpinner';
 import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import PwaManager from './components/common/PwaManager';
 import InAppNotifications from './components/common/InAppNotifications';
+import MobilePwaBottomNav from './components/common/MobilePwaBottomNav';
+import useMobilePwaMode from './hooks/useMobilePwaMode';
 import ErrorBoundary from './ErrorBoundary';
 
 const CHUNK_RELOAD_KEY = 'vaani_chunk_reload_attempt';
@@ -84,6 +86,31 @@ const SuspenseLayout = ({ children }) => {
   );
 };
 
+const HomeEntry = () => {
+  const isMobilePwa = useMobilePwaMode();
+
+  if (isMobilePwa) {
+    return <Navigate to="/rooms" replace />;
+  }
+
+  return (
+    <SuspenseLayout>
+      <HomePage />
+    </SuspenseLayout>
+  );
+};
+
+const ProfileEntry = ({ children }) => {
+  const isMobilePwa = useMobilePwaMode();
+
+  return (
+    <div className={isMobilePwa ? 'pb-[calc(6.5rem+env(safe-area-inset-bottom))]' : ''}>
+      {children}
+      {isMobilePwa && <MobilePwaBottomNav />}
+    </div>
+  );
+};
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -92,11 +119,7 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <SuspenseLayout>
-            <HomePage />
-          </SuspenseLayout>
-        ),
+        element: <HomeEntry />,
       },
       {
         path: 'rooms',
@@ -147,17 +170,21 @@ const router = createBrowserRouter([
   {
     path: '/profile/:userId',
     element: (
-      <SuspenseLayout>
-        <SocialProfilePage />
-      </SuspenseLayout>
+      <ProfileEntry>
+        <SuspenseLayout>
+          <SocialProfilePage />
+        </SuspenseLayout>
+      </ProfileEntry>
     ),
   },
   {
     path: '/MyProfile/:userId',
     element: (
-      <SuspenseLayout>
-        <SocialProfilePage />
-      </SuspenseLayout>
+      <ProfileEntry>
+        <SuspenseLayout>
+          <SocialProfilePage />
+        </SuspenseLayout>
+      </ProfileEntry>
     ),
   },
   {
