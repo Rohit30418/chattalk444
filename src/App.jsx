@@ -17,8 +17,6 @@ import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import PwaManager from './components/common/PwaManager';
 import PwaLaunchAd from './components/common/PwaLaunchAd';
 import InAppNotifications from './components/common/InAppNotifications';
-import MobilePwaHeader from './components/common/MobilePwaHeader';
-import MobilePwaBottomNav from './components/common/MobilePwaBottomNav';
 import useMobilePwaMode from './hooks/useMobilePwaMode';
 import ErrorBoundary from './ErrorBoundary';
 
@@ -102,18 +100,6 @@ const HomeEntry = () => {
   );
 };
 
-const ProfileEntry = ({ children }) => {
-  const isMobilePwa = useMobilePwaMode();
-
-  return (
-    <div className={isMobilePwa ? 'min-h-screen pb-[calc(6.5rem+env(safe-area-inset-bottom))]' : ''}>
-      {isMobilePwa && <MobilePwaHeader />}
-      {children}
-      {isMobilePwa && <MobilePwaBottomNav />}
-    </div>
-  );
-};
-
 const router = createBrowserRouter([
   {
     path: '/',
@@ -149,6 +135,22 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: 'profile/:userId',
+        element: (
+          <SuspenseLayout>
+            <SocialProfilePage />
+          </SuspenseLayout>
+        ),
+      },
+      {
+        path: 'MyProfile/:userId',
+        element: (
+          <SuspenseLayout>
+            <SocialProfilePage />
+          </SuspenseLayout>
+        ),
+      },
+      {
         path: 'room',
         element: <Navigate to="/rooms" replace />,
       },
@@ -168,26 +170,6 @@ const router = createBrowserRouter([
       <SuspenseLayout>
         <Room />
       </SuspenseLayout>
-    ),
-  },
-  {
-    path: '/profile/:userId',
-    element: (
-      <ProfileEntry>
-        <SuspenseLayout>
-          <SocialProfilePage />
-        </SuspenseLayout>
-      </ProfileEntry>
-    ),
-  },
-  {
-    path: '/MyProfile/:userId',
-    element: (
-      <ProfileEntry>
-        <SuspenseLayout>
-          <SocialProfilePage />
-        </SuspenseLayout>
-      </ProfileEntry>
     ),
   },
   {
