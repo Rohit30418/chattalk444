@@ -3,9 +3,9 @@ import { useParams } from 'react-router-dom';
 import api from '../../services/api';
 import MemberAvatar from '../../components/common/MemberAvatar';
 import VideoTile from './VideoTile';
-
+import roomBg from '../../assets/room-bg/roombg.png';
 // Replace only this URL when you have the final Vaani room artwork.
-const ROOM_BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=2000&q=82';
+const ROOM_BACKGROUND_IMAGE = roomBg;
 
 const SLOT_POSITIONS = [
   'left-1/2 top-[11%] -translate-x-1/2',
