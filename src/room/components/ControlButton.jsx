@@ -30,11 +30,11 @@ const ControlButton = memo(({
   badge = 0,
   compact = false,
 }) => {
-  let classes = 'relative flex flex-col items-center justify-center rounded-xl border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)] active:scale-95 ';
+  let classes = 'relative flex w-full flex-col items-center justify-center rounded-xl border transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)] active:scale-95 sm:w-auto ';
 
   classes += compact
-    ? 'h-11 min-w-11 px-3 '
-    : 'h-12 min-w-12 px-3 sm:h-14 sm:min-w-14 sm:px-4 ';
+    ? 'h-12 min-w-0 px-2 sm:h-11 sm:min-w-11 sm:px-3 '
+    : 'h-12 min-w-0 px-2 sm:h-14 sm:min-w-14 sm:px-4 ';
 
   if (disabled) {
     classes += 'cursor-not-allowed border-[var(--color-border)] bg-[var(--color-bg-soft)] text-[var(--color-soft)] ';
@@ -63,8 +63,8 @@ const ControlButton = memo(({
           {badge > 99 ? '99+' : badge}
         </span>
       )}
-      <i className={`fas ${icon} text-base sm:text-lg`} aria-hidden="true" />
-      <span className="mt-1 hidden text-[10px] font-bold leading-none text-current sm:block">{label}</span>
+      <i className={`fas ${icon} text-sm sm:text-lg`} aria-hidden="true" />
+      <span className="mt-1 block max-w-full truncate text-[8px] font-bold leading-none text-current sm:text-[10px]">{label}</span>
     </button>
   );
 });
