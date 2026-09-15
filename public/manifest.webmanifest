@@ -8,8 +8,8 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#050713",
-  "theme_color": "#5B4DFF",
+  "background_color": "#041311",
+  "theme_color": "#0f766e",
   "categories": ["education", "social", "communication"],
   "lang": "en",
   "icons": [
