@@ -60,6 +60,12 @@ const applyNameplate = (node, member) => {
 
   node.classList.add('vaani-nameplate', `vaani-nameplate-${theme}`, 'vaani-nameplate-compact');
 
+  // Chat markup already carries slate text utilities. Force premium nameplates
+  // to keep strong contrast on every animated/glowing background and in dark mode.
+  node.style.setProperty('color', '#ffffff', 'important');
+  node.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
+  node.style.setProperty('text-shadow', '0 1px 7px rgba(0,0,0,.55)');
+
   if (!node.querySelector(':scope > .vaani-nameplate-spark')) {
     const spark = document.createElement('span');
     spark.className = 'vaani-nameplate-spark';
