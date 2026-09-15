@@ -21,9 +21,9 @@ const ControlDock = memo(({
   onToggleChat,
   onLeave,
 }) => (
-  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
     <div
-      className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-center gap-1.5 overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 sm:gap-2 sm:p-2.5"
+      className="pointer-events-auto grid w-[min(100%,22rem)] grid-cols-4 gap-1.5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-2xl sm:flex sm:w-auto sm:max-w-[calc(100vw-1rem)] sm:items-center sm:gap-2 sm:overflow-x-auto sm:p-2.5"
       style={{ scrollbarWidth: 'none' }}
     >
       <ControlButton
@@ -66,14 +66,14 @@ const ControlDock = memo(({
         onClick={onToggleRaiseHand}
         aria-label={raisedHand ? 'Lower hand' : 'Raise hand'}
         aria-pressed={raisedHand}
-        className={`flex h-12 min-w-12 flex-col items-center justify-center rounded-xl border px-3 transition-colors duration-150 active:scale-95 sm:h-14 sm:min-w-14 sm:px-4 ${
+        className={`flex h-12 w-full min-w-0 flex-col items-center justify-center rounded-xl border px-2 transition-colors duration-150 active:scale-95 sm:h-14 sm:min-w-14 sm:w-auto sm:px-4 ${
           raisedHand
             ? 'border-amber-500 bg-amber-500 text-white'
             : 'border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]'
         }`}
       >
-        <span className="text-lg sm:text-xl">✋</span>
-        <span className="mt-1 hidden text-[10px] font-bold leading-none sm:block">
+        <span className="text-base sm:text-xl">✋</span>
+        <span className="mt-1 block text-[8px] font-bold leading-none sm:text-[10px]">
           {raisedHand ? 'Lower' : 'Raise'}
         </span>
       </button>
@@ -103,16 +103,16 @@ const ControlDock = memo(({
         badge={unreadCount}
       />
 
-      <div className="mx-1 h-9 w-px shrink-0 bg-[var(--color-border)]" />
+      <div className="mx-1 hidden h-9 w-px shrink-0 bg-[var(--color-border)] sm:block" />
 
       <button
         type="button"
         onClick={onLeave}
-        className="flex h-12 min-w-[4.2rem] flex-col items-center justify-center rounded-xl bg-red-500 px-4 text-white transition-colors duration-150 hover:bg-red-600 active:scale-95 sm:h-14 sm:min-w-[5rem]"
+        className="flex h-12 w-full min-w-0 flex-col items-center justify-center rounded-xl bg-red-500 px-2 text-white transition-colors duration-150 hover:bg-red-600 active:scale-95 sm:h-14 sm:min-w-[5rem] sm:w-auto sm:px-4"
         aria-label="Leave meeting"
       >
-        <i className="fas fa-phone-slash text-base sm:text-lg" style={{ transform: 'rotate(135deg)' }} />
-        <span className="mt-1 hidden text-[10px] font-black leading-none sm:block">Leave</span>
+        <i className="fas fa-phone-slash text-sm sm:text-lg" style={{ transform: 'rotate(135deg)' }} />
+        <span className="mt-1 block text-[8px] font-black leading-none sm:text-[10px]">Leave</span>
       </button>
     </div>
   </div>
