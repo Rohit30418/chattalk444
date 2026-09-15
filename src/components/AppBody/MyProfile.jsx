@@ -113,7 +113,7 @@ const SectionTitle = ({ icon, title, subtitle }) => (
 
 const MyProfile = ({ socialActions = null }) => {
   const navigate = useNavigate();
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser } = useAuth();
   const { userId } = useParams();
   const { collectionsData = {}, loading, error } = useUserCollection(userId);
   const isMobilePwa = useMobilePwaMode();
@@ -125,8 +125,9 @@ const MyProfile = ({ socialActions = null }) => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupSearch, setPopupSearch] = useState("");
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showAppearance, setShowAppearance] = useState(false);
+
+  const pageTopPadding = isMobilePwa ? "pt-4 sm:pt-6" : "pt-[86px] lg:pt-[104px]";
 
   useEffect(() => {
     let mounted = true;
@@ -154,18 +155,6 @@ const MyProfile = ({ socialActions = null }) => {
     if (window.history.length > 1) navigate(-1);
     else navigate("/rooms");
   }, [navigate]);
-
-  const handleLogout = useCallback(async () => {
-    if (isLoggingOut) return;
-    try {
-      setIsLoggingOut(true);
-      await logout();
-      navigate("/", { replace: true });
-    } catch (err) {
-      console.error("[MyProfile] Logout failed:", err);
-      setIsLoggingOut(false);
-    }
-  }, [isLoggingOut, logout, navigate]);
 
   const openPopup = useCallback(async (type) => {
     setPopupType(type);
@@ -299,7 +288,7 @@ const MyProfile = ({ socialActions = null }) => {
   if (profileLoading || loading) {
     return (
       <main className="min-h-screen bg-slate-50 dark:bg-[#050713]">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        <div className={`mx-auto max-w-6xl px-4 pb-6 sm:px-6 ${pageTopPadding}`}>
           <div className="h-64 animate-pulse rounded-[2rem] bg-slate-200 dark:bg-white/[0.05]" />
           <div className="mx-6 -mt-12 h-24 w-24 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#050713] dark:bg-white/10" />
         </div>
@@ -309,7 +298,7 @@ const MyProfile = ({ socialActions = null }) => {
 
   if (error || !userInfo) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-[#050713]">
+      <main className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-[#050713] ${pageTopPadding}`}>
         <div className="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-[#101626]">
           <i className="fa-solid fa-triangle-exclamation text-2xl text-red-500" aria-hidden="true" />
           <h2 className="mt-4 text-xl font-black text-slate-950 dark:text-white">Profile not found</h2>
@@ -324,34 +313,7 @@ const MyProfile = ({ socialActions = null }) => {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-10 text-slate-950 dark:bg-[#050713] dark:text-white">
-      {!isMobilePwa && (
-        <header className="sticky top-0 z-[120] border-b border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#07111f]/95">
-          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-            <button type="button" onClick={handleBack} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-black text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
-              <i className="fa-solid fa-arrow-left text-[10px]" aria-hidden="true" />
-              Back
-            </button>
-
-            <Link to="/" className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 sm:flex" aria-label="Vaani home">
-              <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-teal-100 bg-white dark:border-white/10">
-                <img src="/vaani-icon.svg" alt="" className="h-9 w-9" />
-              </span>
-              <span className="text-sm font-black text-slate-950 dark:text-white">Vaani</span>
-            </Link>
-
-            {authUser ? (
-              <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 text-xs font-black text-red-600 disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-                <i className={`fa-solid ${isLoggingOut ? "fa-spinner fa-spin" : "fa-arrow-right-from-bracket"}`} aria-hidden="true" />
-                <span className="hidden sm:inline">{isLoggingOut ? "Signing out" : "Logout"}</span>
-              </button>
-            ) : (
-              <Link to="/rooms" className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white">Rooms</Link>
-            )}
-          </div>
-        </header>
-      )}
-
-      <div className="mx-auto w-full max-w-6xl px-3 pt-4 sm:px-6 sm:pt-6">
+      <div className={`mx-auto w-full max-w-6xl px-3 sm:px-6 ${pageTopPadding}`}>
         <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:rounded-[2rem]">
           <div className="relative h-48 overflow-hidden bg-[#082f36] sm:h-64 lg:h-72">
             {coverPhotoURL ? (
@@ -556,7 +518,10 @@ const MyProfile = ({ socialActions = null }) => {
               <MemberAppearancePanel
                 userInfo={userInfo}
                 authUser={authUser}
-                onUpdated={(updatedUser) => setUserInfo((current) => ({ ...(current || {}), ...updatedUser }))}
+                onUpdated={(updatedUser) => {
+                  setUserInfo((current) => ({ ...(current || {}), ...updatedUser }));
+                  setShowAppearance(false);
+                }}
               />
             </div>
           </div>
