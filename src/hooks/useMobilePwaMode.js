@@ -7,7 +7,9 @@ const COARSE_POINTER_QUERY = '(pointer: coarse)';
 const looksLikeMobileDevice = () => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
 
-  if (navigator.userAgentData?.mobile === true) return true;
+  if (typeof navigator.userAgentData?.mobile === 'boolean') {
+    return navigator.userAgentData.mobile;
+  }
 
   const ua = navigator.userAgent || '';
   if (/Android|iPhone|iPad|iPod|IEMobile|Opera Mini|Mobile/i.test(ua)) return true;
