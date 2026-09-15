@@ -6,7 +6,22 @@ import { useAuth } from '../auth/AppWrapper';
 import SocialNav from './SocialNav';
 import '../../styles/memberEffects.css';
 
-const initials = (name = 'Vaani User') => name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'VU';
+const TAB_META = [
+  { id: 'discover', label: 'Discover', icon: 'fa-compass' },
+  { id: 'requests', label: 'Requests', icon: 'fa-user-clock' },
+  { id: 'friends', label: 'Friends', icon: 'fa-handshake' },
+  { id: 'following', label: 'Following', icon: 'fa-user-check' },
+  { id: 'followers', label: 'Followers', icon: 'fa-users' },
+];
+
+const COLLECTION_TABS = ['requests', 'friends', 'following', 'followers'];
+
+const initials = (name = 'Vaani User') => name
+  .split(' ')
+  .filter(Boolean)
+  .slice(0, 2)
+  .map((part) => part[0]?.toUpperCase())
+  .join('') || 'VU';
 
 const normalizeProfileTheme = (value) => {
   const theme = typeof value === 'string' ? value.trim().toLowerCase() : 'aurora';
@@ -43,6 +58,7 @@ const formatLastActive = (value, isOnline = false) => {
 
 const Avatar = ({ user }) => {
   const [failed, setFailed] = useState(false);
+
   if (user?.photoURL && !failed) {
     return (
       <img
@@ -55,6 +71,7 @@ const Avatar = ({ user }) => {
       />
     );
   }
+
   return (
     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-700 text-sm font-black text-white">
       {initials(user?.displayName)}
@@ -74,9 +91,21 @@ const MemberAvatar = ({ person }) => {
   );
 };
 
+const ProfileButton = ({ uid }) => (
+  <Link
+    to={`/profile/${encodeURIComponent(uid)}`}
+    className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-2.5 text-xs font-black text-slate-700 transition-colors hover:border-teal-300 hover:text-teal-700 dark:border-white/10 dark:bg-black/10 dark:text-slate-200 dark:hover:border-teal-400/30 dark:hover:text-teal-300"
+  >
+    <i className="fa-regular fa-user text-[10px]" aria-hidden="true" />
+    Profile
+  </Link>
+);
+
 const ConnectPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState('discover');
   const [people, setPeople] = useState([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -84,14 +113,62 @@ const ConnectPage = () => {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [discoverTotal, setDiscoverTotal] = useState(0);
   const [busyUid, setBusyUid] = useState('');
+  const [tabCounts, setTabCounts] = useState({
+    requests: 0,
+    friends: 0,
+    following: 0,
+    followers: 0,
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const loadPeople = useCallback(async ({ nextPage = 1, append = false } = {}) => {
+  const hydrateUsers = useCallback(async (rawUsers = []) => {
+    const hydrated = await Promise.all(
+      rawUsers.map(async (person) => {
+        if (!person?.uid) return person;
+
+        try {
+          const { data } = await api.get(`/api/social/profile/${encodeURIComponent(person.uid)}`);
+          return {
+            ...person,
+            ...(data?.user || {}),
+            relationship: data?.relationship || {},
+            counts: data?.counts || {},
+          };
+        } catch {
+          return person;
+        }
+      })
+    );
+
+    return hydrated.sort((a, b) => Number(b?.isMember === true) - Number(a?.isMember === true));
+  }, []);
+
+  const loadCounts = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      const results = await Promise.all(
+        COLLECTION_TABS.map(async (type) => {
+          const { data } = await api.get(
+            `/api/social/collections/${encodeURIComponent(user.uid)}/${type}`
+          );
+          return [type, Number(data?.total || 0)];
+        })
+      );
+
+      setTabCounts(Object.fromEntries(results));
+    } catch (err) {
+      console.error('Failed to load social counts:', err);
+    }
+  }, [user?.uid]);
+
+  const loadDiscover = useCallback(async ({ nextPage = 1, append = false } = {}) => {
     if (!user?.uid) {
       setLoading(false);
       return;
@@ -100,34 +177,24 @@ const ConnectPage = () => {
     try {
       setLoading(true);
       setError('');
+
       const { data } = await api.get('/api/social/people', {
-        params: { page: nextPage, limit: 18, search: debouncedSearch || undefined },
+        params: {
+          page: nextPage,
+          limit: 18,
+          search: debouncedSearch || undefined,
+        },
       });
 
       const rawUsers = Array.isArray(data?.users) ? data.users : [];
-      const hydrated = await Promise.all(
-        rawUsers.map(async (person) => {
-          try {
-            const [profile, userDoc] = await Promise.all([
-              api.get(`/api/social/profile/${encodeURIComponent(person.uid)}`),
-              api.get(`/api/users/${encodeURIComponent(person.uid)}`),
-            ]);
+      const hydrated = await hydrateUsers(rawUsers);
 
-            return {
-              ...person,
-              ...(profile.data?.user || {}),
-              ...(userDoc.data || {}),
-              relationship: profile.data?.relationship || {},
-              counts: profile.data?.counts || {},
-            };
-          } catch {
-            return person;
-          }
-        })
-      );
-
-      const prioritized = hydrated.sort((a, b) => Number(b?.isMember === true) - Number(a?.isMember === true));
-      setPeople((current) => append ? [...current, ...prioritized] : prioritized);
+      setPeople((current) => {
+        if (!append) return hydrated;
+        const merged = [...current, ...hydrated];
+        return Array.from(new Map(merged.map((person) => [person.uid, person])).values());
+      });
+      setDiscoverTotal(Number(data?.total || hydrated.length));
       setPage(nextPage);
       setHasMore(Boolean(data?.hasMore));
     } catch (err) {
@@ -136,68 +203,164 @@ const ConnectPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, user?.uid]);
+  }, [debouncedSearch, hydrateUsers, user?.uid]);
+
+  const loadCollection = useCallback(async (type) => {
+    if (!user?.uid || !COLLECTION_TABS.includes(type)) return;
+
+    try {
+      setLoading(true);
+      setError('');
+      setHasMore(false);
+      setPage(1);
+
+      const { data } = await api.get(
+        `/api/social/collections/${encodeURIComponent(user.uid)}/${type}`
+      );
+      const rawUsers = Array.isArray(data?.users) ? data.users : [];
+      const hydrated = await hydrateUsers(rawUsers);
+
+      setPeople(hydrated);
+      setTabCounts((current) => ({
+        ...current,
+        [type]: Number(data?.total || hydrated.length),
+      }));
+    } catch (err) {
+      console.error(`Failed to load ${type}:`, err);
+      setPeople([]);
+      setError(err.userMessage || `Could not load ${type}.`);
+    } finally {
+      setLoading(false);
+    }
+  }, [hydrateUsers, user?.uid]);
 
   useEffect(() => {
-    loadPeople({ nextPage: 1, append: false });
-  }, [loadPeople]);
+    if (!user?.uid || activeTab !== 'discover') return;
+    loadDiscover({ nextPage: 1, append: false });
+  }, [activeTab, debouncedSearch, loadDiscover, user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid || activeTab === 'discover') return;
+    loadCollection(activeTab);
+  }, [activeTab, loadCollection, user?.uid]);
+
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
+
+  const refreshCurrentTab = useCallback(async () => {
+    await loadCounts();
+    if (activeTab === 'discover') {
+      await loadDiscover({ nextPage: 1, append: false });
+    } else {
+      await loadCollection(activeTab);
+    }
+  }, [activeTab, loadCollection, loadCounts, loadDiscover]);
 
   useEffect(() => {
     const onPresence = ({ uid, isOnline }) => {
       setPeople((current) => current.map((person) => (
         person.uid === uid
-          ? { ...person, isOnline, lastActive: isOnline ? person.lastActive : new Date().toISOString() }
+          ? {
+              ...person,
+              isOnline,
+              lastActive: isOnline ? person.lastActive : new Date().toISOString(),
+            }
           : person
       )));
     };
+
+    const onSocialChange = () => {
+      refreshCurrentTab();
+    };
+
     socket.on('social-presence', onPresence);
-    return () => socket.off('social-presence', onPresence);
-  }, []);
+    socket.on('social-follow-updated', onSocialChange);
+    socket.on('social-connection-request', onSocialChange);
+    socket.on('social-connection-updated', onSocialChange);
+
+    return () => {
+      socket.off('social-presence', onPresence);
+      socket.off('social-follow-updated', onSocialChange);
+      socket.off('social-connection-request', onSocialChange);
+      socket.off('social-connection-updated', onSocialChange);
+    };
+  }, [refreshCurrentTab]);
 
   const updatePerson = useCallback((uid, patch) => {
-    setPeople((current) => current.map((person) => person.uid === uid ? { ...person, ...patch } : person));
+    setPeople((current) => current.map((person) => (
+      person.uid === uid ? { ...person, ...patch } : person
+    )));
   }, []);
+
+  const refreshAfterAction = useCallback(async () => {
+    await loadCounts();
+    if (activeTab !== 'discover') {
+      await loadCollection(activeTab);
+    }
+  }, [activeTab, loadCollection, loadCounts]);
 
   const toggleFollow = useCallback(async (person) => {
     if (!user?.uid || busyUid) return;
+
     try {
       setBusyUid(person.uid);
       const isFollowing = person.relationship?.isFollowing === true;
+
       if (isFollowing) {
         await api.delete(`/api/social/follow/${encodeURIComponent(person.uid)}`);
       } else {
         await api.post(`/api/social/follow/${encodeURIComponent(person.uid)}`);
       }
+
       updatePerson(person.uid, {
-        relationship: { ...person.relationship, isFollowing: !isFollowing },
+        relationship: {
+          ...person.relationship,
+          isFollowing: !isFollowing,
+        },
         counts: {
           ...person.counts,
-          followers: Math.max(0, Number(person.counts?.followers || 0) + (isFollowing ? -1 : 1)),
+          followers: Math.max(
+            0,
+            Number(person.counts?.followers || 0) + (isFollowing ? -1 : 1)
+          ),
         },
       });
+
+      await refreshAfterAction();
     } catch (err) {
       setError(err.userMessage || 'Could not update follow.');
     } finally {
       setBusyUid('');
     }
-  }, [busyUid, updatePerson, user?.uid]);
+  }, [busyUid, refreshAfterAction, updatePerson, user?.uid]);
 
   const connect = useCallback(async (person) => {
     if (!user?.uid || busyUid) return;
+
     try {
       setBusyUid(person.uid);
       const state = person.relationship || {};
-      if (state.connectionStatus === 'friends' || (state.connectionStatus === 'pending' && state.connectionDirection === 'outgoing')) {
+
+      if (state.connectionStatus === 'friends') return;
+
+      if (state.connectionStatus === 'pending' && state.connectionDirection === 'outgoing') {
         await api.delete(`/api/social/connect/${encodeURIComponent(person.uid)}`);
         updatePerson(person.uid, {
-          relationship: { ...state, connectionStatus: 'none', connectionDirection: null },
+          relationship: {
+            ...state,
+            connectionStatus: 'none',
+            connectionDirection: null,
+          },
         });
+        await refreshAfterAction();
         return;
       }
 
       const path = state.connectionStatus === 'pending' && state.connectionDirection === 'incoming'
         ? `/api/social/connect/${encodeURIComponent(person.uid)}/accept`
         : `/api/social/connect/${encodeURIComponent(person.uid)}`;
+
       const { data } = await api.post(path);
       updatePerson(person.uid, {
         relationship: {
@@ -206,26 +369,47 @@ const ConnectPage = () => {
           connectionDirection: data?.direction ?? null,
         },
       });
+
+      await refreshAfterAction();
     } catch (err) {
       setError(err.userMessage || 'Could not update connection.');
     } finally {
       setBusyUid('');
     }
-  }, [busyUid, updatePerson, user?.uid]);
+  }, [busyUid, refreshAfterAction, updatePerson, user?.uid]);
+
+  const declineRequest = useCallback(async (person) => {
+    if (!user?.uid || busyUid) return;
+
+    try {
+      setBusyUid(person.uid);
+      await api.delete(`/api/social/connect/${encodeURIComponent(person.uid)}`);
+      await refreshAfterAction();
+    } catch (err) {
+      setError(err.userMessage || 'Could not decline this request.');
+    } finally {
+      setBusyUid('');
+    }
+  }, [busyUid, refreshAfterAction, user?.uid]);
 
   const openMessage = useCallback(async (uid) => {
-    if (!user?.uid) return;
+    if (!user?.uid || busyUid) return;
+
     try {
       setBusyUid(uid);
       const { data } = await api.post(`/api/social/conversations/${encodeURIComponent(uid)}`);
       const conversationId = data?.conversation?.id;
-      navigate(conversationId ? `/messages?conversation=${encodeURIComponent(conversationId)}` : '/messages');
+      navigate(
+        conversationId
+          ? `/messages?conversation=${encodeURIComponent(conversationId)}`
+          : '/messages'
+      );
     } catch (err) {
       setError(err.userMessage || 'Could not open conversation.');
     } finally {
       setBusyUid('');
     }
-  }, [navigate, user?.uid]);
+  }, [busyUid, navigate, user?.uid]);
 
   const connectionLabel = useCallback((person) => {
     const state = person.relationship || {};
@@ -235,7 +419,198 @@ const ConnectPage = () => {
     return 'Connect';
   }, []);
 
-  const emptyText = useMemo(() => debouncedSearch ? 'No learners match your search.' : 'No other Vaani learners are available yet.', [debouncedSearch]);
+  const visiblePeople = useMemo(() => {
+    if (activeTab === 'discover') return people;
+
+    const query = debouncedSearch.toLowerCase();
+    if (!query) return people;
+
+    return people.filter((person) => {
+      const name = String(person?.displayName || '').toLowerCase();
+      const languages = Array.isArray(person?.languages)
+        ? person.languages.join(' ').toLowerCase()
+        : '';
+      return name.includes(query) || languages.includes(query);
+    });
+  }, [activeTab, debouncedSearch, people]);
+
+  const emptyText = useMemo(() => {
+    if (debouncedSearch) return 'No people match your search.';
+    if (activeTab === 'requests') return 'No pending connection requests.';
+    if (activeTab === 'friends') return 'You have not connected with anyone yet.';
+    if (activeTab === 'following') return 'You are not following anyone yet.';
+    if (activeTab === 'followers') return 'No followers yet. Keep joining rooms and meeting people.';
+    return 'No other Vaani learners are available yet.';
+  }, [activeTab, debouncedSearch]);
+
+  const statusLabel = useCallback((person) => {
+    if (activeTab === 'requests') return 'Wants to connect';
+    if (activeTab === 'friends') return 'Friend';
+    if (activeTab === 'following') return 'You follow';
+    if (activeTab === 'followers') return 'Follows you';
+
+    const state = person.relationship || {};
+    if (state.connectionStatus === 'friends') return 'Friend';
+    if (state.connectionStatus === 'pending' && state.connectionDirection === 'incoming') {
+      return 'Sent you a request';
+    }
+    if (state.connectionStatus === 'pending') return 'Request sent';
+    if (state.isFollowing) return 'Following';
+    return '';
+  }, [activeTab]);
+
+  const changeTab = useCallback((tab) => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    setPeople([]);
+    setSearch('');
+    setDebouncedSearch('');
+    setError('');
+    setHasMore(false);
+    setPage(1);
+  }, [activeTab]);
+
+  const renderActions = useCallback((person) => {
+    const busy = busyUid === person.uid;
+    const state = person.relationship || {};
+
+    if (activeTab === 'requests') {
+      return (
+        <div className="grid grid-cols-3 gap-2">
+          <ProfileButton uid={person.uid} />
+          <button
+            type="button"
+            onClick={() => connect(person)}
+            disabled={busy}
+            className="rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
+          >
+            {busy ? <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" /> : 'Accept'}
+          </button>
+          <button
+            type="button"
+            onClick={() => declineRequest(person)}
+            disabled={busy}
+            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-black text-red-600 transition-colors hover:bg-red-100 disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300"
+          >
+            Decline
+          </button>
+        </div>
+      );
+    }
+
+    if (activeTab === 'friends') {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <ProfileButton uid={person.uid} />
+          <button
+            type="button"
+            onClick={() => openMessage(person.uid)}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
+          >
+            {busy ? (
+              <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+            ) : (
+              <i className="fa-regular fa-message text-[10px]" aria-hidden="true" />
+            )}
+            Message
+          </button>
+        </div>
+      );
+    }
+
+    if (activeTab === 'following') {
+      return (
+        <div className="grid grid-cols-3 gap-2">
+          <ProfileButton uid={person.uid} />
+          <button
+            type="button"
+            onClick={() => toggleFollow(person)}
+            disabled={busy}
+            className="rounded-xl bg-teal-50 px-3 py-2.5 text-xs font-black text-teal-700 transition-colors hover:bg-teal-100 disabled:opacity-60 dark:bg-teal-500/10 dark:text-teal-300"
+          >
+            Following
+          </button>
+          <button
+            type="button"
+            onClick={() => connect(person)}
+            disabled={busy || state.connectionStatus === 'friends'}
+            className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
+              state.connectionStatus === 'friends'
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
+            }`}
+          >
+            {connectionLabel(person)}
+          </button>
+        </div>
+      );
+    }
+
+    if (activeTab === 'followers') {
+      return (
+        <div className="grid grid-cols-3 gap-2">
+          <ProfileButton uid={person.uid} />
+          <button
+            type="button"
+            onClick={() => toggleFollow(person)}
+            disabled={busy}
+            className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
+              state.isFollowing
+                ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300'
+                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
+            }`}
+          >
+            {state.isFollowing ? 'Following' : 'Follow back'}
+          </button>
+          <button
+            type="button"
+            onClick={() => connect(person)}
+            disabled={busy || state.connectionStatus === 'friends'}
+            className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
+              state.connectionStatus === 'friends'
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
+            }`}
+          >
+            {connectionLabel(person)}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-3 gap-2">
+        <ProfileButton uid={person.uid} />
+        <button
+          type="button"
+          onClick={() => toggleFollow(person)}
+          disabled={busy}
+          className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
+            state.isFollowing
+              ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300'
+              : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
+          }`}
+        >
+          {state.isFollowing ? 'Following' : 'Follow'}
+        </button>
+        <button
+          type="button"
+          onClick={() => connect(person)}
+          disabled={busy || state.connectionStatus === 'friends'}
+          className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
+            state.connectionStatus === 'friends'
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+              : state.connectionStatus === 'pending' && state.connectionDirection === 'incoming'
+                ? 'bg-teal-700 text-white'
+                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
+          }`}
+        >
+          {connectionLabel(person)}
+        </button>
+      </div>
+    );
+  }, [activeTab, busyUid, connect, connectionLabel, declineRequest, openMessage, toggleFollow]);
 
   if (!user?.uid) {
     return (
@@ -245,9 +620,18 @@ const ConnectPage = () => {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
             <i className="fa-solid fa-user-lock" aria-hidden="true" />
           </div>
-          <h1 className="mt-5 text-2xl font-black text-slate-950 dark:text-white">Sign in to connect</h1>
-          <p className="mt-2 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Your people directory, followers, friends and messages are available after sign in.</p>
-          <Link to="/rooms" className="mt-6 rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white">Back to rooms</Link>
+          <h1 className="mt-5 text-2xl font-black text-slate-950 dark:text-white">
+            Sign in to connect
+          </h1>
+          <p className="mt-2 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
+            Your followers, friends, requests and people directory are available after sign in.
+          </p>
+          <Link
+            to="/rooms"
+            className="mt-6 rounded-xl bg-teal-700 px-5 py-3 text-sm font-black text-white"
+          >
+            Back to rooms
+          </Link>
         </div>
       </div>
     );
@@ -256,124 +640,202 @@ const ConnectPage = () => {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white">
       <SocialNav />
+
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
+          <div className="flex flex-col gap-5 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700 dark:text-teal-300">Vaani community</p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Meet people to practice with</h1>
-              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Discover registered learners, visit their profile, follow them, connect as friends or start a private chat.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700 dark:text-teal-300">
+                Your Vaani network
+              </p>
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                Connect with people
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
+                Discover learners, manage requests and keep your friends, following and followers in one place.
+              </p>
             </div>
 
             <label className="relative block w-full lg:max-w-md">
-              <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400" aria-hidden="true" />
+              <i
+                className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400"
+                aria-hidden="true"
+              />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search people or language"
+                placeholder={activeTab === 'discover' ? 'Search people or language' : `Search ${activeTab}`}
                 className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-semibold outline-none transition-colors focus:border-teal-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
               />
             </label>
           </div>
+
+          <div className="border-t border-slate-100 px-3 py-3 dark:border-white/[0.07] sm:px-5">
+            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {TAB_META.map((tab) => {
+                const active = activeTab === tab.id;
+                const count = tab.id === 'discover'
+                  ? discoverTotal
+                  : Number(tabCounts[tab.id] || 0);
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => changeTab(tab.id)}
+                    className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-black transition-colors ${
+                      active
+                        ? 'bg-teal-700 text-white shadow-sm'
+                        : 'bg-slate-50 text-slate-600 hover:bg-teal-50 hover:text-teal-700 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-teal-500/10 dark:hover:text-teal-300'
+                    }`}
+                  >
+                    <i className={`fa-solid ${tab.icon} text-[10px]`} aria-hidden="true" />
+                    {tab.label}
+                    <span className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] ${
+                      active ? 'bg-white/15 text-white' : 'bg-white text-slate-500 dark:bg-white/[0.07] dark:text-slate-300'
+                    }`}>
+                      {count > 99 ? '99+' : count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </section>
 
         {error && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">{error}</div>
+          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+            {error}
+          </div>
         )}
 
-        <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {people.map((person) => {
-            const busy = busyUid === person.uid;
-            const state = person.relationship || {};
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-slate-950 dark:text-white">
+              {TAB_META.find((tab) => tab.id === activeTab)?.label}
+            </h2>
+            <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {activeTab === 'discover' && `${discoverTotal} learner${discoverTotal === 1 ? '' : 's'} available`}
+              {activeTab === 'requests' && 'People waiting for your response'}
+              {activeTab === 'friends' && 'People you have connected with'}
+              {activeTab === 'following' && 'People you chose to follow'}
+              {activeTab === 'followers' && 'People following your profile'}
+            </p>
+          </div>
+        </div>
+
+        <section className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visiblePeople.map((person) => {
             const isMember = person.isMember === true;
             const memberCardTheme = profileThemeToCardTheme(person.profileAnimationId);
+            const relationshipStatus = statusLabel(person);
 
             return (
               <article
                 key={person.uid}
                 className={`relative overflow-hidden rounded-[1.6rem] border p-5 shadow-sm transition-colors ${
                   isMember
-                    ? `vaani-member-room vaani-room-theme-${memberCardTheme} border-amber-300/70 bg-white/95 dark:border-amber-400/25 dark:bg-[#101626]/95`
+                    ? `vaani-member-room vaani-room-theme-${memberCardTheme} border-amber-300/60 bg-white/95 dark:border-amber-400/20 dark:bg-[#101626]/95`
                     : 'border-slate-200 bg-white hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:hover:border-teal-400/30'
                 }`}
               >
-                {isMember && (
-                  <div className="absolute right-4 top-4 z-[2] flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50/95 px-2 py-1 text-[9px] font-black text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-[#17130a]/95 dark:text-amber-300">
-                    <span className="vaani-member-star text-xs" aria-hidden="true">✦</span>
-                    Vaani Member
-                  </div>
-                )}
-
-                <div className={`relative z-[1] flex items-start gap-4 ${isMember ? 'pr-24' : ''}`}>
+                <div className="relative z-[1] flex items-start gap-4">
                   <div className="relative shrink-0">
                     <MemberAvatar person={person} />
-                    <span className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#101626] ${person.isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                    <span
+                      className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#101626] ${
+                        person.isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                    />
                   </div>
+
                   <div className="min-w-0 flex-1">
-                    <Link to={`/profile/${encodeURIComponent(person.uid)}`} className="block truncate text-base font-black text-slate-950 hover:text-teal-700 dark:text-white dark:hover:text-teal-300">
-                      {person.displayName || 'Vaani User'}
-                    </Link>
-                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{formatLastActive(person.lastActive, person.isOnline)}</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {(person.languages || []).slice(0, 3).map((language) => (
-                        <span key={language} className="rounded-lg bg-teal-50 px-2 py-1 text-[10px] font-black text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">{language}</span>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/profile/${encodeURIComponent(person.uid)}`}
+                        className="min-w-0 truncate text-base font-black text-slate-950 hover:text-teal-700 dark:text-white dark:hover:text-teal-300"
+                      >
+                        {person.displayName || 'Vaani User'}
+                      </Link>
+                      {isMember && (
+                        <span className="vaani-member-star shrink-0 text-sm text-amber-500" title="Vaani member" aria-label="Vaani member">
+                          ✦
+                        </span>
+                      )}
                     </div>
+
+                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      {formatLastActive(person.lastActive, person.isOnline)}
+                    </p>
+
+                    {relationshipStatus && (
+                      <span className="mt-2 inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+                        {relationshipStatus}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <p className="relative z-[1] mt-4 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">{person.bio || 'Ready to meet people, practice languages and have real conversations on Vaani.'}</p>
+                {(person.languages || []).length > 0 && (
+                  <div className="relative z-[1] mt-4 flex flex-wrap gap-1.5">
+                    {(person.languages || []).slice(0, 3).map((language) => (
+                      <span
+                        key={language}
+                        className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-600 dark:bg-white/[0.04] dark:text-slate-300"
+                      >
+                        {language}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="relative z-[1] mt-4 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">
+                  {person.bio || 'Ready to meet people, practice languages and have real conversations on Vaani.'}
+                </p>
 
                 <div className="relative z-[1] mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-[11px] font-bold text-slate-500 dark:border-white/[0.07] dark:text-slate-400">
                   <span>{Number(person.counts?.followers || 0)} followers</span>
                   <span>{Number(person.counts?.friends || 0)} friends</span>
                 </div>
 
-                <div className="relative z-[1] mt-4 grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleFollow(person)}
-                    disabled={busy}
-                    className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors ${state.isFollowing ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'border border-slate-200 bg-white/75 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-black/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
-                  >
-                    {state.isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => connect(person)}
-                    disabled={busy}
-                    className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors ${state.connectionStatus === 'friends' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border border-slate-200 bg-white/75 text-slate-700 hover:bg-white dark:border-white/10 dark:bg-black/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
-                  >
-                    {connectionLabel(person)}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openMessage(person.uid)}
-                    disabled={busy}
-                    className="rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
-                  >
-                    Message
-                  </button>
+                <div className="relative z-[1] mt-4">
+                  {renderActions(person)}
                 </div>
               </article>
             );
           })}
         </section>
 
-        {!loading && people.length === 0 && (
-          <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-[#101626] dark:text-slate-400">{emptyText}</div>
+        {!loading && visiblePeople.length === 0 && (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-white/10 dark:bg-[#101626]">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+              <i
+                className={`fa-solid ${TAB_META.find((tab) => tab.id === activeTab)?.icon || 'fa-users'}`}
+                aria-hidden="true"
+              />
+            </div>
+            <p className="mt-4 text-sm font-black text-slate-800 dark:text-slate-200">
+              {emptyText}
+            </p>
+          </div>
         )}
 
         {loading && (
           <div className="mt-6 flex items-center justify-center gap-2 py-10 text-sm font-bold text-slate-500 dark:text-slate-400">
             <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
-            Loading learners...
+            Loading {activeTab === 'discover' ? 'learners' : activeTab}...
           </div>
         )}
 
-        {!loading && hasMore && (
+        {!loading && activeTab === 'discover' && hasMore && (
           <div className="mt-7 text-center">
-            <button type="button" onClick={() => loadPeople({ nextPage: page + 1, append: true })} className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-white">Load more people</button>
+            <button
+              type="button"
+              onClick={() => loadDiscover({ nextPage: page + 1, append: true })}
+              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition-colors hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-white"
+            >
+              Load more people
+            </button>
           </div>
         )}
       </div>
