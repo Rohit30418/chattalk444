@@ -15,7 +15,6 @@ import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
 import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import PwaManager from './components/common/PwaManager';
-import PwaLaunchAd from './components/common/PwaLaunchAd';
 import InAppNotifications from './components/common/InAppNotifications';
 import useMobilePwaMode from './hooks/useMobilePwaMode';
 import ErrorBoundary from './ErrorBoundary';
@@ -198,7 +197,6 @@ function App() {
       <AuthProvider>
         <GlobalMemberVisuals />
         <PwaManager />
-        <PwaLaunchAd />
         <InAppNotifications />
 
         <ToastContainer
