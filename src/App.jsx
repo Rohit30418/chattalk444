@@ -15,7 +15,9 @@ import Layout from './Layout';
 import GradientSpinner from './components/common/GradientSpinner';
 import GlobalMemberVisuals from './components/common/GlobalMemberVisuals';
 import PwaManager from './components/common/PwaManager';
+import PwaLaunchAd from './components/common/PwaLaunchAd';
 import InAppNotifications from './components/common/InAppNotifications';
+import MobilePwaHeader from './components/common/MobilePwaHeader';
 import MobilePwaBottomNav from './components/common/MobilePwaBottomNav';
 import useMobilePwaMode from './hooks/useMobilePwaMode';
 import ErrorBoundary from './ErrorBoundary';
@@ -104,7 +106,8 @@ const ProfileEntry = ({ children }) => {
   const isMobilePwa = useMobilePwaMode();
 
   return (
-    <div className={isMobilePwa ? 'pb-[calc(6.5rem+env(safe-area-inset-bottom))]' : ''}>
+    <div className={isMobilePwa ? 'min-h-screen pb-[calc(6.5rem+env(safe-area-inset-bottom))]' : ''}>
+      {isMobilePwa && <MobilePwaHeader />}
       {children}
       {isMobilePwa && <MobilePwaBottomNav />}
     </div>
@@ -213,6 +216,7 @@ function App() {
       <AuthProvider>
         <GlobalMemberVisuals />
         <PwaManager />
+        <PwaLaunchAd />
         <InAppNotifications />
 
         <ToastContainer
