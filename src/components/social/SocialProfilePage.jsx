@@ -71,8 +71,6 @@ const SocialProfilePage = () => {
     if (!user?.uid || !userId || busy) return;
     try {
       setBusy('message');
-      // Ensure the conversation exists, but keep Chat as a list-first flow.
-      // The user explicitly chooses the conversation from the Messages list.
       await api.post(`/api/social/conversations/${encodeURIComponent(userId)}`);
       navigate('/messages');
     } catch (err) {
@@ -92,52 +90,49 @@ const SocialProfilePage = () => {
         ? 'Requested'
         : 'Connect';
 
-  return (
-    <>
-      <MyProfile />
-
-      {!isSelf && (
-        <div className="fixed bottom-4 left-1/2 z-[180] w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 sm:bottom-6 sm:w-auto sm:min-w-[520px]">
-          {error && (
-            <div className="mb-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-center text-xs font-bold text-red-700 shadow-sm dark:border-red-400/20 dark:bg-[#17101a] dark:text-red-300">
-              {error}
-            </div>
-          )}
-          <div className="grid grid-cols-3 gap-2 rounded-[1.35rem] border border-slate-200 bg-white p-2 shadow-xl dark:border-white/10 dark:bg-[#0b1220]">
-            <button
-              type="button"
-              onClick={toggleFollow}
-              disabled={!user?.uid || Boolean(busy)}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-black transition-colors disabled:opacity-50 ${relationship.isFollowing ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
-            >
-              <i className={`fa-solid ${busy === 'follow' ? 'fa-spinner fa-spin' : relationship.isFollowing ? 'fa-user-check' : 'fa-user-plus'}`} />
-              {relationship.isFollowing ? 'Following' : 'Follow'}
-            </button>
-
-            <button
-              type="button"
-              onClick={updateConnection}
-              disabled={!user?.uid || Boolean(busy)}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-black transition-colors disabled:opacity-50 ${relationship.connectionStatus === 'friends' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/[0.04]'}`}
-            >
-              <i className={`fa-solid ${busy === 'connect' ? 'fa-spinner fa-spin' : relationship.connectionStatus === 'friends' ? 'fa-handshake' : 'fa-user-group'}`} />
-              {connectionLabel}
-            </button>
-
-            <button
-              type="button"
-              onClick={message}
-              disabled={!user?.uid || Boolean(busy)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-3 py-3 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-50"
-            >
-              <i className={`fa-solid ${busy === 'message' ? 'fa-spinner fa-spin' : 'fa-message'}`} />
-              Message
-            </button>
-          </div>
+  const socialActions = !isSelf ? (
+    <div className="w-full">
+      {error && (
+        <div className="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-center text-[11px] font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+          {error}
         </div>
       )}
-    </>
-  );
+
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={toggleFollow}
+          disabled={!user?.uid || Boolean(busy)}
+          className={`inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-[11px] font-black transition-colors disabled:opacity-50 ${relationship.isFollowing ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200'}`}
+        >
+          <i className={`fa-solid ${busy === 'follow' ? 'fa-spinner fa-spin' : relationship.isFollowing ? 'fa-user-check' : 'fa-user-plus'}`} aria-hidden="true" />
+          <span className="truncate">{relationship.isFollowing ? 'Following' : 'Follow'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={updateConnection}
+          disabled={!user?.uid || Boolean(busy)}
+          className={`inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-[11px] font-black transition-colors disabled:opacity-50 ${relationship.connectionStatus === 'friends' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200'}`}
+        >
+          <i className={`fa-solid ${busy === 'connect' ? 'fa-spinner fa-spin' : relationship.connectionStatus === 'friends' ? 'fa-handshake' : 'fa-user-group'}`} aria-hidden="true" />
+          <span className="truncate">{connectionLabel}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={message}
+          disabled={!user?.uid || Boolean(busy)}
+          className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-2 py-3 text-[11px] font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-50"
+        >
+          <i className={`fa-solid ${busy === 'message' ? 'fa-spinner fa-spin' : 'fa-message'}`} aria-hidden="true" />
+          <span className="truncate">Message</span>
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  return <MyProfile socialActions={socialActions} />;
 };
 
 export default SocialProfilePage;
