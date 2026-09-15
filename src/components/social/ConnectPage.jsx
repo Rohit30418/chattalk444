@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import socket from '../../services/socket';
 import { useAuth } from '../auth/AppWrapper';
-import SocialNav from './SocialNav';
 import '../../styles/memberEffects.css';
 
 const TAB_META = [
@@ -188,13 +187,19 @@ const ConnectPage = () => {
 
       const rawUsers = Array.isArray(data?.users) ? data.users : [];
       const hydrated = await hydrateUsers(rawUsers);
+      const discoverUsers = hydrated.filter(
+        (person) => person?.relationship?.connectionStatus !== 'friends'
+      );
 
       setPeople((current) => {
-        if (!append) return hydrated;
-        const merged = [...current, ...hydrated];
+        if (!append) return discoverUsers;
+        const merged = [...current, ...discoverUsers];
         return Array.from(new Map(merged.map((person) => [person.uid, person])).values());
       });
-      setDiscoverTotal(Number(data?.total || hydrated.length));
+
+      setDiscoverTotal(
+        Math.max(0, Number(data?.total || discoverUsers.length) - Number(tabCounts.friends || 0))
+      );
       setPage(nextPage);
       setHasMore(Boolean(data?.hasMore));
     } catch (err) {
@@ -203,7 +208,7 @@ const ConnectPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, hydrateUsers, user?.uid]);
+  }, [debouncedSearch, hydrateUsers, tabCounts.friends, user?.uid]);
 
   const loadCollection = useCallback(async (type) => {
     if (!user?.uid || !COLLECTION_TABS.includes(type)) return;
@@ -440,7 +445,7 @@ const ConnectPage = () => {
     if (activeTab === 'friends') return 'You have not connected with anyone yet.';
     if (activeTab === 'following') return 'You are not following anyone yet.';
     if (activeTab === 'followers') return 'No followers yet. Keep joining rooms and meeting people.';
-    return 'No other Vaani learners are available yet.';
+    return 'No new learners to discover right now.';
   }, [activeTab, debouncedSearch]);
 
   const statusLabel = useCallback((person) => {
@@ -450,7 +455,6 @@ const ConnectPage = () => {
     if (activeTab === 'followers') return 'Follows you';
 
     const state = person.relationship || {};
-    if (state.connectionStatus === 'friends') return 'Friend';
     if (state.connectionStatus === 'pending' && state.connectionDirection === 'incoming') {
       return 'Sent you a request';
     }
@@ -614,8 +618,7 @@ const ConnectPage = () => {
 
   if (!user?.uid) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#050713]">
-        <SocialNav />
+      <div className="min-h-screen bg-slate-50 pt-[82px] dark:bg-[#050713]">
         <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-24 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
             <i className="fa-solid fa-user-lock" aria-hidden="true" />
@@ -638,40 +641,32 @@ const ConnectPage = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white">
-      <SocialNav />
+    <main className="min-h-screen bg-slate-50 pt-[68px] text-slate-950 dark:bg-[#050713] dark:text-white lg:pt-[82px]">
+      <div className="mx-auto grid w-full max-w-[1540px] gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 lg:py-7">
+        <aside className="hidden lg:block">
+          <div className="sticky top-[104px] rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
+            <Link
+              to="/connect"
+              className="flex items-center gap-3 rounded-xl bg-teal-700 px-4 py-3 text-sm font-black text-white"
+            >
+              <i className="fa-solid fa-user-group text-xs" aria-hidden="true" />
+              Connect
+            </Link>
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
-          <div className="flex flex-col gap-5 p-5 sm:p-7 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700 dark:text-teal-300">
-                Your Vaani network
-              </p>
-              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-                Connect with people
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-                Discover learners, manage requests and keep your friends, following and followers in one place.
-              </p>
-            </div>
+            <Link
+              to="/messages"
+              className="mt-1 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-black text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.05] dark:hover:text-white"
+            >
+              <i className="fa-solid fa-message text-xs" aria-hidden="true" />
+              Chat
+            </Link>
 
-            <label className="relative block w-full lg:max-w-md">
-              <i
-                className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400"
-                aria-hidden="true"
-              />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={activeTab === 'discover' ? 'Search people or language' : `Search ${activeTab}`}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-semibold outline-none transition-colors focus:border-teal-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
-              />
-            </label>
-          </div>
+            <div className="my-3 border-t border-slate-100 dark:border-white/[0.07]" />
+            <p className="px-3 pb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+              My network
+            </p>
 
-          <div className="border-t border-slate-100 px-3 py-3 dark:border-white/[0.07] sm:px-5">
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:pb-0">
+            <div className="space-y-1">
               {TAB_META.map((tab) => {
                 const active = activeTab === tab.id;
                 const count = tab.id === 'discover'
@@ -684,22 +679,20 @@ const ConnectPage = () => {
                     key={tab.id}
                     type="button"
                     onClick={() => changeTab(tab.id)}
-                    className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-xs font-black shadow-sm transition-colors sm:h-auto sm:rounded-xl sm:px-3.5 sm:py-2.5 sm:shadow-none ${
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-black transition-colors ${
                       active
-                        ? 'border-teal-700 bg-teal-700 text-white'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-teal-500/10 dark:hover:text-teal-300'
+                        ? 'bg-teal-50 text-teal-800 dark:bg-teal-500/10 dark:text-teal-200'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.05] dark:hover:text-white'
                     }`}
                   >
-                    <i className={`fa-solid ${tab.icon} text-[10px]`} aria-hidden="true" />
-                    {tab.label}
+                    <i className={`fa-solid ${tab.icon} w-4 text-center text-xs`} aria-hidden="true" />
+                    <span className="flex-1">{tab.label}</span>
                     {showRequestBadge ? (
-                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] text-white">
                         {count > 99 ? '99+' : count}
                       </span>
                     ) : (
-                      <span className={`hidden min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] sm:inline-flex ${
-                        active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500 dark:bg-white/[0.07] dark:text-slate-300'
-                      }`}>
+                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500">
                         {count > 99 ? '99+' : count}
                       </span>
                     )}
@@ -708,143 +701,207 @@ const ConnectPage = () => {
               })}
             </div>
           </div>
-        </section>
+        </aside>
 
-        {error && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-            {error}
-          </div>
-        )}
+        <div className="min-w-0">
+          <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
+            <div className="flex flex-col gap-5 p-5 sm:p-7 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-teal-700 dark:text-teal-300">
+                  Your Vaani network
+                </p>
+                <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                  Connect with people
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
+                  Discover new learners, manage requests and keep your network in one place.
+                </p>
+              </div>
 
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-black text-slate-950 dark:text-white">
-              {TAB_META.find((tab) => tab.id === activeTab)?.label}
-            </h2>
-            <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              {activeTab === 'discover' && `${discoverTotal} learner${discoverTotal === 1 ? '' : 's'} available`}
-              {activeTab === 'requests' && 'People waiting for your response'}
-              {activeTab === 'friends' && 'People you have connected with'}
-              {activeTab === 'following' && 'People you chose to follow'}
-              {activeTab === 'followers' && 'People following your profile'}
-            </p>
-          </div>
-        </div>
+              <label className="relative block w-full xl:max-w-md">
+                <i
+                  className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400"
+                  aria-hidden="true"
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={activeTab === 'discover' ? 'Search people or language' : `Search ${activeTab}`}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-semibold outline-none transition-colors focus:border-teal-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                />
+              </label>
+            </div>
 
-        <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visiblePeople.map((person) => {
-            const isMember = person.isMember === true;
-            const memberCardTheme = profileThemeToCardTheme(person.profileAnimationId);
-            const relationshipStatus = statusLabel(person);
+            <div className="border-t border-slate-100 px-3 py-3 dark:border-white/[0.07] lg:hidden sm:px-5">
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:pb-0">
+                {TAB_META.map((tab) => {
+                  const active = activeTab === tab.id;
+                  const count = tab.id === 'discover'
+                    ? discoverTotal
+                    : Number(tabCounts[tab.id] || 0);
+                  const showRequestBadge = tab.id === 'requests' && count > 0;
 
-            return (
-              <article
-                key={person.uid}
-                className={`relative overflow-hidden rounded-[1.6rem] border p-5 shadow-sm transition-colors ${
-                  isMember
-                    ? `vaani-member-room vaani-room-theme-${memberCardTheme} border-amber-300/60 bg-white/95 dark:border-amber-400/20 dark:bg-[#101626]/95`
-                    : 'border-slate-200 bg-white hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:hover:border-teal-400/30'
-                }`}
-              >
-                <div className="relative z-[1] flex items-start gap-4">
-                  <div className="relative shrink-0">
-                    <MemberAvatar person={person} />
-                    <span
-                      className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#101626] ${
-                        person.isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => changeTab(tab.id)}
+                      className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-xs font-black shadow-sm transition-colors ${
+                        active
+                          ? 'border-teal-700 bg-teal-700 text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-teal-500/10 dark:hover:text-teal-300'
                       }`}
-                    />
-                  </div>
+                    >
+                      <i className={`fa-solid ${tab.icon} text-[10px]`} aria-hidden="true" />
+                      {tab.label}
+                      {showRequestBadge && (
+                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white">
+                          {count > 99 ? '99+' : count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/profile/${encodeURIComponent(person.uid)}`}
-                        className="min-w-0 truncate text-base font-black text-slate-950 hover:text-teal-700 dark:text-white dark:hover:text-teal-300"
-                      >
-                        {person.displayName || 'Vaani User'}
-                      </Link>
-                      {isMember && (
-                        <span className="vaani-member-star shrink-0 text-sm text-amber-500" title="Vaani member" aria-label="Vaani member">
-                          ✦
+          {error && (
+            <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+              {error}
+            </div>
+          )}
+
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black text-slate-950 dark:text-white">
+                {TAB_META.find((tab) => tab.id === activeTab)?.label}
+              </h2>
+              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {activeTab === 'discover' && 'Everyone you can meet who is not already your friend'}
+                {activeTab === 'requests' && 'People waiting for your response'}
+                {activeTab === 'friends' && 'People you have connected with'}
+                {activeTab === 'following' && 'People you chose to follow'}
+                {activeTab === 'followers' && 'People following your profile'}
+              </p>
+            </div>
+          </div>
+
+          <section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visiblePeople.map((person) => {
+              const isMember = person.isMember === true;
+              const memberCardTheme = profileThemeToCardTheme(person.profileAnimationId);
+              const relationshipStatus = statusLabel(person);
+
+              return (
+                <article
+                  key={person.uid}
+                  className={`relative overflow-hidden rounded-[1.6rem] border p-5 shadow-sm transition-colors ${
+                    isMember
+                      ? `vaani-member-room vaani-room-theme-${memberCardTheme} border-amber-300/60 bg-white/95 dark:border-amber-400/20 dark:bg-[#101626]/95`
+                      : 'border-slate-200 bg-white hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:hover:border-teal-400/30'
+                  }`}
+                >
+                  <div className="relative z-[1] flex items-start gap-4">
+                    <div className="relative shrink-0">
+                      <MemberAvatar person={person} />
+                      <span
+                        className={`absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#101626] ${
+                          person.isOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/profile/${encodeURIComponent(person.uid)}`}
+                          className="min-w-0 truncate text-base font-black text-slate-950 hover:text-teal-700 dark:text-white dark:hover:text-teal-300"
+                        >
+                          {person.displayName || 'Vaani User'}
+                        </Link>
+                        {isMember && (
+                          <span className="vaani-member-star shrink-0 text-sm text-amber-500" title="Vaani member" aria-label="Vaani member">
+                            ✦
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        {formatLastActive(person.lastActive, person.isOnline)}
+                      </p>
+
+                      {relationshipStatus && (
+                        <span className="mt-2 inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+                          {relationshipStatus}
                         </span>
                       )}
                     </div>
-
-                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      {formatLastActive(person.lastActive, person.isOnline)}
-                    </p>
-
-                    {relationshipStatus && (
-                      <span className="mt-2 inline-flex rounded-full bg-teal-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
-                        {relationshipStatus}
-                      </span>
-                    )}
                   </div>
-                </div>
 
-                {(person.languages || []).length > 0 && (
-                  <div className="relative z-[1] mt-4 flex flex-wrap gap-1.5">
-                    {(person.languages || []).slice(0, 3).map((language) => (
-                      <span
-                        key={language}
-                        className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-600 dark:bg-white/[0.04] dark:text-slate-300"
-                      >
-                        {language}
-                      </span>
-                    ))}
+                  {(person.languages || []).length > 0 && (
+                    <div className="relative z-[1] mt-4 flex flex-wrap gap-1.5">
+                      {(person.languages || []).slice(0, 3).map((language) => (
+                        <span
+                          key={language}
+                          className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-600 dark:bg-white/[0.04] dark:text-slate-300"
+                        >
+                          {language}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="relative z-[1] mt-4 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">
+                    {person.bio || 'Ready to meet people, practice languages and have real conversations on Vaani.'}
+                  </p>
+
+                  <div className="relative z-[1] mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-[11px] font-bold text-slate-500 dark:border-white/[0.07] dark:text-slate-400">
+                    <span>{Number(person.counts?.followers || 0)} followers</span>
+                    <span>{Number(person.counts?.friends || 0)} friends</span>
                   </div>
-                )}
 
-                <p className="relative z-[1] mt-4 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-600 dark:text-slate-300">
-                  {person.bio || 'Ready to meet people, practice languages and have real conversations on Vaani.'}
-                </p>
+                  <div className="relative z-[1] mt-4">
+                    {renderActions(person)}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
 
-                <div className="relative z-[1] mt-4 flex items-center gap-4 border-t border-slate-100 pt-4 text-[11px] font-bold text-slate-500 dark:border-white/[0.07] dark:text-slate-400">
-                  <span>{Number(person.counts?.followers || 0)} followers</span>
-                  <span>{Number(person.counts?.friends || 0)} friends</span>
-                </div>
-
-                <div className="relative z-[1] mt-4">
-                  {renderActions(person)}
-                </div>
-              </article>
-            );
-          })}
-        </section>
-
-        {!loading && visiblePeople.length === 0 && (
-          <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-white/10 dark:bg-[#101626]">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
-              <i
-                className={`fa-solid ${TAB_META.find((tab) => tab.id === activeTab)?.icon || 'fa-users'}`}
-                aria-hidden="true"
-              />
+          {!loading && visiblePeople.length === 0 && (
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-white/10 dark:bg-[#101626]">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+                <i
+                  className={`fa-solid ${TAB_META.find((tab) => tab.id === activeTab)?.icon || 'fa-users'}`}
+                  aria-hidden="true"
+                />
+              </div>
+              <p className="mt-4 text-sm font-black text-slate-800 dark:text-slate-200">
+                {emptyText}
+              </p>
             </div>
-            <p className="mt-4 text-sm font-black text-slate-800 dark:text-slate-200">
-              {emptyText}
-            </p>
-          </div>
-        )}
+          )}
 
-        {loading && (
-          <div className="mt-6 flex items-center justify-center gap-2 py-10 text-sm font-bold text-slate-500 dark:text-slate-400">
-            <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
-            Loading {activeTab === 'discover' ? 'learners' : activeTab}...
-          </div>
-        )}
+          {loading && (
+            <div className="mt-6 flex items-center justify-center gap-2 py-10 text-sm font-bold text-slate-500 dark:text-slate-400">
+              <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+              Loading {activeTab === 'discover' ? 'learners' : activeTab}...
+            </div>
+          )}
 
-        {!loading && activeTab === 'discover' && hasMore && (
-          <div className="mt-7 text-center">
-            <button
-              type="button"
-              onClick={() => loadDiscover({ nextPage: page + 1, append: true })}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition-colors hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-white"
-            >
-              Load more people
-            </button>
-          </div>
-        )}
+          {!loading && activeTab === 'discover' && hasMore && (
+            <div className="mt-7 text-center">
+              <button
+                type="button"
+                onClick={() => loadDiscover({ nextPage: page + 1, append: true })}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition-colors hover:border-teal-300 dark:border-white/10 dark:bg-[#101626] dark:text-white"
+              >
+                Load more people
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
