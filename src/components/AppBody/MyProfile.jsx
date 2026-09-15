@@ -4,6 +4,7 @@ import getUserData from "../../hooks/getUserData";
 import useUserCollection from "../useUserCollection";
 import { useAuth } from "../auth/AppWrapper";
 import MemberAppearancePanel from "./MemberAppearancePanel";
+import MemberBannerVideo from "../common/MemberBannerVideo";
 import useMobilePwaMode from "../../hooks/useMobilePwaMode";
 import "../../styles/memberEffects.css";
 
@@ -200,7 +201,8 @@ const MyProfile = ({ socialActions = null }) => {
   const displayName = cleanText(userInfo?.displayName || userInfo?.name, "Vaani User");
   const photoURL = cleanText(userInfo?.photoURL || userInfo?.avatar || userInfo?.photo, "");
   const coverPhotoURL = cleanText(userInfo?.coverPhotoURL || userInfo?.coverPhoto, "");
- 
+  const profileBannerId = cleanText(userInfo?.profileBannerId, "");
+
   const bio = cleanText(
     userInfo?.bio || userInfo?.about || userInfo?.description,
     "Learning languages and building confidence through real conversations."
@@ -317,7 +319,13 @@ const MyProfile = ({ socialActions = null }) => {
       <div className={`mx-auto w-full max-w-7xl px-3 sm:px-6 ${pageTopPadding}`}>
         <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:rounded-[2rem]">
           <div className="relative h-48 overflow-hidden bg-[#082f36] sm:h-64 lg:h-72">
-            {coverPhotoURL ? (
+            {isMember && profileBannerId ? (
+              <MemberBannerVideo
+                bannerId={profileBannerId}
+                eager
+                className="absolute inset-0 h-full w-full"
+              />
+            ) : coverPhotoURL ? (
               <img src={coverPhotoURL} alt="Profile cover" className="h-full w-full object-cover" />
             ) : (
               <div className="absolute inset-0 bg-[linear-gradient(120deg,#062e33_0%,#0f766e_55%,#0284c7_100%)]" />
