@@ -35,6 +35,14 @@ const networkMeta = {
   },
 };
 
+const NetworkBars = ({ quality, compact = false }) => (
+  <span className={`flex items-end gap-[2px] ${compact ? 'h-3' : 'h-4'}`} aria-hidden="true">
+    <span className={`${compact ? 'h-1 w-[2px]' : 'h-1.5 w-[3px]'} rounded-sm ${quality.bars >= 1 ? quality.barClass : 'bg-slate-500/30'}`} />
+    <span className={`${compact ? 'h-2 w-[2px]' : 'h-2.5 w-[3px]'} rounded-sm ${quality.bars >= 2 ? quality.barClass : 'bg-slate-500/30'}`} />
+    <span className={`${compact ? 'h-3 w-[2px]' : 'h-3.5 w-[3px]'} rounded-sm ${quality.bars >= 3 ? quality.barClass : 'bg-slate-500/30'}`} />
+  </span>
+);
+
 const TopMeetingBar = memo(({
   title,
   roomId,
@@ -50,23 +58,31 @@ const TopMeetingBar = memo(({
   onOpenDeviceSettings,
 }) => {
   const quality = networkMeta[networkQuality] || networkMeta.good;
+  const connected = connectionState === 'connected';
 
   return (
-    <header className="relative z-50 flex h-14 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-text)] sm:h-16 sm:px-5">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+    <header className="relative z-50 flex h-14 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-[var(--color-text)] sm:h-16 sm:px-5">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] sm:flex">
           <i className="fa-solid fa-video text-sm text-[var(--color-secondary)]" />
         </div>
 
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-black text-[var(--color-text)] sm:max-w-[260px] sm:text-base">
+          <h1 className="max-w-[135px] truncate text-sm font-black text-[var(--color-text)] xs:max-w-[165px] sm:max-w-[260px] sm:text-base">
             {title || 'Meeting Room'}
           </h1>
-          <div className="mt-0.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-soft)]">
-            <span>#{roomId?.slice(0, 6)}</span>
-            {isHost && <span className="text-amber-500">Host</span>}
-            <span className={connectionState === 'connected' ? 'text-emerald-500' : 'text-amber-500'}>
+
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.11em] text-[var(--color-soft)] sm:gap-2 sm:text-[10px] sm:tracking-[0.14em]">
+            <span className="hidden sm:inline">#{roomId?.slice(0, 6)}</span>
+            {isHost && <span className="hidden text-amber-500 sm:inline">Host</span>}
+
+            <span className={`flex items-center gap-1.5 ${connected ? 'text-emerald-500' : 'text-amber-500'}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               {connectionState}
+            </span>
+
+            <span className={`${quality.textClass} flex items-center sm:hidden`} title={`Network ${quality.label}`}>
+              <NetworkBars quality={quality} compact />
             </span>
           </div>
         </div>
@@ -77,17 +93,13 @@ const TopMeetingBar = memo(({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <div
-          className={`flex h-10 items-center gap-2 rounded-xl border px-2.5 ${quality.borderClass} ${quality.bgClass} ${quality.textClass}`}
+          className={`hidden h-10 items-center gap-2 rounded-xl border px-2.5 sm:flex ${quality.borderClass} ${quality.bgClass} ${quality.textClass}`}
           title={`Network Quality: ${quality.label}`}
           aria-label={`Network Quality: ${quality.label}`}
         >
-          <span className="flex h-4 items-end gap-[2px]" aria-hidden="true">
-            <span className={`h-1.5 w-[3px] rounded-sm ${quality.bars >= 1 ? quality.barClass : 'bg-slate-500/30'}`} />
-            <span className={`h-2.5 w-[3px] rounded-sm ${quality.bars >= 2 ? quality.barClass : 'bg-slate-500/30'}`} />
-            <span className={`h-3.5 w-[3px] rounded-sm ${quality.bars >= 3 ? quality.barClass : 'bg-slate-500/30'}`} />
-          </span>
+          <NetworkBars quality={quality} />
           <span className="hidden text-[10px] font-black uppercase tracking-[0.12em] lg:inline">
             Network {quality.label}
           </span>
@@ -106,7 +118,7 @@ const TopMeetingBar = memo(({
         <button
           type="button"
           onClick={onOpenDeviceSettings}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)] sm:h-10 sm:w-10"
           aria-label="Device settings"
         >
           <i className="fa-solid fa-gear text-[12px]" />
@@ -115,7 +127,7 @@ const TopMeetingBar = memo(({
         <button
           type="button"
           onClick={onCopyLink}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)]"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-primary-soft)] hover:text-[var(--color-primary-700)] sm:h-10 sm:w-10"
           aria-label="Copy meeting link"
         >
           <i className="fa-solid fa-link text-[12px]" />
