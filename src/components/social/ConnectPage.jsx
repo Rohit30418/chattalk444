@@ -641,8 +641,8 @@ const ConnectPage = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pt-[68px] text-slate-950 dark:bg-[#050713] dark:text-white lg:pt-[82px]">
-      <div className="mx-auto grid w-full max-w-[1540px] gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 lg:py-7">
+    <main className="min-h-screen bg-slate-50  text-slate-950 dark:bg-[#050713] dark:text-white pt-[20px]">
+      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 lg:py-7">
         <aside className="hidden lg:block">
           <div className="sticky top-[104px] rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
             <Link

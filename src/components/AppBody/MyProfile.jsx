@@ -200,6 +200,7 @@ const MyProfile = ({ socialActions = null }) => {
   const displayName = cleanText(userInfo?.displayName || userInfo?.name, "Vaani User");
   const photoURL = cleanText(userInfo?.photoURL || userInfo?.avatar || userInfo?.photo, "");
   const coverPhotoURL = cleanText(userInfo?.coverPhotoURL || userInfo?.coverPhoto, "");
+ 
   const bio = cleanText(
     userInfo?.bio || userInfo?.about || userInfo?.description,
     "Learning languages and building confidence through real conversations."
@@ -288,7 +289,7 @@ const MyProfile = ({ socialActions = null }) => {
   if (profileLoading || loading) {
     return (
       <main className="min-h-screen bg-slate-50 dark:bg-[#050713]">
-        <div className={`mx-auto max-w-6xl px-4 pb-6 sm:px-6 ${pageTopPadding}`}>
+        <div className={`mx-auto max-w-7xl px-4 pb-6 sm:px-6 ${pageTopPadding}`}>
           <div className="h-64 animate-pulse rounded-[2rem] bg-slate-200 dark:bg-white/[0.05]" />
           <div className="mx-6 -mt-12 h-24 w-24 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#050713] dark:bg-white/10" />
         </div>
@@ -313,7 +314,7 @@ const MyProfile = ({ socialActions = null }) => {
 
   return (
     <main className="min-h-screen bg-slate-50 pb-10 text-slate-950 dark:bg-[#050713] dark:text-white">
-      <div className={`mx-auto w-full max-w-6xl px-3 sm:px-6 ${pageTopPadding}`}>
+      <div className={`mx-auto w-full max-w-7xl px-3 sm:px-6 ${pageTopPadding}`}>
         <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:rounded-[2rem]">
           <div className="relative h-48 overflow-hidden bg-[#082f36] sm:h-64 lg:h-72">
             {coverPhotoURL ? (
@@ -358,7 +359,7 @@ const MyProfile = ({ socialActions = null }) => {
                 </div>
               </div>
 
-              <div className="w-full lg:w-[360px]">
+              <div className="w-full my-4 lg:w-[360px]">
                 {socialActions}
                 <div className={`${socialActions ? "mt-2" : ""} grid gap-2 ${isOwnProfile && isMember ? "grid-cols-2" : "grid-cols-1"}`}>
                   {isOwnProfile && isMember && (
@@ -371,10 +372,10 @@ const MyProfile = ({ socialActions = null }) => {
                       Customize
                     </button>
                   )}
-                  <Link to="/rooms" className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-teal-800">
+                  {/* <Link to="/rooms" className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-black text-white transition-colors hover:bg-teal-800">
                     <i className="fa-solid fa-microphone-lines text-xs" aria-hidden="true" />
                     Find a room
-                  </Link>
+                  </Link> */}
                 </div>
               </div>
             </div>

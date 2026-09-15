@@ -152,7 +152,6 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = useCallback(async () => {
     if (!user?.uid) return null;
-
     try {
       const { data } = await axios.get(`${backendUrl}/api/users/${encodeURIComponent(user.uid)}`);
       const refreshedUser = {
