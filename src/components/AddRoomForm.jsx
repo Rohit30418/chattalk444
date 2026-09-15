@@ -70,7 +70,6 @@ const withTimeout = (promise, ms = 3500) =>
     }),
   ]);
 
-// Optimization: Removed transform-gpu and changed transition-all to transition-colors.
 const topicInputClass = (hasError) => `
   w-full rounded-2xl border px-4 py-3.5 pl-11 pr-16 text-sm font-semibold outline-none transition-colors duration-200
   bg-[var(--color-surface-2)] text-[var(--color-text)] placeholder:text-[var(--color-soft)]
@@ -93,7 +92,6 @@ const FieldError = memo(({ message }) => {
 });
 FieldError.displayName = "FieldError";
 
-// Optimization: Removed transform-gpu and isolated transitions.
 const LevelButton = memo(({ option, selected, onSelect, disabled }) => {
   const handleClick = useCallback(() => onSelect("Level", option.value), [onSelect, option.value]);
 
@@ -345,19 +343,17 @@ const AddRoomForm = ({ data = [] }) => {
   if (!modalToggle) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center px-3 py-0 sm:items-center sm:px-5 sm:py-5">
-      {/* Optimization: Removed transform-gpu from the static overlay */}
+    <div className="fixed inset-0 z-[320] flex items-end justify-center px-3 pb-[max(.75rem,env(safe-area-inset-bottom))] pt-[max(.75rem,env(safe-area-inset-top))] sm:items-center sm:px-5 sm:py-5">
       <button
         type="button"
         aria-label="Close modal"
         onClick={closeModal}
-        className="absolute inset-0 bg-[var(--color-overlay)]/90 cursor-default"
+        className="absolute inset-0 cursor-default bg-[var(--color-overlay)]/90"
       />
 
-      <section 
+      <section
         style={{ contain: 'layout paint style' }}
-        /* Kept transform-gpu ONLY on the main container just in case you add entry/exit animations later */
-        className="relative z-10 flex max-h-[94dvh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[30px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] [box-shadow:var(--shadow-soft)] sm:rounded-[30px] transform-gpu"
+        className="relative z-10 flex max-h-[94dvh] w-full max-w-[560px] transform-gpu flex-col overflow-hidden rounded-[30px] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] [box-shadow:var(--shadow-soft)]"
       >
         <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[radial-gradient(circle,var(--color-primary-soft)_0%,transparent_70%)] opacity-80" />
         <div className="pointer-events-none absolute -bottom-24 -left-24 h-52 w-52 rounded-full bg-[radial-gradient(circle,var(--color-accent)_0%,transparent_70%)] opacity-20" />
@@ -464,7 +460,7 @@ const AddRoomForm = ({ data = [] }) => {
                 </label>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {LEVEL_OPTIONS.map((option) => (
-                    <LevelButton 
+                    <LevelButton
                       key={option.value}
                       option={option}
                       selected={roomData.Level === option.value}
@@ -482,7 +478,7 @@ const AddRoomForm = ({ data = [] }) => {
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {SEAT_OPTIONS.map((count) => (
-                    <SeatButton 
+                    <SeatButton
                       key={count}
                       count={count}
                       selected={Number(roomData.MaximumPeople) === count}
