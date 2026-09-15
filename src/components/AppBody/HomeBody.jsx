@@ -1,5 +1,4 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 
@@ -10,6 +9,7 @@ import { getRoomData } from '../../hooks/getRoom';
 import { Popup } from '../common/Popup';
 import SkeletonLoader from './SkeletonLoader';
 import { useAuth } from '../auth/AppWrapper';
+import useMobilePwaMode from '../../hooks/useMobilePwaMode';
 
 const face = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=120&h=120&q=82`;
 
@@ -156,10 +156,10 @@ const LanguageFlag = ({ language, className = 'h-4 w-5' }) => {
 
 const HomeBody = () => {
   const dispatch = useDispatch();
-  const modalToggle = useSelector((state) => state.toggleModal);
   const togglePopUp = useSelector((state) => state.togglePopup);
   const { user } = useAuth();
   const { rooms, loading, error } = getRoomData();
+  const isMobilePwa = useMobilePwaMode();
 
   const [searchText, setSearchText] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('');
@@ -257,13 +257,13 @@ const HomeBody = () => {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 pt-28 text-center dark:bg-[#050713]">
+      <div className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center dark:bg-[#050713] ${isMobilePwa ? 'pt-8' : 'pt-28'}`}>
         <div className="max-w-md rounded-[1.5rem] border border-red-200 bg-white p-8 shadow-sm dark:border-red-400/20 dark:bg-[#101626]">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500 dark:bg-red-500/10">
             <i className="fa-solid fa-wifi text-xl" />
           </div>
           <h2 className="text-xl font-black text-slate-950 dark:text-white">Unable to load rooms</h2>
-          <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
             Please refresh or check your backend connection.
           </p>
         </div>
@@ -272,7 +272,7 @@ const HomeBody = () => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-28 pt-[86px] dark:bg-[#050713] lg:pb-16 lg:pt-[104px]">
+    <div className={`min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#050713] ${isMobilePwa ? 'pb-5 pt-4' : 'pb-28 pt-[86px] lg:pb-16 lg:pt-[104px]'}`}>
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <section id="rooms-grid">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -414,64 +414,18 @@ const HomeBody = () => {
               </button>
             </div>
           )}
-
-          <div className="mt-7 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="flex flex-col justify-between gap-5 rounded-[1.6rem] border border-teal-200 bg-teal-50 p-5 dark:border-teal-400/15 dark:bg-teal-500/[0.07] sm:flex-row sm:items-center sm:p-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
-                  <i className="fa-solid fa-crown" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-950 dark:text-white">
-                    Unlock your full speaking potential
-                  </h3>
-                  <p className="mt-1 text-sm font-medium leading-6 text-slate-600 dark:text-slate-400">
-                    Get access to Luna AI, detailed speaking feedback and premium practice tools.
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/#pricing"
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-slate-950 hover:bg-amber-300"
-              >
-                Go Premium
-                <i className="fa-solid fa-arrow-right text-xs" />
-              </Link>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleAddRoomClick}
-              className="flex items-center justify-between gap-4 rounded-[1.6rem] bg-teal-700 p-5 text-left text-white transition-colors hover:bg-teal-800 sm:p-6"
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
-                  <i className="fa-solid fa-plus" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-white">Create your own room</h3>
-                  <p className="mt-1 text-xs font-semibold text-white/75">
-                    Pick a topic and invite people to practice.
-                  </p>
-                </div>
-              </div>
-              <i className="fa-solid fa-chevron-right text-sm" />
-            </button>
-          </div>
         </section>
 
         <AddRoomForm data={rooms} />
 
-        {modalToggle && <div className="fixed inset-0 z-[60] bg-slate-950/50" />}
-
         {togglePopUp && (
-          <div className="fixed left-1/2 top-28 z-[70] -translate-x-1/2">
+          <div className="fixed left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-[360] -translate-x-1/2">
             <Popup text="Room created successfully!" color="bg-emerald-600" />
           </div>
         )}
 
         {showPrivacyNotice && (
-          <div className="fixed inset-0 z-[200] flex items-end justify-center bg-slate-950/60 p-4 sm:items-center">
+          <div className="fixed inset-0 z-[400] flex items-end justify-center bg-slate-950/60 p-4 sm:items-center">
             <div className="w-full max-w-lg rounded-t-[1.75rem] border border-slate-200 bg-white p-6 shadow-lg dark:border-white/10 dark:bg-[#0f172a] sm:rounded-[1.75rem] sm:p-8">
               <div className="mb-5 flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
