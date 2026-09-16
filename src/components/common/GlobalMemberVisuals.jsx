@@ -140,13 +140,23 @@ const GlobalMemberVisuals = () => {
 
     const getMember = async (uid) => {
       if (!uid) return null;
+
       const cached = cacheRef.current.get(uid);
       if (cached?.profileDecorationId || cached?.isMember === false) return cached;
 
       try {
-        const { data } = await api.get(`/api/users/${encodeURIComponent(uid)}`);
-        cacheRef.current.set(uid, data);
-        return data;
+        let member = null;
+
+        if (uid === user?.uid) {
+          const { data } = await api.get(`/api/users/${encodeURIComponent(uid)}`);
+          member = data || null;
+        } else {
+          const { data } = await api.get(`/api/social/profile/${encodeURIComponent(uid)}`);
+          member = data?.user || null;
+        }
+
+        if (member) cacheRef.current.set(uid, member);
+        return member || cached || null;
       } catch {
         return cached || null;
       }
