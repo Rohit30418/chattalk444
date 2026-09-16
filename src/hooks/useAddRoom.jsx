@@ -47,14 +47,12 @@ const useAddRoom = () => {
     const response = await api.post('/api/rooms', payload);
 
     const createdRoom = normalizeCreatedRoom(response?.data);
-    
     const roomId = getRoomId(createdRoom);
 
+    // The authenticated REST endpoint already creates the room and broadcasts
+    // the dashboard update from the server. Only request a fresh dashboard
+    // snapshot here; never send a full room object through Socket.IO.
     socket.emit('request-dashboard-sync');
-
-    if (createdRoom) {
-      socket.emit('room-created', createdRoom);
-    }
 
     if (navigateToRoom && roomId) {
       navigate(`/room/${roomId}`);
