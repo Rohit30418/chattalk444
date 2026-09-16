@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { firebaseApp } from '../../services/firebase';
 import socket from '../../services/socket';
 import Loading from '../common/Loading';
-import { backendUrl } from '../../services/api';
+import api, { backendUrl } from '../../services/api';
 
 export const AuthContext = createContext();
 
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         try {
-          const { data } = await axios.post(`${backendUrl}/api/users`, baseUser);
+          const { data } = await api.post('/api/users', baseUser);
           const backendUser = data?.user || {};
           const syncedUser = {
             ...baseUser,
@@ -58,22 +58,14 @@ export const AuthProvider = ({ children }) => {
         if (!socket.connected) socket.connect();
         setLoading(false);
       } else {
-        try {
-          const storedUser = localStorage.getItem('userInfo');
-          if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            setUser({
-              ...parsedUser,
-              isMember: parsedUser?.isMember === true,
-            });
-            if (!socket.connected) socket.connect();
-          }
-        } catch (error) {
-          console.error('Failed to restore auth state from localStorage:', error);
-          localStorage.removeItem('userInfo');
-        } finally {
-          setLoading(false);
+        setUser(null);
+        localStorage.removeItem('userInfo');
+
+        if (socket.connected) {
+          socket.disconnect();
         }
+
+        setLoading(false);
       }
     });
 
@@ -152,8 +144,9 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = useCallback(async () => {
     if (!user?.uid) return null;
+
     try {
-      const { data } = await axios.get(`${backendUrl}/api/users/${encodeURIComponent(user.uid)}`);
+      const { data } = await api.get(`/api/users/${encodeURIComponent(user.uid)}`);
       const refreshedUser = {
         ...user,
         ...data,
