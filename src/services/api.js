@@ -1,11 +1,13 @@
 import axios from 'axios';
+import { getAuth } from 'firebase/auth';
+import { firebaseApp } from './firebase';
 
-const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const configuredBackendUrl =
+  import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-// In local Vite development, keep browser requests same-origin and let
-// vite.config.js proxy /api to the configured backend. This avoids CORS
-// problems when testing the production Render API from localhost.
-export const backendUrl = import.meta.env.DEV ? '' : configuredBackendUrl;
+export const backendUrl = import.meta.env.DEV
+  ? ''
+  : configuredBackendUrl;
 
 const api = axios.create({
   baseURL: backendUrl,
@@ -15,40 +17,33 @@ const api = axios.create({
   },
 });
 
-api.interceptors.request.use((config) => {
-  try {
-    const storedUser = JSON.parse(localStorage.getItem('userInfo') || 'null');
+api.interceptors.request.use(
+  async (config) => {
+    const auth = getAuth(firebaseApp);
+    const firebaseUser = auth.currentUser;
 
-    if (storedUser?.token) {
-      config.headers.Authorization = `Bearer ${storedUser.token}`;
+    if (firebaseUser) {
+      const idToken = await firebaseUser.getIdToken();
+      config.headers.Authorization = `Bearer ${idToken}`;
     }
 
-    if (storedUser?.uid) {
-      config.headers['x-user-id'] = storedUser.uid;
+    if (config.headers['x-user-id']) {
+      delete config.headers['x-user-id'];
     }
-  } catch {
-    // Invalid localStorage should never block API calls.
-  }
 
-  // Never try to set the Origin header manually. Browsers own this forbidden
-  // header and will attach the correct production origin automatically.
-  if (config.headers?.Origin) {
-    delete config.headers.Origin;
-  }
-  if (config.headers?.origin) {
-    delete config.headers.origin;
-  }
-
-  return config;
-});
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.error
-      || error.response?.data?.message
-      || error.message
-      || 'Request failed';
+    const message =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      'Request failed';
 
     return Promise.reject(Object.assign(error, { userMessage: message }));
   }
