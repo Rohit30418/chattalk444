@@ -214,8 +214,20 @@ const MessagesPage = () => {
   }, [activeId, loadConversations]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, activeId]);
+    if (!activeId || loadingMessages || messages.length === 0) return undefined;
+
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [messages.length, activeId, loadingMessages]);
 
   useEffect(() => () => {
     window.clearTimeout(typingTimerRef.current);
