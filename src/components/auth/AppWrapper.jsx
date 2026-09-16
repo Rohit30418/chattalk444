@@ -9,7 +9,10 @@ import React, {
 import axios from 'axios';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { firebaseApp } from '../../services/firebase';
-import socket from '../../services/socket';
+import socket, {
+  connectSocketForFirebaseUser,
+  disconnectSocket,
+} from '../../services/socket';
 import Loading from '../common/Loading';
 import api, { backendUrl } from '../../services/api';
 
@@ -55,16 +58,12 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('userInfo', JSON.stringify(fallbackUser));
         }
 
-        if (!socket.connected) socket.connect();
+        connectSocketForFirebaseUser(firebaseUser);
         setLoading(false);
       } else {
         setUser(null);
         localStorage.removeItem('userInfo');
-
-        if (socket.connected) {
-          socket.disconnect();
-        }
-
+        disconnectSocket();
         setLoading(false);
       }
     });
@@ -79,7 +78,6 @@ export const AuthProvider = ({ children }) => {
       socket.emit('social-identify', { uid: user.uid });
     };
 
-    if (!socket.connected) socket.connect();
     if (socket.connected) identify();
     socket.on('connect', identify);
 
@@ -103,9 +101,8 @@ export const AuthProvider = ({ children }) => {
       setUser(loggedInUser);
       localStorage.setItem('userInfo', JSON.stringify(loggedInUser));
 
-      if (!socket.connected) {
-        socket.connect();
-      }
+      const firebaseUser = getAuth(firebaseApp).currentUser;
+      if (firebaseUser) connectSocketForFirebaseUser(firebaseUser);
 
       return true;
     } catch (error) {
@@ -130,9 +127,8 @@ export const AuthProvider = ({ children }) => {
       setUser(registeredUser);
       localStorage.setItem('userInfo', JSON.stringify(registeredUser));
 
-      if (!socket.connected) {
-        socket.connect();
-      }
+      const firebaseUser = getAuth(firebaseApp).currentUser;
+      if (firebaseUser) connectSocketForFirebaseUser(firebaseUser);
 
       return true;
     } catch (error) {
@@ -173,10 +169,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       localStorage.removeItem('userInfo');
-
-      if (socket.connected) {
-        socket.disconnect();
-      }
+      disconnectSocket();
     }
 
     return true;
