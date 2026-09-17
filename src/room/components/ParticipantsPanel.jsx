@@ -8,6 +8,7 @@ const ParticipantsPanel = memo(({
   onClose,
   onForceMute,
   onKick,
+  onEndRoom,
 }) => {
   if (!show) return null;
 
@@ -54,7 +55,7 @@ const ParticipantsPanel = memo(({
               <div className="flex items-start gap-2">
                 <i className="fa-solid fa-shield-halved mt-0.5 text-xs text-amber-500" />
                 <p className="text-[11px] font-semibold leading-5 text-[var(--color-muted)]">
-                  You are the host. You can force mute or remove participants from this room.
+                  You are the host. You can force mute, remove participants, or end the room for everyone.
                 </p>
               </div>
             </div>
@@ -113,6 +114,22 @@ const ParticipantsPanel = memo(({
               )}
             </div>
           ))}
+
+          {isHost && (
+            <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+              <button
+                type="button"
+                onClick={onEndRoom}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs font-black text-red-500 transition-colors hover:bg-red-500/15"
+              >
+                <i className="fa-solid fa-phone-slash text-[11px]" />
+                End room for everyone
+              </button>
+              <p className="mt-2 text-center text-[10px] leading-4 text-[var(--color-soft)]">
+                This closes the room immediately for every participant.
+              </p>
+            </div>
+          )}
         </div>
       </aside>
     </>
