@@ -22,7 +22,7 @@ import ParticipantsPanel from './components/ParticipantsPanel';
 import ChatPanel from './components/ChatPanel';
 import DeviceSettingsModal from './components/DeviceSettingsModal';
 import useMeetingTimer from './hooks/useMeetingTimer';
-import useRoomController from './hooks/useRoomController';
+import useReliableRoomController from './hooks/useReliableRoomController';
 
 const ROOM_HEARTBEAT_MS = 60 * 1000;
 
@@ -185,7 +185,7 @@ const RoomMain = ({ uId, user }) => {
     roomError,
   ]);
 
-  const room = useRoomController({
+  const room = useReliableRoomController({
     id,
     uId,
     currUserData,
