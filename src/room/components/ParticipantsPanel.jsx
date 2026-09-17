@@ -9,6 +9,7 @@ const ParticipantsPanel = memo(({
   onForceMute,
   onKick,
   onEndRoom,
+  onOpenProfile,
 }) => {
   if (!show) return null;
 
@@ -77,18 +78,28 @@ const ParticipantsPanel = memo(({
 
           {participants.map((participant) => (
             <div key={participant.uid} className="mb-2 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
-              <img
-                src={participant.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${participant.uid}`}
-                alt={participant.name || 'User'}
-                className="h-10 w-10 rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black text-[var(--color-text)]">{participant.name || 'User'}</p>
-                <p className="text-xs text-[var(--color-soft)]">
-                  {participant.isAudioEnabled ? 'Mic on' : 'Muted'} · {participant.isVideoEnabled ? 'Camera on' : 'Camera off'}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => onOpenProfile?.(participant.uid)}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none transition hover:bg-[var(--color-primary-soft)] focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)]"
+                title={`View ${participant.name || 'participant'} profile`}
+              >
+                <img
+                  src={participant.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${participant.uid}`}
+                  alt={participant.name || 'User'}
+                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-black text-[var(--color-text)]">{participant.name || 'User'}</p>
+                    <i className="fa-solid fa-chevron-right text-[9px] text-[var(--color-soft)]" />
+                  </div>
+                  <p className="text-xs text-[var(--color-soft)]">
+                    {participant.isAudioEnabled ? 'Mic on' : 'Muted'} · {participant.isVideoEnabled ? 'Camera on' : 'Camera off'}
+                  </p>
+                </div>
+              </button>
 
               {isHost && (
                 <div className="flex items-center gap-1">
