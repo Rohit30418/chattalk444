@@ -21,6 +21,8 @@ import SubtitlesOverlay from './components/SubtitlesOverlay';
 import ParticipantsPanel from './components/ParticipantsPanel';
 import ChatPanel from './components/ChatPanel';
 import DeviceSettingsModal from './components/DeviceSettingsModal';
+import InCallProfileView from './components/InCallProfileView';
+import MiniCallWindow from './components/MiniCallWindow';
 import useMeetingTimer from './hooks/useMeetingTimer';
 import useReliableRoomController from './hooks/useReliableRoomController';
 
@@ -43,6 +45,7 @@ const RoomMain = ({ uId, user }) => {
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState('');
   const [isHost, setIsHost] = useState(false);
+  const [profileUid, setProfileUid] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +199,12 @@ const RoomMain = ({ uId, user }) => {
   useEffect(() => {
     const handler = () => {
       window.history.pushState(null, '', window.location.href);
+
+      if (profileUid) {
+        setProfileUid('');
+        return;
+      }
+
       room.showLeaveModal();
     };
 
@@ -205,7 +214,7 @@ const RoomMain = ({ uId, user }) => {
     return () => {
       window.removeEventListener('popstate', handler);
     };
-  }, [room.showLeaveModal]);
+  }, [profileUid, room.showLeaveModal]);
 
   const copyLink = () => {
     navigator.clipboard?.writeText(window.location.href);
@@ -267,17 +276,20 @@ const RoomMain = ({ uId, user }) => {
     }
   };
 
+  const openProfile = (uid) => {
+    if (!uid || uid === uId) return;
+    room.setShowParticipants(false);
+    room.setIsSettingOn(null);
+    setProfileUid(uid);
+  };
+
   const commonTileProps = useMemo(() => ({
     isHost,
     menuOpenFor: room.isSettingOn,
     onToggleMenu: room.setIsSettingOn,
     onForceMute: room.forceMuteUser,
     onKick: room.kickUser,
-    onOpenProfile: (uid) => {
-      if (uid) {
-        window.open(`/profile/${uid}`, '_blank', 'noopener,noreferrer');
-      }
-    },
+    onOpenProfile: openProfile,
     onFullscreen: room.setFullscreenId,
     onPin: (uid) => {
       room.setPinnedId((prev) => (prev === uid ? null : uid));
@@ -290,6 +302,7 @@ const RoomMain = ({ uId, user }) => {
     room.kickUser,
     room.setFullscreenId,
     room.setPinnedId,
+    uId,
   ]);
 
   const networkQuality = useMemo(() => {
@@ -303,6 +316,11 @@ const RoomMain = ({ uId, user }) => {
     if (qualities.includes('fair')) return 'fair';
     return 'good';
   }, [room.connectionState, room.participantsArray]);
+
+  const profileParticipant = useMemo(
+    () => room.participantsArray.find((participant) => participant.uid === profileUid) || null,
+    [profileUid, room.participantsArray]
+  );
 
   const isPageLoading = userLoading || roomLoading;
 
@@ -433,6 +451,7 @@ const RoomMain = ({ uId, user }) => {
           onForceMute={room.forceMuteUser}
           onKick={room.kickUser}
           onEndRoom={endRoomForEveryone}
+          onOpenProfile={openProfile}
         />
 
         <DeviceSettingsModal
@@ -444,6 +463,24 @@ const RoomMain = ({ uId, user }) => {
           onChangeAudioDevice={room.changeAudioDevice}
           onChangeVideoDevice={room.changeVideoDevice}
         />
+
+        {profileUid && (
+          <>
+            <InCallProfileView uid={profileUid} onBack={() => setProfileUid('')} />
+            <MiniCallWindow
+              participant={profileParticipant}
+              fallbackUser={currUserData}
+              roomTitle={currentRoomData?.Title || 'Meeting Room'}
+              isAudioEnabled={room.isAudioEnabled}
+              isVideoEnabled={room.isVideoEnabled}
+              connectionState={room.connectionState}
+              onToggleAudio={room.toggleAudio}
+              onToggleVideo={room.toggleVideo}
+              onReturnToCall={() => setProfileUid('')}
+              onLeave={room.showLeaveModal}
+            />
+          </>
+        )}
       </div>
     </RoomErrorBoundary>
   );
