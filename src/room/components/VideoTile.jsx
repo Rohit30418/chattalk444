@@ -130,6 +130,17 @@ const VideoTile = memo(({
 
   const avatarSrc = memberProfile?.photoURL || photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid || displayName || 'user'}`;
   const avatarName = memberProfile?.displayName || displayName || 'Participant';
+  const avatar = (
+    <MemberAvatar
+      user={memberProfile || { uid, displayName: avatarName, photoURL: avatarSrc }}
+      src={avatarSrc}
+      name={avatarName}
+      className={`relative z-10 ${isThumbnail ? 'h-16 w-16' : 'h-24 w-24 sm:h-36 sm:w-36'}`}
+      avatarClassName="border-4 border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm"
+      roundedClass="rounded-full"
+      loading="eager"
+    />
+  );
 
   return (
     <div className={tileClass} onDoubleClick={() => onFullscreen?.(isLocal ? 'local' : uid)}>
@@ -149,15 +160,17 @@ const VideoTile = memo(({
               <span className="absolute inset-0 scale-125 animate-ping rounded-full bg-[var(--color-primary)]/10" aria-hidden="true" />
             </>
           )}
-          <MemberAvatar
-            user={memberProfile || { uid, displayName: avatarName, photoURL: avatarSrc }}
-            src={avatarSrc}
-            name={avatarName}
-            className={`relative z-10 ${isThumbnail ? 'h-16 w-16' : 'h-24 w-24 sm:h-36 sm:w-36'}`}
-            avatarClassName="border-4 border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm"
-            roundedClass="rounded-full"
-            loading="eager"
-          />
+          {isLocal ? avatar : (
+            <button
+              type="button"
+              onClick={() => onOpenProfile?.(uid)}
+              className="relative z-20 rounded-full outline-none transition hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-[var(--color-secondary)]"
+              title={`View ${avatarName} profile`}
+              aria-label={`View ${avatarName} profile`}
+            >
+              {avatar}
+            </button>
+          )}
         </div>
         {!isThumbnail && <p className="mt-4 text-sm font-semibold text-[var(--color-soft)]">Camera off</p>}
       </div>
@@ -182,9 +195,22 @@ const VideoTile = memo(({
 
       <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 rounded-full bg-black/55 px-3 py-1.5">
-            <p className={`truncate font-black text-white ${isThumbnail ? 'max-w-[70px] text-[10px]' : 'max-w-[150px] text-xs sm:text-sm'}`}>{isLocal ? 'You' : displayName || 'User'}</p>
-          </div>
+          {isLocal ? (
+            <div className="min-w-0 rounded-full bg-black/55 px-3 py-1.5">
+              <p className={`truncate font-black text-white ${isThumbnail ? 'max-w-[70px] text-[10px]' : 'max-w-[150px] text-xs sm:text-sm'}`}>You</p>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpenProfile?.(uid)}
+              className="min-w-0 rounded-full bg-black/55 px-3 py-1.5 text-left transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              title={`View ${displayName || 'participant'} profile`}
+            >
+              <p className={`truncate font-black text-white ${isThumbnail ? 'max-w-[70px] text-[10px]' : 'max-w-[150px] text-xs sm:text-sm'}`}>
+                {displayName || 'User'}
+              </p>
+            </button>
+          )}
           <div className={`flex h-7 w-7 items-center justify-center rounded-full ${isAudioOn ? 'bg-black/50 text-emerald-300' : 'bg-red-500 text-white'}`}>
             <i className={`fas ${isAudioOn ? 'fa-microphone' : 'fa-microphone-slash'} text-[10px]`} />
           </div>
