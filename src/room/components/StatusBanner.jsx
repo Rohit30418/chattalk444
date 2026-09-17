@@ -8,7 +8,7 @@ const StatusBanner = memo(({
   onRetryMedia,
 }) => (
   <>
-    {connectionState !== 'connected' && (
+    {connectionState && connectionState !== 'connected' && (
       <div className="relative z-40 flex h-10 shrink-0 items-center justify-center gap-2 border-b border-amber-300/20 bg-amber-500/90 px-4 text-xs font-black text-slate-950 backdrop-blur-xl sm:text-sm">
         <i className="fa-solid fa-wifi" />
         Connection interrupted. Reconnecting…
