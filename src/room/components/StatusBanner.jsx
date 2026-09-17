@@ -1,7 +1,20 @@
 import { memo } from 'react';
 
-const StatusBanner = memo(({ isScreenSharing, mediaError, onStopScreenShare, onRetryMedia }) => (
+const StatusBanner = memo(({
+  isScreenSharing,
+  mediaError,
+  connectionState,
+  onStopScreenShare,
+  onRetryMedia,
+}) => (
   <>
+    {connectionState !== 'connected' && (
+      <div className="relative z-40 flex h-10 shrink-0 items-center justify-center gap-2 border-b border-amber-300/20 bg-amber-500/90 px-4 text-xs font-black text-slate-950 backdrop-blur-xl sm:text-sm">
+        <i className="fa-solid fa-wifi" />
+        Connection interrupted. Reconnecting…
+      </div>
+    )}
+
     {isScreenSharing && (
       <div className="relative z-40 flex h-11 shrink-0 items-center justify-between border-b border-blue-400/20 bg-blue-600/90 px-4 text-white backdrop-blur-xl sm:h-12 sm:px-6">
         <div className="flex items-center gap-2 text-xs font-black sm:text-sm">
