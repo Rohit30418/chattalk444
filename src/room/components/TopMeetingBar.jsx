@@ -105,6 +105,19 @@ const TopMeetingBar = memo(({
           </span>
         </div>
 
+        {isHost && (
+          <button
+            type="button"
+            onClick={onToggleParticipants}
+            className="flex h-9 items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-2.5 text-[11px] font-black text-amber-500 transition-colors hover:bg-amber-500/15 sm:h-10 sm:px-3"
+            aria-label="Open host controls"
+            title="Host controls"
+          >
+            <i className="fa-solid fa-crown text-[11px]" />
+            <span className="hidden md:inline">Host controls</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onToggleParticipants}
