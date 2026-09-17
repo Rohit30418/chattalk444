@@ -2,6 +2,7 @@ import Peer from 'peerjs';
 import socket from './socket';
 
 const INSTALL_FLAG = '__vaaniPeerAutoReconnectInstalled';
+const MEDIA_REFRESH_EVENT = 'vaani-media-refresh';
 const stateByPeer = new WeakMap();
 
 const getCurrentRoomId = () => {
@@ -66,6 +67,23 @@ const cleanupStaleConnections = (peer, forceDisconnected = false) => {
   return closedAny;
 };
 
+const rebuildAllConnections = (peer) => {
+  let closedAny = false;
+
+  getConnections(peer).forEach((connection) => {
+    try {
+      connection.close?.();
+      closedAny = true;
+    } catch (error) {
+      console.warn('[Peer recovery] Failed to rebuild connection:', error?.message || error);
+    }
+  });
+
+  // Give PeerJS and useRoomController close handlers time to clear their
+  // connection maps, then ask the room for a fresh participant snapshot.
+  requestRoomSync(closedAny ? 550 : 150);
+};
+
 const isRecoverablePeerError = (error) => [
   'network',
   'server-error',
@@ -96,6 +114,7 @@ export const installPeerAutoReconnect = () => {
     clearRetry(state);
     if (state.monitorTimer) window.clearInterval(state.monitorTimer);
     window.removeEventListener('online', state.onOnline);
+    window.removeEventListener(MEDIA_REFRESH_EVENT, state.onMediaRefresh);
     document.removeEventListener('visibilitychange', state.onVisibilityChange);
     stateByPeer.delete(peer);
   };
@@ -111,6 +130,7 @@ export const installPeerAutoReconnect = () => {
       hadDisconnected: false,
       reconnectInProgress: false,
       onOnline: null,
+      onMediaRefresh: null,
       onVisibilityChange: null,
     };
 
@@ -198,6 +218,18 @@ export const installPeerAutoReconnect = () => {
       }
     };
 
+    state.onMediaRefresh = () => {
+      if (peer.destroyed || !getCurrentRoomId()) return;
+
+      if (!peer.open) {
+        state.hadDisconnected = true;
+        scheduleReconnect(true);
+        return;
+      }
+
+      rebuildAllConnections(peer);
+    };
+
     state.onVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || peer.destroyed) return;
 
@@ -214,6 +246,7 @@ export const installPeerAutoReconnect = () => {
     };
 
     window.addEventListener('online', state.onOnline);
+    window.addEventListener(MEDIA_REFRESH_EVENT, state.onMediaRefresh);
     document.addEventListener('visibilitychange', state.onVisibilityChange);
 
     state.monitorTimer = window.setInterval(() => {
