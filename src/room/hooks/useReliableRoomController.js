@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import socket from '../../services/socket';
 import useRoomController from './useRoomController';
 
 const MEDIA_REFRESH_EVENT = 'vaani-media-refresh';
 const DEVICE_CHANGE_DEBOUNCE_MS = 650;
+const TRACK_RECOVERY_DEBOUNCE_MS = 300;
+const INTENTIONAL_MEDIA_CHANGE_GUARD_MS = 1800;
 
 const inputDeviceIds = (devices = []) => new Set(
   devices
@@ -17,7 +19,12 @@ const useReliableRoomController = (options) => {
   const room = useRoomController(options);
   const recoveryInFlightRef = useRef(false);
   const deviceTimerRef = useRef(null);
+  const trackRecoveryTimerRef = useRef(null);
   const knownDeviceIdsRef = useRef(new Set());
+  const intentionalMediaChangeUntilRef = useRef(0);
+  const [isBrowserOnline, setIsBrowserOnline] = useState(() => (
+    typeof navigator === 'undefined' ? true : navigator.onLine !== false
+  ));
 
   const refreshPeerConnections = useCallback((reason) => {
     if (typeof window === 'undefined') return;
@@ -96,6 +103,59 @@ const useReliableRoomController = (options) => {
   ]);
 
   useEffect(() => {
+    const handleOffline = () => {
+      setIsBrowserOnline(false);
+    };
+
+    const handleOnline = () => {
+      setIsBrowserOnline(true);
+      // Socket.IO + PeerJS reconnect independently. Also force a media-call
+      // refresh so calls that survived in a half-open state are rebuilt.
+      refreshPeerConnections('browser-online');
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [refreshPeerConnections]);
+
+  useEffect(() => {
+    const stream = room.localTile?.stream;
+    const tracks = stream?.getTracks?.() || [];
+    if (!tracks.length) return undefined;
+
+    const handleTrackEnded = (event) => {
+      if (recoveryInFlightRef.current) return;
+      if (Date.now() < intentionalMediaChangeUntilRef.current) return;
+
+      const track = event.currentTarget;
+      if (!track || !['audio', 'video'].includes(track.kind)) return;
+
+      if (trackRecoveryTimerRef.current) {
+        window.clearTimeout(trackRecoveryTimerRef.current);
+      }
+
+      trackRecoveryTimerRef.current = window.setTimeout(() => {
+        recoverLocalMedia({ reason: `${track.kind}-track-ended` });
+      }, TRACK_RECOVERY_DEBOUNCE_MS);
+    };
+
+    tracks.forEach((track) => track.addEventListener('ended', handleTrackEnded));
+
+    return () => {
+      tracks.forEach((track) => track.removeEventListener('ended', handleTrackEnded));
+      if (trackRecoveryTimerRef.current) {
+        window.clearTimeout(trackRecoveryTimerRef.current);
+        trackRecoveryTimerRef.current = null;
+      }
+    };
+  }, [room.localTile?.stream, recoverLocalMedia]);
+
+  useEffect(() => {
     const mediaDevices = navigator.mediaDevices;
     if (!mediaDevices?.enumerateDevices) return undefined;
 
@@ -167,17 +227,21 @@ const useReliableRoomController = (options) => {
   ]);
 
   const changeAudioDevice = useCallback(async (deviceId) => {
+    intentionalMediaChangeUntilRef.current = Date.now() + INTENTIONAL_MEDIA_CHANGE_GUARD_MS;
     await room.changeAudioDevice(deviceId);
     refreshPeerConnections('audio-device-switch');
   }, [room.changeAudioDevice, refreshPeerConnections]);
 
   const changeVideoDevice = useCallback(async (deviceId) => {
+    intentionalMediaChangeUntilRef.current = Date.now() + INTENTIONAL_MEDIA_CHANGE_GUARD_MS;
     await room.changeVideoDevice(deviceId);
     refreshPeerConnections('video-device-switch');
   }, [room.changeVideoDevice, refreshPeerConnections]);
 
   return {
     ...room,
+    connectionState: isBrowserOnline ? room.connectionState : 'offline',
+    browserOnline: isBrowserOnline,
     changeAudioDevice,
     changeVideoDevice,
   };
