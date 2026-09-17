@@ -172,10 +172,6 @@ const RoomMain = ({ uId, user }) => {
     return () => {
       stopped = true;
       window.clearInterval(heartbeat);
-      // Never emit leave-room from this effect cleanup. A normal leave is sent
-      // once by useRoomController.handleHangup; tab close/reload is handled by
-      // Socket.IO disconnect on the backend. Keeping this cleanup side-effect
-      // free prevents duplicate leave races during React navigation/remounts.
     };
   }, [
     id,
@@ -224,6 +220,51 @@ const RoomMain = ({ uId, user }) => {
       background: '#0f172a',
       color: '#fff',
     });
+  };
+
+  const endRoomForEveryone = async () => {
+    if (!isHost || !id) return;
+
+    const result = await Swal.fire({
+      title: 'End room for everyone?',
+      text: 'Everyone will be disconnected and this room will be closed.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#334155',
+      confirmButtonText: 'End room',
+      cancelButtonText: 'Cancel',
+      background: '#0f172a',
+      color: '#fff',
+      focusCancel: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      room.setShowParticipants(false);
+      await api.delete(`/api/rooms/${id}`);
+
+      Swal.fire({
+        toast: true,
+        icon: 'success',
+        title: 'Room ended for everyone',
+        position: 'top-end',
+        timer: 1600,
+        showConfirmButton: false,
+        background: '#0f172a',
+        color: '#fff',
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Could not end room',
+        text: error?.userMessage || 'Please try again.',
+        background: '#0f172a',
+        color: '#fff',
+        confirmButtonColor: '#6366f1',
+      });
+    }
   };
 
   const commonTileProps = useMemo(() => ({
@@ -391,6 +432,7 @@ const RoomMain = ({ uId, user }) => {
           onClose={() => room.setShowParticipants(false)}
           onForceMute={room.forceMuteUser}
           onKick={room.kickUser}
+          onEndRoom={endRoomForEveryone}
         />
 
         <DeviceSettingsModal
