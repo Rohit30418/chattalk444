@@ -6,6 +6,10 @@ import { useAuth } from '../auth/AppWrapper';
 import SocialNav from './SocialNav';
 import MemberAvatar from '../common/MemberAvatar';
 import MemberNameplate from '../common/MemberNameplate';
+import {
+  RichMessageActionSheet,
+  RichReplyPreview,
+} from '../chat/RichChatPrimitives';
 
 const formatTime = (value) => {
   if (!value) return '';
@@ -51,6 +55,8 @@ const MessagesPage = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [typingUid, setTypingUid] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [actionMessage, setActionMessage] = useState(null);
   const bottomRef = useRef(null);
   const typingTimerRef = useRef(null);
 
@@ -84,6 +90,8 @@ const MessagesPage = () => {
       setActiveConversation(null);
       setMessages([]);
       setTypingUid('');
+      setReplyingTo(null);
+      setActionMessage(null);
       return;
     }
 
@@ -156,6 +164,39 @@ const MessagesPage = () => {
       setTypingUid(payload?.isTyping ? payload.uid : '');
     };
 
+    const onReaction = (payload) => {
+      if (payload?.conversationId !== activeId || !payload?.messageId) return;
+      setMessages((current) => current.map((message) => (
+        message.id === payload.messageId
+          ? { ...message, reactions: payload.reactions || {} }
+          : message
+      )));
+    };
+
+    const onDeleted = (payload) => {
+      if (!payload?.conversationId || !payload?.messageId) return;
+
+      if (payload.conversationId === activeId) {
+        setMessages((current) => current.filter((message) => message.id !== payload.messageId));
+        setActionMessage((current) => (
+          current?.id === payload.messageId ? null : current
+        ));
+        setReplyingTo((current) => (
+          current?.id === payload.messageId ? null : current
+        ));
+      }
+
+      setConversations((current) => current.map((conversation) => (
+        conversation.id === payload.conversationId
+          ? {
+              ...conversation,
+              lastMessage: payload.lastMessage || '',
+              lastMessageAt: payload.lastMessageAt || conversation.lastMessageAt,
+            }
+          : conversation
+      )));
+    };
+
     const onPresence = ({ uid, isOnline }) => {
       const lastActive = isOnline ? undefined : new Date().toISOString();
 
@@ -201,6 +242,8 @@ const MessagesPage = () => {
     socket.on('social-message', onMessage);
     socket.on('social-message-sent', onMessage);
     socket.on('social-typing', onTyping);
+    socket.on('social-message-reaction', onReaction);
+    socket.on('social-message-deleted', onDeleted);
     socket.on('social-presence', onPresence);
     socket.on('social-member-appearance', onMemberAppearance);
 
@@ -208,6 +251,8 @@ const MessagesPage = () => {
       socket.off('social-message', onMessage);
       socket.off('social-message-sent', onMessage);
       socket.off('social-typing', onTyping);
+      socket.off('social-message-reaction', onReaction);
+      socket.off('social-message-deleted', onDeleted);
       socket.off('social-presence', onPresence);
       socket.off('social-member-appearance', onMemberAppearance);
     };
@@ -243,6 +288,8 @@ const MessagesPage = () => {
     setMessages([]);
     setTypingUid('');
     setDraft('');
+    setReplyingTo(null);
+    setActionMessage(null);
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
@@ -277,9 +324,13 @@ const MessagesPage = () => {
       setDraft('');
       const { data } = await api.post(
         `/api/social/conversations/${encodeURIComponent(activeId)}/messages`,
-        { text }
+        {
+          text,
+          replyMessageId: replyingTo?.id || undefined,
+        }
       );
       const sent = data?.message;
+      setReplyingTo(null);
 
       if (sent) {
         setMessages((current) => (
@@ -311,7 +362,56 @@ const MessagesPage = () => {
     } finally {
       setSending(false);
     }
-  }, [activeConversation?.otherUser?.uid, activeId, draft, sending]);
+  }, [activeConversation?.otherUser?.uid, activeId, draft, replyingTo?.id, sending]);
+
+  const handleReact = useCallback(async (messageId, emoji) => {
+    if (!activeId || !messageId) return;
+
+    try {
+      const { data } = await api.post(
+        `/api/social/conversations/${encodeURIComponent(activeId)}/messages/${encodeURIComponent(messageId)}/reaction`,
+        { emoji }
+      );
+
+      setMessages((current) => current.map((message) => (
+        message.id === messageId
+          ? { ...message, reactions: data?.reactions || {} }
+          : message
+      )));
+    } catch (err) {
+      setError(err.userMessage || 'Could not update reaction.');
+    }
+  }, [activeId]);
+
+  const handleDeleteMessage = useCallback(async (message) => {
+    if (!activeId || !message?.id || message.senderUid !== user?.uid) return;
+
+    try {
+      const { data } = await api.delete(
+        `/api/social/conversations/${encodeURIComponent(activeId)}/messages/${encodeURIComponent(message.id)}`
+      );
+
+      setMessages((current) => current.filter((item) => item.id !== message.id));
+      setActionMessage(null);
+      setReplyingTo((current) => (current?.id === message.id ? null : current));
+
+      setConversations((current) => current.map((conversation) => (
+        conversation.id === activeId
+          ? {
+              ...conversation,
+              lastMessage: data?.lastMessage || '',
+              lastMessageAt: data?.lastMessageAt || conversation.lastMessageAt,
+            }
+          : conversation
+      )));
+    } catch (err) {
+      setError(err.userMessage || 'Could not delete message.');
+    }
+  }, [activeId, user?.uid]);
+
+  const openMessageActions = useCallback((message, senderName) => {
+    setActionMessage({ ...message, senderName });
+  }, []);
 
   const totalUnread = useMemo(
     () => conversations.reduce((sum, item) => sum + Number(item.unread || 0), 0),
