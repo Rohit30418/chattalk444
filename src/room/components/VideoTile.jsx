@@ -68,14 +68,15 @@ const VideoTile = memo(({
 
     let cancelled = false;
 
-    api.get(`/api/users/${encodeURIComponent(uid)}`)
+    api.get(`/api/social/profile/${encodeURIComponent(uid)}`)
       .then(({ data }) => {
-        if (!data) return;
-        profileCache.set(uid, data);
-        if (!cancelled) setMemberProfile(data);
+        const publicProfile = data?.user || null;
+        if (!publicProfile) return;
+        profileCache.set(uid, publicProfile);
+        if (!cancelled) setMemberProfile(publicProfile);
       })
       .catch(() => {
-        // Room media should keep working even if member appearance lookup fails.
+        // Room media should keep working even if public profile lookup fails.
       });
 
     return () => {
