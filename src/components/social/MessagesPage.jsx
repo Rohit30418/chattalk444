@@ -775,7 +775,7 @@ const MessagesPage = () => {
                     />
                     <button
                       type="submit"
-                      disabled={!draft.trim() || sending}
+                      disabled={(!draft.trim() && mediaPreviews.length === 0) || sending}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-700 text-white transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label="Send message"
                     >
