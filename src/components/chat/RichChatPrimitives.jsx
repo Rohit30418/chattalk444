@@ -4,6 +4,22 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
 export const CHAT_REACTIONS = ['👍', '❤️', '😂', '😮', '🎉'];
+export const RICH_MAX_IMAGE_SIZE = 1.5 * 1024 * 1024;
+export const RICH_ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+export const validateRichImage = (file) => {
+  if (!file) return 'No file selected.';
+  if (!RICH_ALLOWED_MIME.includes(file.type)) return 'Only JPEG, PNG, GIF, or WebP images are allowed.';
+  if (file.size > RICH_MAX_IMAGE_SIZE) return 'Image must be smaller than 1.5 MB.';
+  return null;
+};
+
+export const readRichImageAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('File read failed'));
+  reader.readAsDataURL(file);
+});
 
 const sanitizeSchema = {
   ...defaultSchema,
