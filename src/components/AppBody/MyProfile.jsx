@@ -293,7 +293,7 @@ const MyProfile = ({ socialActions = null }) => {
       <main className="min-h-screen bg-slate-50 dark:bg-[#050713]">
         <div className={`mx-auto max-w-7xl px-4 pb-6 sm:px-6 ${pageTopPadding}`}>
           <div className="h-64 animate-pulse rounded-[2rem] bg-slate-200 dark:bg-white/[0.05]" />
-          <div className="mx-6 -mt-12 h-24 w-24 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#050713] dark:bg-white/10" />
+          <div className="mx-6 mt-6 h-24 w-24 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#050713] dark:bg-white/10" />
         </div>
       </main>
     );
@@ -338,10 +338,10 @@ const MyProfile = ({ socialActions = null }) => {
             )}
           </div>
 
-          <div className="px-5 pb-6 sm:px-7 sm:pb-7">
+          <div className="px-5 pb-6 pt-6 sm:px-7 sm:pb-7 sm:pt-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="flex min-w-0 flex-col sm:flex-row sm:items-end sm:gap-5">
-                <div className="relative -mt-14 shrink-0 sm:-mt-16">
+                <div className="relative shrink-0">
                   {isMember ? (
                     <span className={`vaani-profile-frame vaani-profile-theme-${profileTheme}`}>
                       <Avatar src={photoURL} name={displayName} ring className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl" />
@@ -349,7 +349,6 @@ const MyProfile = ({ socialActions = null }) => {
                   ) : (
                     <Avatar src={photoURL} name={displayName} ring className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl" />
                   )}
-                  {isOnline && <span className="absolute bottom-2 right-2 h-5 w-5 rounded-full border-[3px] border-white bg-emerald-500 dark:border-[#0b1220]" />}
                 </div>
 
                 <div className="mt-4 min-w-0 pb-1 sm:mt-0">
