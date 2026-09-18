@@ -603,9 +603,13 @@ const MessagesPage = () => {
                         const mine = message.senderUid === user.uid;
                         const senderUser = mine ? user : activeConversation.otherUser;
                         const senderName = senderUser?.displayName || (mine ? 'You' : 'Vaani User');
+                        const reactionSummary = Object.values(message.reactions || {}).reduce((acc, emoji) => {
+                          acc[emoji] = (acc[emoji] || 0) + 1;
+                          return acc;
+                        }, {});
 
                         return (
-                          <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                          <div key={message.id} className={`group flex ${mine ? 'justify-end' : 'justify-start'}`}>
                             <div className={`flex max-w-[82%] flex-col ${mine ? 'items-end' : 'items-start'} sm:max-w-[72%]`}>
                               <MemberNameplate
                                 user={senderUser}
@@ -615,21 +619,66 @@ const MessagesPage = () => {
                                 className={`mb-1.5 max-w-[190px] text-[10px] font-black ${mine ? 'mr-1' : 'ml-1'}`}
                               />
 
-                              <div className={`min-w-[92px] max-w-full rounded-[1.15rem] px-3.5 py-2.5 ${
-                                mine
-                                  ? 'rounded-br-md bg-teal-700'
-                                  : 'rounded-bl-md border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101626]'
-                              }`}>
-                                <p className={`whitespace-pre-wrap break-words text-sm font-medium leading-5 ${
-                                  mine ? '!text-white' : 'text-slate-800 dark:text-slate-100'
+                              <div className="relative">
+                                <div className={`min-w-[92px] max-w-full rounded-[1.15rem] px-3.5 py-2.5 pr-9 ${
+                                  mine
+                                    ? 'rounded-br-md bg-teal-700'
+                                    : 'rounded-bl-md border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101626]'
                                 }`}>
-                                  {message.text}
-                                </p>
-                                <p className={`mt-1.5 text-right text-[10px] font-bold ${
-                                  mine ? '!text-teal-50/90' : 'text-slate-400'
-                                }`}>
-                                  {formatTime(message.createdAt)}
-                                </p>
+                                  {message.replyTo?.messageId && (
+                                    <div className={`mb-2 rounded-xl border-l-4 px-2.5 py-2 text-[11px] ${
+                                      mine
+                                        ? 'border-l-white/70 bg-black/10 text-teal-50'
+                                        : 'border-l-teal-500 bg-slate-50 text-slate-600 dark:bg-black/20 dark:text-slate-300'
+                                    }`}>
+                                      <p className={`font-black ${mine ? 'text-white' : 'text-teal-700 dark:text-teal-300'}`}>
+                                        <i className="fa-solid fa-reply mr-1 text-[9px]" />
+                                        {message.replyTo.senderName || 'User'}
+                                      </p>
+                                      <p className="mt-0.5 max-w-[240px] truncate opacity-80">
+                                        {message.replyTo.text || 'Message'}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => openMessageActions(message, senderName)}
+                                    className={`absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-[10px] transition ${
+                                      mine
+                                        ? 'text-teal-50/80 hover:bg-white/10 hover:text-white'
+                                        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white'
+                                    }`}
+                                    aria-label="Message actions"
+                                  >
+                                    <i className="fa-solid fa-ellipsis-vertical" />
+                                  </button>
+
+                                  <p className={`whitespace-pre-wrap break-words text-sm font-medium leading-5 ${
+                                    mine ? '!text-white' : 'text-slate-800 dark:text-slate-100'
+                                  }`}>
+                                    {message.text}
+                                  </p>
+                                  <p className={`mt-1.5 text-right text-[10px] font-bold ${
+                                    mine ? '!text-teal-50/90' : 'text-slate-400'
+                                  }`}>
+                                    {formatTime(message.createdAt)}
+                                  </p>
+                                </div>
+
+                                {Object.keys(reactionSummary).length > 0 && (
+                                  <div className={`absolute -bottom-3 z-10 flex gap-1 ${mine ? 'right-2' : 'left-2'}`}>
+                                    {Object.entries(reactionSummary).map(([emoji, count]) => (
+                                      <span
+                                        key={emoji}
+                                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] shadow-sm dark:border-white/10 dark:bg-[#101626]"
+                                      >
+                                        {emoji}
+                                        {count > 1 && <span className="text-[9px] font-black text-slate-500">{count}</span>}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -644,7 +693,14 @@ const MessagesPage = () => {
                   onSubmit={sendMessage}
                   className="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0b1220]/95 sm:p-4"
                 >
-                  <div className="mx-auto flex max-w-3xl items-end gap-2">
+                  <div className="mx-auto max-w-3xl">
+                    <RichReplyPreview
+                      message={replyingTo}
+                      onCancel={() => setReplyingTo(null)}
+                      dark={false}
+                    />
+
+                    <div className="flex items-end gap-2">
                     <textarea
                       value={draft}
                       onChange={handleDraftChange}
@@ -667,8 +723,18 @@ const MessagesPage = () => {
                     >
                       <i className={`fa-solid ${sending ? 'fa-spinner fa-spin' : 'fa-paper-plane'} text-xs`} />
                     </button>
+                    </div>
                   </div>
                 </form>
+
+                <RichMessageActionSheet
+                  message={actionMessage}
+                  currentUserId={user.uid}
+                  onClose={() => setActionMessage(null)}
+                  onReply={(message) => setReplyingTo(message)}
+                  onReact={handleReact}
+                  onDelete={handleDeleteMessage}
+                />
               </>
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8 text-center">
