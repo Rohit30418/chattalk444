@@ -1,21 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import EmojiPicker from 'emoji-picker-react';
 import api from '../../services/api';
 import socket from '../../services/socket';
 import { useAuth } from '../auth/AppWrapper';
 import SocialNav from './SocialNav';
 import MemberAvatar from '../common/MemberAvatar';
 import MemberNameplate from '../common/MemberNameplate';
-import {
-  RichImageModal,
-  RichMessageActionSheet,
-  RichMessageBubble,
-  RichReplyPreview,
-  getRichMessageId,
-  readRichImageAsDataUrl,
-  validateRichImage,
-} from '../chat/RichChatPrimitives';
 
 const formatTime = (value) => {
   if (!value) return '';
@@ -49,13 +39,6 @@ const notifyUnreadChanged = () => {
   window.dispatchEvent(new CustomEvent('vaani-chat-unread-changed'));
 };
 
-const previewMessageText = (message) => {
-  if (!message) return '';
-  if (message.type === 'gif') return 'GIF';
-  if (message.type === 'image') return 'Image';
-  return message.text || '';
-};
-
 const MessagesPage = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -68,14 +51,8 @@ const MessagesPage = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [typingUid, setTypingUid] = useState('');
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [actionMessage, setActionMessage] = useState(null);
-  const [lightboxSrc, setLightboxSrc] = useState('');
-  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
-  const [mediaPreviews, setMediaPreviews] = useState([]);
   const bottomRef = useRef(null);
   const typingTimerRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   const activeId = searchParams.get('conversation') || '';
 
@@ -156,7 +133,7 @@ const MessagesPage = () => {
         const existing = current[index];
         const updated = {
           ...existing,
-          lastMessage: previewMessageText(message),
+          lastMessage: message.text,
           lastMessageAt: message.createdAt,
           unread: conversationId === activeId ? 0 : Number(existing.unread || 0) + 1,
         };
@@ -177,36 +154,6 @@ const MessagesPage = () => {
     const onTyping = (payload) => {
       if (payload?.conversationId !== activeId) return;
       setTypingUid(payload?.isTyping ? payload.uid : '');
-    };
-
-    const onReaction = (payload) => {
-      if (payload?.conversationId !== activeId || !payload?.messageId) return;
-      setMessages((current) => current.map((message) => (
-        message.id === payload.messageId
-          ? { ...message, reactions: payload.reactions || {} }
-          : message
-      )));
-    };
-
-    const onDeleted = (payload) => {
-      if (!payload?.conversationId || !payload?.messageId) return;
-
-      if (payload.conversationId === activeId) {
-        setMessages((current) => current.filter((message) => message.id !== payload.messageId));
-        setActionMessage((current) => (
-          current?.id === payload.messageId ? null : current
-        ));
-      }
-
-      setConversations((current) => current.map((conversation) => (
-        conversation.id === payload.conversationId
-          ? {
-              ...conversation,
-              lastMessage: payload.lastMessage || '',
-              lastMessageAt: payload.lastMessageAt || conversation.lastMessageAt,
-            }
-          : conversation
-      )));
     };
 
     const onPresence = ({ uid, isOnline }) => {
@@ -254,8 +201,6 @@ const MessagesPage = () => {
     socket.on('social-message', onMessage);
     socket.on('social-message-sent', onMessage);
     socket.on('social-typing', onTyping);
-    socket.on('social-message-reaction', onReaction);
-    socket.on('social-message-deleted', onDeleted);
     socket.on('social-presence', onPresence);
     socket.on('social-member-appearance', onMemberAppearance);
 
@@ -263,8 +208,6 @@ const MessagesPage = () => {
       socket.off('social-message', onMessage);
       socket.off('social-message-sent', onMessage);
       socket.off('social-typing', onTyping);
-      socket.off('social-message-reaction', onReaction);
-      socket.off('social-message-deleted', onDeleted);
       socket.off('social-presence', onPresence);
       socket.off('social-member-appearance', onMemberAppearance);
     };
@@ -300,10 +243,6 @@ const MessagesPage = () => {
     setMessages([]);
     setTypingUid('');
     setDraft('');
-    setReplyingTo(null);
-    setActionMessage(null);
-    setMediaPreviews([]);
-    setIsEmojiOpen(false);
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
@@ -328,147 +267,31 @@ const MessagesPage = () => {
     }, 1200);
   }, [activeConversation?.otherUser?.uid, activeId]);
 
-  const handleEmojiClick = useCallback((emojiData) => {
-    setDraft((current) => {
-      const next = current + emojiData.emoji;
-      return next.slice(0, 2000);
-    });
-    setIsEmojiOpen(false);
-  }, []);
-
-  const handleFiles = useCallback(async (files) => {
-    const selected = Array.from(files || []);
-
-    for (const file of selected) {
-      const validationError = validateRichImage(file);
-      if (validationError) {
-        setError(validationError);
-        continue;
-      }
-
-      try {
-        const dataUrl = await readRichImageAsDataUrl(file);
-        setMediaPreviews((current) => [
-          ...current,
-          {
-            id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-            file,
-            dataUrl,
-            type: file.type === 'image/gif' ? 'gif' : 'image',
-          },
-        ]);
-      } catch {
-        setError('Could not read this image.');
-      }
-    }
-  }, []);
-
-  const removeMediaPreview = useCallback((id) => {
-    setMediaPreviews((current) => current.filter((item) => item.id !== id));
-  }, []);
-
-  const handleReact = useCallback(async (messageId, emoji) => {
-    if (!activeId || !messageId) return;
-
-    try {
-      const { data } = await api.post(
-        `/api/social/conversations/${encodeURIComponent(activeId)}/messages/${encodeURIComponent(messageId)}/reaction`,
-        { emoji }
-      );
-
-      setMessages((current) => current.map((message) => (
-        message.id === messageId
-          ? { ...message, reactions: data?.reactions || {} }
-          : message
-      )));
-    } catch (err) {
-      setError(err.userMessage || 'Could not update reaction.');
-    }
-  }, [activeId]);
-
-  const handleDeleteMessage = useCallback(async (message) => {
-    const messageId = getRichMessageId(message);
-    if (!activeId || !messageId || message.senderUid !== user?.uid) return;
-
-    try {
-      const { data } = await api.delete(
-        `/api/social/conversations/${encodeURIComponent(activeId)}/messages/${encodeURIComponent(messageId)}`
-      );
-
-      setMessages((current) => current.filter((item) => item.id !== messageId));
-      setConversations((current) => current.map((conversation) => (
-        conversation.id === activeId
-          ? {
-              ...conversation,
-              lastMessage: data?.lastMessage || '',
-              lastMessageAt: data?.lastMessageAt || conversation.lastMessageAt,
-            }
-          : conversation
-      )));
-    } catch (err) {
-      setError(err.userMessage || 'Could not delete message.');
-    }
-  }, [activeId, user?.uid]);
-
   const sendMessage = useCallback(async (event) => {
     event?.preventDefault();
     const text = draft.trim();
-    const pendingMedia = [...mediaPreviews];
-
-    if ((!text && pendingMedia.length === 0) || !activeId || sending) return;
+    if (!text || !activeId || sending) return;
 
     try {
       setSending(true);
-      setError('');
       setDraft('');
-      setMediaPreviews([]);
+      const { data } = await api.post(
+        `/api/social/conversations/${encodeURIComponent(activeId)}/messages`,
+        { text }
+      );
+      const sent = data?.message;
 
-      const sentMessages = [];
-
-      for (const media of pendingMedia) {
-        const { data } = await api.post(
-          `/api/social/conversations/${encodeURIComponent(activeId)}/messages`,
-          {
-            type: media.type,
-            mediaUrl: media.dataUrl,
-            replyTo: replyingTo ? { messageId: getRichMessageId(replyingTo) } : undefined,
-          }
-        );
-
-        if (data?.message) sentMessages.push(data.message);
-      }
-
-      if (text) {
-        const { data } = await api.post(
-          `/api/social/conversations/${encodeURIComponent(activeId)}/messages`,
-          {
-            type: 'text',
-            text,
-            replyTo: replyingTo ? { messageId: getRichMessageId(replyingTo) } : undefined,
-          }
-        );
-
-        if (data?.message) sentMessages.push(data.message);
-      }
-
-      setReplyingTo(null);
-      setIsEmojiOpen(false);
-
-      if (sentMessages.length) {
-        setMessages((current) => {
-          const map = new Map(current.map((message) => [message.id, message]));
-          sentMessages.forEach((message) => map.set(message.id, message));
-          return Array.from(map.values());
-        });
-
-        const latest = sentMessages[sentMessages.length - 1];
+      if (sent) {
+        setMessages((current) => (
+          current.some((item) => item.id === sent.id) ? current : [...current, sent]
+        ));
         setConversations((current) => {
           const selected = current.find((item) => item.id === activeId);
           if (!selected) return current;
           const updated = {
             ...selected,
-            lastMessage: previewMessageText(latest),
-            lastMessageAt: latest.createdAt,
+            lastMessage: sent.text,
+            lastMessageAt: sent.createdAt,
             unread: 0,
           };
           return [updated, ...current.filter((item) => item.id !== activeId)];
@@ -484,19 +307,11 @@ const MessagesPage = () => {
       }
     } catch (err) {
       setDraft(text);
-      setMediaPreviews(pendingMedia);
       setError(err.userMessage || 'Message could not be sent.');
     } finally {
       setSending(false);
     }
-  }, [
-    activeConversation?.otherUser?.uid,
-    activeId,
-    draft,
-    mediaPreviews,
-    replyingTo,
-    sending,
-  ]);
+  }, [activeConversation?.otherUser?.uid, activeId, draft, sending]);
 
   const totalUnread = useMemo(
     () => conversations.reduce((sum, item) => sum + Number(item.unread || 0), 0),
@@ -683,22 +498,41 @@ const MessagesPage = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="mx-auto flex w-full max-w-3xl flex-col">
+                    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
                       {messages.map((message) => {
                         const mine = message.senderUid === user.uid;
                         const senderUser = mine ? user : activeConversation.otherUser;
+                        const senderName = senderUser?.displayName || (mine ? 'You' : 'Vaani User');
 
                         return (
-                          <RichMessageBubble
-                            key={message.id}
-                            message={message}
-                            currentUserId={user.uid}
-                            senderName={senderUser?.displayName || (mine ? 'You' : 'Vaani User')}
-                            senderPhoto={senderUser?.photoURL || ''}
-                            onOpenActions={setActionMessage}
-                            onImageClick={setLightboxSrc}
-                            compact
-                          />
+                          <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex max-w-[82%] flex-col ${mine ? 'items-end' : 'items-start'} sm:max-w-[72%]`}>
+                              <MemberNameplate
+                                user={senderUser}
+                                uid={message.senderUid}
+                                name={senderName}
+                                compact
+                                className={`mb-1.5 max-w-[190px] text-[10px] font-black ${mine ? 'mr-1' : 'ml-1'}`}
+                              />
+
+                              <div className={`min-w-[92px] max-w-full rounded-[1.15rem] px-3.5 py-2.5 ${
+                                mine
+                                  ? 'rounded-br-md bg-teal-700'
+                                  : 'rounded-bl-md border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101626]'
+                              }`}>
+                                <p className={`whitespace-pre-wrap break-words text-sm font-medium leading-5 ${
+                                  mine ? '!text-white' : 'text-slate-800 dark:text-slate-100'
+                                }`}>
+                                  {message.text}
+                                </p>
+                                <p className={`mt-1.5 text-right text-[10px] font-bold ${
+                                  mine ? '!text-teal-50/90' : 'text-slate-400'
+                                }`}>
+                                  {formatTime(message.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         );
                       })}
                       <div ref={bottomRef} />
@@ -710,56 +544,8 @@ const MessagesPage = () => {
                   onSubmit={sendMessage}
                   className="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0b1220]/95 sm:p-4"
                 >
-                  <div className="relative mx-auto max-w-3xl">
-                    <RichReplyPreview
-                      message={replyingTo}
-                      onCancel={() => setReplyingTo(null)}
-                      dark={false}
-                    />
-
-                    {mediaPreviews.length > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-2">
-                        {mediaPreviews.map((media) => (
-                          <div key={media.id} className="group relative">
-                            <img src={media.dataUrl} alt="" className="h-20 w-20 rounded-2xl border border-slate-200 object-cover dark:border-white/10" />
-                            <button type="button" onClick={() => removeMediaPreview(media.id)} className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-[10px] text-white" aria-label="Remove media">
-                              <i className="fa-solid fa-xmark" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {isEmojiOpen && (
-                      <div className="absolute bottom-full left-0 z-50 mb-2 overflow-hidden rounded-3xl border border-slate-200 shadow-2xl dark:border-white/10">
-                        <EmojiPicker
-                          theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
-                          height={320}
-                          onEmojiClick={handleEmojiClick}
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex items-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsEmojiOpen((value) => !value)}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 hover:text-amber-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
-                        aria-label="Emoji"
-                      >
-                        <i className="fa-regular fa-face-smile" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 hover:text-teal-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"
-                        aria-label="Attach image or GIF"
-                      >
-                        <i className="fa-solid fa-paperclip" />
-                      </button>
-
-                      <textarea
+                  <div className="mx-auto flex max-w-3xl items-end gap-2">
+                    <textarea
                       value={draft}
                       onChange={handleDraftChange}
                       onKeyDown={(event) => {
@@ -775,41 +561,14 @@ const MessagesPage = () => {
                     />
                     <button
                       type="submit"
-                      disabled={(!draft.trim() && mediaPreviews.length === 0) || sending}
+                      disabled={!draft.trim() || sending}
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-700 text-white transition-colors hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label="Send message"
                     >
                       <i className={`fa-solid ${sending ? 'fa-spinner fa-spin' : 'fa-paper-plane'} text-xs`} />
                     </button>
-                    </div>
                   </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    multiple
-                    className="hidden"
-                    onChange={(event) => {
-                      handleFiles(event.target.files);
-                      event.target.value = '';
-                    }}
-                  />
                 </form>
-
-                <RichMessageActionSheet
-                  message={actionMessage}
-                  currentUserId={user.uid}
-                  onClose={() => setActionMessage(null)}
-                  onReply={setReplyingTo}
-                  onReact={handleReact}
-                  onDelete={handleDeleteMessage}
-                />
-
-                <RichImageModal
-                  src={lightboxSrc}
-                  onClose={() => setLightboxSrc('')}
-                />
               </>
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8 text-center">
