@@ -7,13 +7,12 @@ import '../../styles/memberEffects.css';
 
 const TAB_META = [
   { id: 'discover', label: 'Discover', icon: 'fa-compass' },
-  { id: 'requests', label: 'Requests', icon: 'fa-user-clock' },
   { id: 'friends', label: 'Friends', icon: 'fa-handshake' },
   { id: 'following', label: 'Following', icon: 'fa-user-check' },
   { id: 'followers', label: 'Followers', icon: 'fa-users' },
 ];
 
-const COLLECTION_TABS = ['requests', 'friends', 'following', 'followers'];
+const COLLECTION_TABS = ['friends', 'following', 'followers'];
 
 const initials = (name = 'Vaani User') => name
   .split(' ')
@@ -115,7 +114,6 @@ const ConnectPage = () => {
   const [discoverTotal, setDiscoverTotal] = useState(0);
   const [busyUid, setBusyUid] = useState('');
   const [tabCounts, setTabCounts] = useState({
-    requests: 0,
     friends: 0,
     following: 0,
     followers: 0,
@@ -187,9 +185,13 @@ const ConnectPage = () => {
 
       const rawUsers = Array.isArray(data?.users) ? data.users : [];
       const hydrated = await hydrateUsers(rawUsers);
-      const discoverUsers = hydrated.filter(
-        (person) => person?.relationship?.connectionStatus !== 'friends'
-      );
+      const discoverUsers = hydrated.filter((person) => {
+        const relationship = person?.relationship || {};
+        const isFriend = relationship.isFriend === true
+          || (relationship.isFollowing === true && relationship.isFollowedBy === true)
+          || relationship.connectionStatus === 'friends';
+        return !isFriend;
+      });
 
       setPeople((current) => {
         if (!append) return discoverUsers;
@@ -281,14 +283,10 @@ const ConnectPage = () => {
 
     socket.on('social-presence', onPresence);
     socket.on('social-follow-updated', onSocialChange);
-    socket.on('social-connection-request', onSocialChange);
-    socket.on('social-connection-updated', onSocialChange);
 
     return () => {
       socket.off('social-presence', onPresence);
       socket.off('social-follow-updated', onSocialChange);
-      socket.off('social-connection-request', onSocialChange);
-      socket.off('social-connection-updated', onSocialChange);
     };
   }, [refreshCurrentTab]);
 
@@ -340,63 +338,6 @@ const ConnectPage = () => {
     }
   }, [busyUid, refreshAfterAction, updatePerson, user?.uid]);
 
-  const connect = useCallback(async (person) => {
-    if (!user?.uid || busyUid) return;
-
-    try {
-      setBusyUid(person.uid);
-      const state = person.relationship || {};
-
-      if (state.connectionStatus === 'friends') return;
-
-      if (state.connectionStatus === 'pending' && state.connectionDirection === 'outgoing') {
-        await api.delete(`/api/social/connect/${encodeURIComponent(person.uid)}`);
-        updatePerson(person.uid, {
-          relationship: {
-            ...state,
-            connectionStatus: 'none',
-            connectionDirection: null,
-          },
-        });
-        await refreshAfterAction();
-        return;
-      }
-
-      const path = state.connectionStatus === 'pending' && state.connectionDirection === 'incoming'
-        ? `/api/social/connect/${encodeURIComponent(person.uid)}/accept`
-        : `/api/social/connect/${encodeURIComponent(person.uid)}`;
-
-      const { data } = await api.post(path);
-      updatePerson(person.uid, {
-        relationship: {
-          ...state,
-          connectionStatus: data?.status || 'pending',
-          connectionDirection: data?.direction ?? null,
-        },
-      });
-
-      await refreshAfterAction();
-    } catch (err) {
-      setError(err.userMessage || 'Could not update connection.');
-    } finally {
-      setBusyUid('');
-    }
-  }, [busyUid, refreshAfterAction, updatePerson, user?.uid]);
-
-  const declineRequest = useCallback(async (person) => {
-    if (!user?.uid || busyUid) return;
-
-    try {
-      setBusyUid(person.uid);
-      await api.delete(`/api/social/connect/${encodeURIComponent(person.uid)}`);
-      await refreshAfterAction();
-    } catch (err) {
-      setError(err.userMessage || 'Could not decline this request.');
-    } finally {
-      setBusyUid('');
-    }
-  }, [busyUid, refreshAfterAction, user?.uid]);
-
   const openMessage = useCallback(async (uid) => {
     if (!user?.uid || busyUid) return;
 
@@ -416,14 +357,6 @@ const ConnectPage = () => {
     }
   }, [busyUid, navigate, user?.uid]);
 
-  const connectionLabel = useCallback((person) => {
-    const state = person.relationship || {};
-    if (state.connectionStatus === 'friends') return 'Friends';
-    if (state.connectionStatus === 'pending' && state.connectionDirection === 'incoming') return 'Accept';
-    if (state.connectionStatus === 'pending') return 'Requested';
-    return 'Connect';
-  }, []);
-
   const visiblePeople = useMemo(() => {
     if (activeTab === 'discover') return people;
 
@@ -441,25 +374,23 @@ const ConnectPage = () => {
 
   const emptyText = useMemo(() => {
     if (debouncedSearch) return 'No people match your search.';
-    if (activeTab === 'requests') return 'No pending connection requests.';
-    if (activeTab === 'friends') return 'You have not connected with anyone yet.';
+    if (activeTab === 'friends') return 'No mutual follows yet. Follow people you enjoy talking with.';
     if (activeTab === 'following') return 'You are not following anyone yet.';
     if (activeTab === 'followers') return 'No followers yet. Keep joining rooms and meeting people.';
     return 'No new learners to discover right now.';
   }, [activeTab, debouncedSearch]);
 
   const statusLabel = useCallback((person) => {
-    if (activeTab === 'requests') return 'Wants to connect';
-    if (activeTab === 'friends') return 'Friend';
-    if (activeTab === 'following') return 'You follow';
-    if (activeTab === 'followers') return 'Follows you';
-
     const state = person.relationship || {};
-    if (state.connectionStatus === 'pending' && state.connectionDirection === 'incoming') {
-      return 'Sent you a request';
-    }
-    if (state.connectionStatus === 'pending') return 'Request sent';
+    const isFriend = state.isFriend === true
+      || (state.isFollowing === true && state.isFollowedBy === true)
+      || state.connectionStatus === 'friends';
+
+    if (isFriend) return 'Friends';
+    if (activeTab === 'following') return 'You follow';
+    if (activeTab === 'followers') return state.isFollowing ? 'Following' : 'Follows you';
     if (state.isFollowing) return 'Following';
+    if (state.isFollowedBy) return 'Follows you';
     return '';
   }, [activeTab]);
 
@@ -477,144 +408,54 @@ const ConnectPage = () => {
   const renderActions = useCallback((person) => {
     const busy = busyUid === person.uid;
     const state = person.relationship || {};
+    const isFriend = state.isFriend === true
+      || (state.isFollowing === true && state.isFollowedBy === true)
+      || state.connectionStatus === 'friends';
 
-    if (activeTab === 'requests') {
-      return (
-        <div className="grid grid-cols-3 gap-2">
-          <ProfileButton uid={person.uid} />
-          <button
-            type="button"
-            onClick={() => connect(person)}
-            disabled={busy}
-            className="rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
-          >
-            {busy ? <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" /> : 'Accept'}
-          </button>
-          <button
-            type="button"
-            onClick={() => declineRequest(person)}
-            disabled={busy}
-            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-black text-red-600 transition-colors hover:bg-red-100 disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300"
-          >
-            Decline
-          </button>
-        </div>
-      );
-    }
-
-    if (activeTab === 'friends') {
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          <ProfileButton uid={person.uid} />
-          <button
-            type="button"
-            onClick={() => openMessage(person.uid)}
-            disabled={busy}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
-          >
-            {busy ? (
-              <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
-            ) : (
-              <i className="fa-regular fa-message text-[10px]" aria-hidden="true" />
-            )}
-            Message
-          </button>
-        </div>
-      );
-    }
-
-    if (activeTab === 'following') {
-      return (
-        <div className="grid grid-cols-3 gap-2">
-          <ProfileButton uid={person.uid} />
-          <button
-            type="button"
-            onClick={() => toggleFollow(person)}
-            disabled={busy}
-            className="rounded-xl bg-teal-50 px-3 py-2.5 text-xs font-black text-teal-700 transition-colors hover:bg-teal-100 disabled:opacity-60 dark:bg-teal-500/10 dark:text-teal-300"
-          >
-            Following
-          </button>
-          <button
-            type="button"
-            onClick={() => connect(person)}
-            disabled={busy || state.connectionStatus === 'friends'}
-            className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
-              state.connectionStatus === 'friends'
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
-            }`}
-          >
-            {connectionLabel(person)}
-          </button>
-        </div>
-      );
-    }
-
-    if (activeTab === 'followers') {
-      return (
-        <div className="grid grid-cols-3 gap-2">
-          <ProfileButton uid={person.uid} />
-          <button
-            type="button"
-            onClick={() => toggleFollow(person)}
-            disabled={busy}
-            className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
-              state.isFollowing
-                ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300'
-                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
-            }`}
-          >
-            {state.isFollowing ? 'Following' : 'Follow back'}
-          </button>
-          <button
-            type="button"
-            onClick={() => connect(person)}
-            disabled={busy || state.connectionStatus === 'friends'}
-            className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
-              state.connectionStatus === 'friends'
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-                : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
-            }`}
-          >
-            {connectionLabel(person)}
-          </button>
-        </div>
-      );
-    }
+    const followLabel = isFriend
+      ? 'Friends'
+      : state.isFollowing
+        ? 'Following'
+        : state.isFollowedBy
+          ? 'Follow back'
+          : 'Follow';
 
     return (
       <div className="grid grid-cols-3 gap-2">
         <ProfileButton uid={person.uid} />
+
         <button
           type="button"
           onClick={() => toggleFollow(person)}
           disabled={busy}
+          title={state.isFollowing ? 'Unfollow' : followLabel}
           className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
-            state.isFollowing
-              ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300'
-              : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
-          }`}
-        >
-          {state.isFollowing ? 'Following' : 'Follow'}
-        </button>
-        <button
-          type="button"
-          onClick={() => connect(person)}
-          disabled={busy || state.connectionStatus === 'friends'}
-          className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
-            state.connectionStatus === 'friends'
+            isFriend
               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-              : state.connectionStatus === 'pending' && state.connectionDirection === 'incoming'
-                ? 'bg-teal-700 text-white'
+              : state.isFollowing
+                ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300'
                 : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
           }`}
         >
-          {connectionLabel(person)}
+          {busy ? <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" /> : followLabel}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openMessage(person.uid)}
+          disabled={busy}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
+        >
+          {busy ? (
+            <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
+          ) : (
+            <i className="fa-regular fa-message text-[10px]" aria-hidden="true" />
+          )}
+          Message
         </button>
       </div>
     );
-  }, [activeTab, busyUid, connect, connectionLabel, declineRequest, openMessage, toggleFollow]);
+  }, [busyUid, openMessage, toggleFollow]);
 
   if (!user?.uid) {
     return (
@@ -687,15 +528,9 @@ const ConnectPage = () => {
                   >
                     <i className={`fa-solid ${tab.icon} w-4 text-center text-xs`} aria-hidden="true" />
                     <span className="flex-1">{tab.label}</span>
-                    {showRequestBadge ? (
-                      <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] text-white">
-                        {count > 99 ? '99+' : count}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500">
-                        {count > 99 ? '99+' : count}
-                      </span>
-                    )}
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500">
+                      {count > 99 ? '99+' : count}
+                    </span>
                   </button>
                 );
               })}
@@ -714,7 +549,7 @@ const ConnectPage = () => {
                   Connect with people
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">
-                  Discover new learners, manage requests and keep your network in one place.
+                  Discover new learners, follow people you enjoy talking with and keep your network in one place.
                 </p>
               </div>
 
@@ -754,11 +589,9 @@ const ConnectPage = () => {
                     >
                       <i className={`fa-solid ${tab.icon} text-[10px]`} aria-hidden="true" />
                       {tab.label}
-                      {showRequestBadge && (
-                        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-black text-white">
-                          {count > 99 ? '99+' : count}
-                        </span>
-                      )}
+                      <span className="text-[10px] font-black opacity-70">
+                        {count > 99 ? '99+' : count}
+                      </span>
                     </button>
                   );
                 })}
@@ -778,9 +611,8 @@ const ConnectPage = () => {
                 {TAB_META.find((tab) => tab.id === activeTab)?.label}
               </h2>
               <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                {activeTab === 'discover' && 'Everyone you can meet who is not already your friend'}
-                {activeTab === 'requests' && 'People waiting for your response'}
-                {activeTab === 'friends' && 'People you have connected with'}
+                {activeTab === 'discover' && 'People you can meet who are not already mutual followers'}
+                {activeTab === 'friends' && 'People who follow you and you follow back'}
                 {activeTab === 'following' && 'People you chose to follow'}
                 {activeTab === 'followers' && 'People following your profile'}
               </p>
