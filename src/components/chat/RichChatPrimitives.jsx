@@ -383,16 +383,39 @@ export const RichMessageBubble = memo(({
           )}
 
           {(type === 'image' || type === 'gif') && mediaUrl ? (
-            <div className={`group relative max-w-full overflow-hidden rounded-[1.35rem] border shadow-xl ${isOwn ? 'rounded-br-md border-blue-400/20 bg-blue-600/20' : 'rounded-bl-md border-white/10 bg-white/[0.06]'}`}>
-              <button type="button" onClick={openActions} className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white" aria-label="Message actions">
-                <i className="fa-solid fa-ellipsis-vertical text-[11px]" />
-              </button>
-              <button type="button" onClick={() => onImageClick?.(mediaUrl)} className="block max-w-full">
-                <img src={mediaUrl} alt={type === 'gif' ? 'Shared GIF' : 'Shared image'} className="block max-h-[280px] w-auto max-w-[min(300px,calc(100vw-96px))] object-cover" loading="lazy" />
-              </button>
-              <div className={`flex items-center justify-end px-3 py-1.5 text-[10px] font-bold ${isOwn ? 'bg-blue-600/80 text-blue-50' : 'bg-black/20 text-slate-400'}`}>
-                {time}
+            <div className="relative">
+              <div className={`group relative max-w-full overflow-hidden rounded-[1.35rem] border shadow-xl ${isOwn ? 'rounded-br-md border-blue-400/20 bg-blue-600/20' : 'rounded-bl-md border-white/10 bg-white/[0.06]'}`}>
+                {reply && (
+                  <div className={`mx-2 mt-2 flex flex-col gap-0.5 rounded-2xl border-l-4 p-2.5 text-[12px] ${isOwn ? 'border-l-white/70 bg-black/20 text-white/90' : 'border-l-blue-400 bg-black/20 text-slate-300'}`}>
+                    <span className={`flex items-center gap-1.5 font-black ${isOwn ? 'text-blue-100' : 'text-blue-300'}`}>
+                      <i className="fas fa-reply text-[9px]" />
+                      {reply.senderName || 'User'}
+                    </span>
+                    <span className="max-w-[240px] truncate opacity-80">{reply.text || (reply.type === 'gif' ? 'GIF' : reply.type === 'image' ? 'Image' : '')}</span>
+                  </div>
+                )}
+
+                <button type="button" onClick={openActions} className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white" aria-label="Message actions">
+                  <i className="fa-solid fa-ellipsis-vertical text-[11px]" />
+                </button>
+                <button type="button" onClick={() => onImageClick?.(mediaUrl)} className="block max-w-full">
+                  <img src={mediaUrl} alt={type === 'gif' ? 'Shared GIF' : 'Shared image'} className="block max-h-[280px] w-auto max-w-[min(300px,calc(100vw-96px))] object-cover" loading="lazy" />
+                </button>
+                <div className={`flex items-center justify-end px-3 py-1.5 text-[10px] font-bold ${isOwn ? 'bg-blue-600/80 text-blue-50' : 'bg-black/20 text-slate-400'}`}>
+                  {time}
+                </div>
               </div>
+
+              {Object.keys(reactionSummary).length > 0 && (
+                <div className={`pointer-events-none absolute -bottom-3 z-10 flex flex-wrap gap-1 ${isOwn ? 'right-2' : 'left-2'}`}>
+                  {Object.entries(reactionSummary).map(([emoji, count]) => (
+                    <span key={emoji} className="flex items-center gap-1 rounded-full border border-white/10 bg-[#10172a] px-2 py-0.5 text-[12px] text-slate-100 shadow-xl">
+                      {emoji}
+                      {count > 1 && <span className="text-[10px] font-black opacity-75">{count}</span>}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className={`group relative min-w-0 max-w-full ${
