@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import api from '../../services/api';
 
 const InCallProfileView = memo(({ uid, onBack }) => {
@@ -45,40 +45,6 @@ const InCallProfileView = memo(({ uid, onBack }) => {
     }
   }, [busy, loadProfile, profile?.relationship?.isFollowing, uid]);
 
-  const updateConnection = useCallback(async () => {
-    if (!uid || busy) return;
-
-    const relationship = profile?.relationship || {};
-
-    try {
-      setBusy('connect');
-
-      if (
-        relationship.connectionStatus === 'friends'
-        || (
-          relationship.connectionStatus === 'pending'
-          && relationship.connectionDirection === 'outgoing'
-        )
-      ) {
-        await api.delete(`/api/social/connect/${encodeURIComponent(uid)}`);
-      } else if (
-        relationship.connectionStatus === 'pending'
-        && relationship.connectionDirection === 'incoming'
-      ) {
-        await api.post(`/api/social/connect/${encodeURIComponent(uid)}/accept`);
-      } else {
-        await api.post(`/api/social/connect/${encodeURIComponent(uid)}`);
-      }
-
-      await loadProfile();
-      window.dispatchEvent(new CustomEvent('vaani-social-refresh'));
-    } catch (err) {
-      setError(err?.userMessage || 'Could not update connection.');
-    } finally {
-      setBusy('');
-    }
-  }, [busy, loadProfile, profile?.relationship, uid]);
-
   const openMessages = useCallback(async () => {
     if (!uid || busy) return;
 
@@ -97,15 +63,16 @@ const InCallProfileView = memo(({ uid, onBack }) => {
   const user = profile?.user || {};
   const counts = profile?.counts || {};
 
-  const connectionLabel = useMemo(() => {
-    if (relationship.connectionStatus === 'friends') return 'Friends';
-    if (
-      relationship.connectionStatus === 'pending'
-      && relationship.connectionDirection === 'incoming'
-    ) return 'Accept request';
-    if (relationship.connectionStatus === 'pending') return 'Requested';
-    return 'Connect';
-  }, [relationship.connectionDirection, relationship.connectionStatus]);
+  const isFriend = relationship.isFriend === true
+    || (relationship.isFollowing === true && relationship.isFollowedBy === true);
+
+  const followLabel = isFriend
+    ? 'Friends'
+    : relationship.isFollowing
+      ? 'Following'
+      : relationship.isFollowedBy
+        ? 'Follow back'
+        : 'Follow';
 
   const languages = Array.isArray(user.languages) ? user.languages.filter(Boolean) : [];
   const photo = user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(uid || 'user')}`;
@@ -135,7 +102,7 @@ const InCallProfileView = memo(({ uid, onBack }) => {
           <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
             <div className="h-52 animate-pulse bg-slate-200 dark:bg-white/[0.05] sm:h-64" />
             <div className="p-6">
-              <div className="h-24 w-24 -translate-y-16 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#0b1220] dark:bg-white/10" />
+              <div className="h-24 w-24 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#0b1220] dark:bg-white/10" />
             </div>
           </div>
         ) : error && !profile ? (
@@ -159,10 +126,10 @@ const InCallProfileView = memo(({ uid, onBack }) => {
                 )}
               </div>
 
-              <div className="px-5 pb-6 sm:px-7 sm:pb-7">
+              <div className="px-5 pb-6 pt-6 sm:px-7 sm:pb-7 sm:pt-7">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                   <div className="min-w-0">
-                    <div className="-mt-14 flex items-end gap-4 sm:-mt-16">
+                    <div className="flex items-end gap-4">
                       <img
                         src={photo}
                         alt={user.displayName || 'Vaani user'}
@@ -188,25 +155,30 @@ const InCallProfileView = memo(({ uid, onBack }) => {
                   </div>
 
                   {!relationship.isSelf && (
-                    <div className="grid w-full grid-cols-3 gap-2 lg:w-auto lg:min-w-[390px]">
+                    <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:min-w-[280px]">
                       <button
                         type="button"
                         onClick={toggleFollow}
                         disabled={Boolean(busy)}
-                        className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[11px] font-black transition disabled:opacity-50 ${relationship.isFollowing ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200'}`}
+                        title={relationship.isFollowing ? 'Unfollow' : followLabel}
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-[11px] font-black transition disabled:opacity-50 ${
+                          isFriend
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                            : relationship.isFollowing
+                              ? 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300'
+                              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200'
+                        }`}
                       >
-                        <i className={`fa-solid ${busy === 'follow' ? 'fa-spinner fa-spin' : relationship.isFollowing ? 'fa-user-check' : 'fa-user-plus'}`} />
-                        <span className="truncate">{relationship.isFollowing ? 'Following' : 'Follow'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={updateConnection}
-                        disabled={Boolean(busy)}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[11px] font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-200"
-                      >
-                        <i className={`fa-solid ${busy === 'connect' ? 'fa-spinner fa-spin' : relationship.connectionStatus === 'friends' ? 'fa-handshake' : 'fa-user-group'}`} />
-                        <span className="truncate">{connectionLabel}</span>
+                        <i className={`fa-solid ${
+                          busy === 'follow'
+                            ? 'fa-spinner fa-spin'
+                            : isFriend
+                              ? 'fa-handshake'
+                              : relationship.isFollowing
+                                ? 'fa-user-check'
+                                : 'fa-user-plus'
+                        }`} />
+                        <span className="truncate">{followLabel}</span>
                       </button>
 
                       <button
