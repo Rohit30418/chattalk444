@@ -15,6 +15,12 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import EmojiPicker from 'emoji-picker-react';
 import { Virtuoso } from 'react-virtuoso';
+import {
+  RichImageModal,
+  RichMessageActionSheet,
+  RichMessageBubble,
+  RichReplyPreview,
+} from './RichChatPrimitives';
 
 import useAddMessage from '../../hooks/useAddMessage';
 import getUserDataFromFirestore from '../../hooks/getUserData';
@@ -1590,12 +1596,13 @@ const Chat = ({ uId }) => {
                 item.type === 'date' ? (
                   <DateSeparator date={item.label} />
                 ) : (
-                  <MessageCard
-                    uId={uId}
-                    msgData={item.data}
+                  <RichMessageBubble
+                    currentUserId={uId}
+                    message={item.data}
                     onOpenActions={setActionMessage}
-                    msgReactions={msgReactions[getMessageId(item.data)]}
+                    reactions={msgReactions[getMessageId(item.data)]}
                     onImageClick={setLightboxSrc}
+                    botPhoto={botimg}
                   />
                 )
               )}
@@ -1633,32 +1640,11 @@ const Chat = ({ uId }) => {
 
         <footer className="relative z-20 shrink-0 border-t border-white/10 bg-[#050713]/80 px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-2xl">
           <div className="mx-auto w-full max-w-4xl">
-            {replyingTo && (
-              <div className="mb-2.5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] px-3.5 py-2.5 shadow-xl backdrop-blur-xl">
-                <div className="min-w-0">
-                  <span className="mb-0.5 flex items-center gap-1.5 text-[12px] font-black text-blue-300">
-                    <i className="fas fa-reply text-[10px]" />
-                    Replying to{' '}
-                    {replyingTo.role === 'bot'
-                      ? 'AI'
-                      : (replyingTo.displayName || replyingTo.senderName || 'User')}
-                  </span>
-
-                  <span className="block max-w-[250px] truncate text-[12px] font-medium text-slate-400">
-                    {getReplyText(replyingTo)}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/8 text-slate-400 transition hover:bg-red-500/15 hover:text-red-300"
-                  aria-label="Cancel reply"
-                >
-                  <i className="fas fa-times text-[12px]" />
-                </button>
-              </div>
-            )}
+            <RichReplyPreview
+              message={replyingTo}
+              onCancel={() => setReplyingTo(null)}
+              dark
+            />
 
             <ImagePreviews previews={imagePreviews} onRemove={handleRemovePreview} />
 
@@ -1783,17 +1769,18 @@ const Chat = ({ uId }) => {
           }}
         />
 
-        <MessageActionSheet
+        <RichMessageActionSheet
           message={actionMessage}
           currentUserId={uId}
           onClose={() => setActionMessage(null)}
           onReply={setReplyingTo}
           onReact={handleReact}
           onDelete={handleDeleteMessage}
+          allowDeleteForOthers={actionMessage?.type === 'image'}
         />
 
         {lightboxSrc && (
-          <ImageModal src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+          <RichImageModal src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
         )}
       </div>
     </ChatErrorBoundary>
