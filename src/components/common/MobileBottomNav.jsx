@@ -83,10 +83,10 @@ const MobileBottomNav = () => {
     <>
       <style>{`[aria-label="Rooms mobile navigation"]{display:none!important;}`}</style>
       <nav
-        className="fixed inset-x-0 bottom-0 z-[90] border-t border-slate-200 bg-white px-2 pb-[max(.45rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#07111f] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[90] h-[calc(68px+env(safe-area-inset-bottom))] border-t border-slate-200 bg-white px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#07111f] lg:hidden"
         aria-label="Vaani mobile navigation"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        <div className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-center gap-1">
           {items.map((item) => (
             <NavLink
               key={item.to}
