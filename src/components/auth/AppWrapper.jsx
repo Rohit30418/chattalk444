@@ -37,7 +37,7 @@ const persistUser = (value) => {
   if (value?.uid) {
     localStorage.setItem('userInfo', JSON.stringify(value));
   } else {
-    persistUser(null);
+    localStorage.removeItem('userInfo');
   }
 };
 
