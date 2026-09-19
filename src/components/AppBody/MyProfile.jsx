@@ -118,8 +118,11 @@ const MyProfile = ({ socialActions = null }) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState("");
   const [optionType, setOptionType] = useState([]);
-  const [userInfo, setUserInfo] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const hasCachedOwnProfile = Boolean(authUser?.uid && authUser.uid === userId);
+  const [userInfo, setUserInfo] = useState(() => (
+    hasCachedOwnProfile ? authUser : null
+  ));
+  const [profileLoading, setProfileLoading] = useState(() => !hasCachedOwnProfile);
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupSearch, setPopupSearch] = useState("");
   const [showAppearance, setShowAppearance] = useState(false);
@@ -131,9 +134,13 @@ const MyProfile = ({ socialActions = null }) => {
 
     const fetchUser = async () => {
       try {
-        setProfileLoading(true);
+        if (!hasCachedOwnProfile) setProfileLoading(true);
         const data = await getUserData(userId);
-        if (mounted) setUserInfo(data || null);
+        if (mounted) {
+          setUserInfo((current) => (
+            data ? { ...(current || {}), ...data } : current
+          ));
+        }
       } catch (err) {
         console.error("[MyProfile] Failed to fetch user:", err);
         if (mounted) setUserInfo(null);
@@ -146,7 +153,7 @@ const MyProfile = ({ socialActions = null }) => {
     return () => {
       mounted = false;
     };
-  }, [userId]);
+  }, [hasCachedOwnProfile, userId]);
 
   const handleBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
