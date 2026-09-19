@@ -449,7 +449,7 @@ const MessagesPage = () => {
 
       <div
         className={`mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 ${
-          isMobilePwa ? 'h-full py-0' : 'py-4 lg:py-6'
+          isMobilePwa ? 'flex h-full min-h-0 flex-col py-0' : 'py-4 lg:py-6'
         }`}
       >
         {error && (
@@ -461,7 +461,7 @@ const MessagesPage = () => {
         <div
           className={`grid overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[350px_minmax(0,1fr)] ${
             isMobilePwa
-              ? 'h-full min-h-0 rounded-none border-x-0'
+              ? 'min-h-0 flex-1 rounded-none border-x-0'
               : 'min-h-[680px] rounded-[1.75rem] lg:h-[calc(100dvh-170px)] lg:min-h-[620px]'
           }`}
         >
