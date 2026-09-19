@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AppWrapper';
 import SocialNav from './SocialNav';
 import MemberAvatar from '../common/MemberAvatar';
 import MemberNameplate from '../common/MemberNameplate';
+import useMobilePwaMode from '../../hooks/useMobilePwaMode';
 import {
   RichMessageActionSheet,
   RichReplyPreview,
@@ -45,6 +46,7 @@ const notifyUnreadChanged = () => {
 
 const MessagesPage = () => {
   const { user } = useAuth();
+  const isMobilePwa = useMobilePwaMode();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
@@ -436,17 +438,33 @@ const MessagesPage = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white">
+    <main
+      className={`bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white ${
+        isMobilePwa
+          ? 'h-[100dvh] min-h-0 overflow-hidden pt-[68px] pb-[64px]'
+          : 'min-h-screen'
+      }`}
+    >
       <SocialNav />
 
-      <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 lg:px-8 lg:py-6">
+      <div
+        className={`mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 ${
+          isMobilePwa ? 'flex h-full min-h-0 flex-col py-0' : 'py-4 lg:py-6'
+        }`}
+      >
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
             {error}
           </div>
         )}
 
-        <div className="grid min-h-[680px] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] lg:h-[calc(100dvh-170px)] lg:min-h-[620px] lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[350px_minmax(0,1fr)]">
+        <div
+          className={`grid overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[350px_minmax(0,1fr)] ${
+            isMobilePwa
+              ? 'min-h-0 flex-1 rounded-none border-x-0'
+              : 'min-h-[680px] rounded-[1.75rem] lg:h-[calc(100dvh-170px)] lg:min-h-[620px]'
+          }`}
+        >
           <aside className={`${activeConversation ? 'hidden lg:flex' : 'flex'} min-h-0 flex-col border-r border-slate-200 dark:border-white/10`}>
             <div className="border-b border-slate-200 p-5 dark:border-white/10">
               <div className="flex items-center justify-between gap-3">
@@ -691,7 +709,9 @@ const MessagesPage = () => {
 
                 <form
                   onSubmit={sendMessage}
-                  className="sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0b1220]/95 sm:p-4"
+                  className={`sticky bottom-0 z-30 shrink-0 border-t border-slate-200 bg-white/95 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-[#0b1220]/95 ${
+                    isMobilePwa ? 'p-2.5' : 'p-3 sm:p-4'
+                  }`}
                 >
                   <div className="mx-auto max-w-3xl">
                     <RichReplyPreview
