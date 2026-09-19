@@ -16,7 +16,7 @@ import "../../styles/memberEffects.css";
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
-  { label: "Luna AI", to: "/rooms#ai-bot" },
+  { label: "Luna AI", to: "/aiBot" },
   { label: "Pricing", to: "/#pricing" },
 ];
 
@@ -130,7 +130,7 @@ const Header = () => {
     if (notificationPermission === "granted") {
       return {
         label: "Allowed",
-        text: "This browser can receive Vaani notifications.",
+        text: "Browser permission is allowed. Vaani verifies the push device before delivery.",
         badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
         dotClass: "bg-emerald-500",
       };
@@ -263,7 +263,11 @@ const Header = () => {
       await Swal.fire({
         icon: "error",
         title: "Could not register this device",
-        text: "Please try again after the app finishes loading.",
+        text:
+          result?.message ||
+          (result?.reason === "server-not-configured"
+            ? "Push notifications are not configured on the Vaani server yet."
+            : "The push connection could not be synced. Please try again in a moment."),
         confirmButtonColor: getCssVar("--color-primary"),
         background: getCssVar("--color-surface"),
         color: getCssVar("--color-text"),
@@ -298,7 +302,12 @@ const Header = () => {
     try {
       const syncResult = await syncPushSubscription();
       if (!syncResult?.subscribed) {
-        throw new Error("This device is not registered for push notifications yet.");
+        throw new Error(
+          syncResult?.message ||
+          (syncResult?.reason === "server-not-configured"
+            ? "Push notifications are not configured on the Vaani server yet."
+            : "This device could not be registered for push notifications yet.")
+        );
       }
 
       const registration = await navigator.serviceWorker.ready;
@@ -359,8 +368,7 @@ const Header = () => {
     const currentFullPath = currentPath + currentHash;
 
     if (currentPath === "/ai-bot" || currentPath === "/aiBot") {
-      if (itemTo.includes("ai-bot")) return true;
-      return false;
+      return itemTo === "/aiBot" || itemTo === "/ai-bot";
     }
 
     if (itemTo === currentFullPath) return true;
