@@ -127,7 +127,7 @@ const MyProfile = ({ socialActions = null }) => {
   const [popupSearch, setPopupSearch] = useState("");
   const [showAppearance, setShowAppearance] = useState(false);
 
-  const pageTopPadding = isMobilePwa ? "pt-4 sm:pt-6" : "pt-[86px] lg:pt-[104px]";
+  const pageTopPadding = isMobilePwa ? "pt-0" : "pt-[86px] lg:pt-[104px]";
 
   useEffect(() => {
     let mounted = true;
