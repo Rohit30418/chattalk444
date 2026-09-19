@@ -7,6 +7,7 @@ import { loginToggle } from "../../redux/action";
 import useGoogleLogin from "../../hooks/useGoogleLogin";
 import { useAuth } from "../auth/AppWrapper";
 import api from "../../services/api";
+import MemberAvatar from "../common/MemberAvatar";
 import {
   requestVaaniNotifications,
   syncPushSubscription,
@@ -16,7 +17,7 @@ import "../../styles/memberEffects.css";
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
-  { label: "Luna AI", to: "/rooms#ai-bot" },
+  { label: "Luna AI", to: "/aiBot" },
   { label: "Pricing", to: "/#pricing" },
 ];
 
@@ -91,11 +92,6 @@ const getCssVar = (name, fallback = "") => {
   );
 };
 
-const normalizeProfileTheme = (value) => {
-  const theme = typeof value === "string" ? value.trim().toLowerCase() : "aurora";
-  return ["aurora", "gold", "galaxy"].includes(theme) ? theme : "aurora";
-};
-
 const Header = () => {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -115,22 +111,16 @@ const Header = () => {
   const isRoomsPage = location.pathname === "/rooms";
   const containerWidth = isRoomsPage ? "max-w-8xl" : "max-w-7xl";
   const loginStatus = Boolean(user);
-  const memberProfileTheme = normalizeProfileTheme(user?.profileAnimationId);
-
   const displayName = useMemo(
     () => user?.displayName || user?.email?.split("@")[0] || "Learner",
     [user]
   );
 
-  const initials = useMemo(() => {
-    return (displayName || "Learner").trim().charAt(0).toUpperCase();
-  }, [displayName]);
-
   const notificationStatus = useMemo(() => {
     if (notificationPermission === "granted") {
       return {
         label: "Allowed",
-        text: "This browser can receive Vaani notifications.",
+        text: "Browser permission is allowed. Vaani verifies the push device before delivery.",
         badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
         dotClass: "bg-emerald-500",
       };
@@ -263,7 +253,11 @@ const Header = () => {
       await Swal.fire({
         icon: "error",
         title: "Could not register this device",
-        text: "Please try again after the app finishes loading.",
+        text:
+          result?.message ||
+          (result?.reason === "server-not-configured"
+            ? "Push notifications are not configured on the Vaani server yet."
+            : "The push connection could not be synced. Please try again in a moment."),
         confirmButtonColor: getCssVar("--color-primary"),
         background: getCssVar("--color-surface"),
         color: getCssVar("--color-text"),
@@ -298,7 +292,12 @@ const Header = () => {
     try {
       const syncResult = await syncPushSubscription();
       if (!syncResult?.subscribed) {
-        throw new Error("This device is not registered for push notifications yet.");
+        throw new Error(
+          syncResult?.message ||
+          (syncResult?.reason === "server-not-configured"
+            ? "Push notifications are not configured on the Vaani server yet."
+            : "This device could not be registered for push notifications yet.")
+        );
       }
 
       const registration = await navigator.serviceWorker.ready;
@@ -359,8 +358,7 @@ const Header = () => {
     const currentFullPath = currentPath + currentHash;
 
     if (currentPath === "/ai-bot" || currentPath === "/aiBot") {
-      if (itemTo.includes("ai-bot")) return true;
-      return false;
+      return itemTo === "/aiBot" || itemTo === "/ai-bot";
     }
 
     if (itemTo === currentFullPath) return true;
@@ -399,17 +397,19 @@ const Header = () => {
     }`;
   }, [checkIsActive]);
 
-  const profileVisual = user?.photoURL ? (
-    <img
-      src={user.photoURL}
-      alt={displayName}
-      className="h-8 w-8 rounded-xl object-cover sm:h-9 sm:w-9"
-      referrerPolicy="no-referrer"
+  const profileVisual = (
+    <MemberAvatar
+      user={user}
+      src={user?.photoURL}
+      name={displayName}
+      isMember={user?.isMember === true}
+      profileDecorationId={user?.profileDecorationId}
+      profileAnimationId={user?.profileAnimationId}
+      className="h-9 w-9 sm:h-10 sm:w-10"
+      roundedClass="rounded-xl"
+      fallbackClassName="bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-[var(--color-on-primary)]"
+      loading="eager"
     />
-  ) : (
-    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] text-sm font-black text-[var(--color-on-primary)] sm:h-9 sm:w-9">
-      {initials}
-    </span>
   );
 
   return (
@@ -501,11 +501,7 @@ const Header = () => {
                   className="flex h-10 items-center gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1 pr-1 transition-colors duration-200 hover:border-[var(--color-border-strong)] sm:h-11 sm:pr-3"
                   aria-expanded={isProfileOpen}
                 >
-                  {user?.isMember ? (
-                    <span className={`vaani-profile-frame vaani-profile-theme-${memberProfileTheme} !rounded-2xl !p-[2px]`}>
-                      {profileVisual}
-                    </span>
-                  ) : profileVisual}
+                  {profileVisual}
 
                   <span className="hidden max-w-[130px] truncate text-sm font-black text-[var(--color-muted)] md:block">
                     {displayName}

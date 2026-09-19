@@ -5,6 +5,7 @@ import useUserCollection from "../useUserCollection";
 import { useAuth } from "../auth/AppWrapper";
 import MemberAppearancePanel from "./MemberAppearancePanel";
 import MemberBannerVideo from "../common/MemberBannerVideo";
+import MemberAvatar from "../common/MemberAvatar";
 import useMobilePwaMode from "../../hooks/useMobilePwaMode";
 import "../../styles/memberEffects.css";
 
@@ -59,11 +60,6 @@ const getInitials = (name = "Vaani User") =>
     .join("") || "VU";
 
 const getUserId = (user) => user?.uid || user?.id || user?.userId || user?._id || "";
-
-const normalizeProfileTheme = (value) => {
-  const theme = cleanText(value, "aurora").toLowerCase();
-  return ["aurora", "gold", "galaxy"].includes(theme) ? theme : "aurora";
-};
 
 const Avatar = ({ src, name, className = "h-12 w-12", ring = false }) => {
   const [failed, setFailed] = useState(false);
@@ -122,8 +118,11 @@ const MyProfile = ({ socialActions = null }) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [popupType, setPopupType] = useState("");
   const [optionType, setOptionType] = useState([]);
-  const [userInfo, setUserInfo] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const hasCachedOwnProfile = Boolean(authUser?.uid && authUser.uid === userId);
+  const [userInfo, setUserInfo] = useState(() => (
+    hasCachedOwnProfile ? authUser : null
+  ));
+  const [profileLoading, setProfileLoading] = useState(() => !hasCachedOwnProfile);
   const [popupLoading, setPopupLoading] = useState(false);
   const [popupSearch, setPopupSearch] = useState("");
   const [showAppearance, setShowAppearance] = useState(false);
@@ -135,12 +134,16 @@ const MyProfile = ({ socialActions = null }) => {
 
     const fetchUser = async () => {
       try {
-        setProfileLoading(true);
+        if (!hasCachedOwnProfile) setProfileLoading(true);
         const data = await getUserData(userId);
-        if (mounted) setUserInfo(data || null);
+        if (mounted) {
+          setUserInfo((current) => (
+            data ? { ...(current || {}), ...data } : current
+          ));
+        }
       } catch (err) {
         console.error("[MyProfile] Failed to fetch user:", err);
-        if (mounted) setUserInfo(null);
+        if (mounted && !hasCachedOwnProfile) setUserInfo(null);
       } finally {
         if (mounted) setProfileLoading(false);
       }
@@ -150,7 +153,16 @@ const MyProfile = ({ socialActions = null }) => {
     return () => {
       mounted = false;
     };
-  }, [userId]);
+  }, [hasCachedOwnProfile, userId]);
+
+  useEffect(() => {
+    if (!hasCachedOwnProfile || !authUser) return;
+
+    setUserInfo((current) => ({
+      ...(current || {}),
+      ...authUser,
+    }));
+  }, [authUser, hasCachedOwnProfile]);
 
   const handleBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
@@ -209,7 +221,6 @@ const MyProfile = ({ socialActions = null }) => {
   );
   const isMember = userInfo?.isMember === true;
   const isOwnProfile = Boolean(authUser?.uid && authUser.uid === userId);
-  const profileTheme = normalizeProfileTheme(userInfo?.profileAnimationId);
   const location = cleanText(userInfo?.location || userInfo?.country || userInfo?.city, "");
   const isOnline = Boolean(userInfo?.isOnline || userInfo?.online || userInfo?.onlineStatus === "online");
 
@@ -315,7 +326,7 @@ const MyProfile = ({ socialActions = null }) => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 pb-10 text-slate-950 dark:bg-[#050713] dark:text-white">
+    <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-10 text-slate-950 dark:bg-[#050713] dark:text-white">
       <div className={`mx-auto w-full max-w-7xl px-3 sm:px-6 ${pageTopPadding}`}>
         <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:rounded-[2rem]">
           <div className="relative h-48 overflow-hidden bg-[#082f36] sm:h-64 lg:h-72">
@@ -343,9 +354,18 @@ const MyProfile = ({ socialActions = null }) => {
               <div className="flex min-w-0 flex-col sm:flex-row sm:items-end sm:gap-5">
                 <div className="relative shrink-0">
                   {isMember ? (
-                    <span className={`vaani-profile-frame vaani-profile-theme-${profileTheme}`}>
-                      <Avatar src={photoURL} name={displayName} ring className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl" />
-                    </span>
+                    <MemberAvatar
+                      user={userInfo}
+                      src={photoURL}
+                      name={displayName}
+                      isMember
+                      profileDecorationId={userInfo?.profileDecorationId}
+                      profileAnimationId={userInfo?.profileAnimationId}
+                      className="h-28 w-28 sm:h-32 sm:w-32"
+                      avatarClassName="border-4 border-white shadow-xl dark:border-[#0b1220]"
+                      fallbackClassName="bg-teal-700 text-2xl text-white sm:text-3xl"
+                      loading="eager"
+                    />
                   ) : (
                     <Avatar src={photoURL} name={displayName} ring className="h-28 w-28 text-2xl sm:h-32 sm:w-32 sm:text-3xl" />
                   )}

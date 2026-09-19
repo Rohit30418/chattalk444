@@ -181,8 +181,12 @@ export const syncPushSubscription = async () => {
       const { data } = await api.get('/api/social/push/public-key');
       const publicKey = data?.publicKey;
 
-      if (!publicKey) {
-        return { subscribed: false, reason: 'server-not-configured' };
+      if (data?.configured === false || !publicKey) {
+        return {
+          subscribed: false,
+          reason: 'server-not-configured',
+          message: 'Push notifications are not configured on the Vaani server yet.',
+        };
       }
 
       const expectedKey = base64UrlToUint8Array(publicKey);
@@ -216,10 +220,18 @@ export const syncPushSubscription = async () => {
         subscription: subscription.toJSON(),
       });
 
-      return { subscribed: true };
+      return {
+        subscribed: true,
+        endpoint: subscription.endpoint || '',
+      };
     } catch (error) {
-      console.warn('[PWA] Push subscription unavailable:', error?.userMessage || error?.message || error);
-      return { subscribed: false, reason: 'request-failed' };
+      const message = error?.userMessage || error?.message || 'Push registration failed';
+      console.warn('[PWA] Push subscription unavailable:', message);
+      return {
+        subscribed: false,
+        reason: 'request-failed',
+        message,
+      };
     }
   })();
 

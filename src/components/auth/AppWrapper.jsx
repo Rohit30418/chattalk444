@@ -20,49 +20,86 @@ export const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
+const readCachedUser = () => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const cached = JSON.parse(localStorage.getItem('userInfo') || 'null');
+    return cached?.uid ? cached : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistUser = (value) => {
+  if (typeof window === 'undefined') return;
+
+  if (value?.uid) {
+    localStorage.setItem('userInfo', JSON.stringify(value));
+  } else {
+    localStorage.removeItem('userInfo');
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Hydrate the last synced profile immediately. Firebase/backend validation
+  // still runs below, but returning users no longer stare at a full-screen
+  // loader while their avatar/member decorations are fetched again.
+  const [user, setUser] = useState(readCachedUser);
+  const [loading, setLoading] = useState(() => !readCachedUser());
 
   useEffect(() => {
     const auth = getAuth(firebaseApp);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const cached = readCachedUser();
+        const cachedForUser = cached?.uid === firebaseUser.uid ? cached : null;
         const baseUser = {
           uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName,
-          email: firebaseUser.email,
-          photoURL: firebaseUser.photoURL,
+          displayName: firebaseUser.displayName || cachedForUser?.displayName || '',
+          email: firebaseUser.email || cachedForUser?.email || '',
+          photoURL: firebaseUser.photoURL || cachedForUser?.photoURL || '',
         };
+        const immediateUser = {
+          ...(cachedForUser || {}),
+          ...baseUser,
+          uid: firebaseUser.uid,
+          isMember: cachedForUser?.isMember === true,
+        };
+
+        // Render from the local snapshot first; refresh it from the API in the
+        // background. This also prevents the first paint from falling back to
+        // the default member decoration.
+        setUser(immediateUser);
+        persistUser(immediateUser);
+        setLoading(false);
+        connectSocketForFirebaseUser(firebaseUser);
 
         try {
           const { data } = await api.post('/api/users', baseUser);
           const backendUser = data?.user || {};
           const syncedUser = {
-            ...baseUser,
+            ...immediateUser,
             ...backendUser,
             uid: firebaseUser.uid,
+            displayName: backendUser?.displayName || baseUser.displayName,
+            email: backendUser?.email || baseUser.email,
+            photoURL: backendUser?.photoURL || baseUser.photoURL,
             isMember: backendUser?.isMember === true,
           };
 
           setUser(syncedUser);
-          localStorage.setItem('userInfo', JSON.stringify(syncedUser));
+          persistUser(syncedUser);
         } catch (error) {
+          // Keep the cached profile on temporary backend/cold-start failures.
+          // Firebase still owns authentication, so protected requests remain
+          // server-verified even while this visual snapshot is displayed.
           console.error('Failed to sync user profile with backend:', error);
-          const fallbackUser = {
-            ...baseUser,
-            isMember: false,
-          };
-          setUser(fallbackUser);
-          localStorage.setItem('userInfo', JSON.stringify(fallbackUser));
         }
-
-        connectSocketForFirebaseUser(firebaseUser);
-        setLoading(false);
       } else {
         setUser(null);
-        localStorage.removeItem('userInfo');
+        persistUser(null);
         disconnectSocket();
         setLoading(false);
       }
@@ -86,6 +123,43 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+
+    const mergeAppearance = (updatedUser = {}) => {
+      if (updatedUser?.uid && updatedUser.uid !== user.uid) return;
+
+      setUser((current) => {
+        if (!current?.uid || current.uid !== user.uid) return current;
+
+        const merged = {
+          ...current,
+          ...updatedUser,
+          uid: current.uid,
+          isMember:
+            updatedUser?.isMember === undefined
+              ? current.isMember === true
+              : updatedUser.isMember === true,
+        };
+
+        persistUser(merged);
+        return merged;
+      });
+    };
+
+    const onLocalStyleUpdated = (event) => {
+      mergeAppearance(event?.detail?.user || {});
+    };
+
+    socket.on('social-member-appearance', mergeAppearance);
+    window.addEventListener('vaani-member-style-updated', onLocalStyleUpdated);
+
+    return () => {
+      socket.off('social-member-appearance', mergeAppearance);
+      window.removeEventListener('vaani-member-style-updated', onLocalStyleUpdated);
+    };
+  }, [user?.uid]);
+
   const login = useCallback(async (email, password) => {
     try {
       const { data } = await axios.post(
@@ -99,7 +173,7 @@ export const AuthProvider = ({ children }) => {
       };
 
       setUser(loggedInUser);
-      localStorage.setItem('userInfo', JSON.stringify(loggedInUser));
+      persistUser(loggedInUser);
 
       const firebaseUser = getAuth(firebaseApp).currentUser;
       if (firebaseUser) connectSocketForFirebaseUser(firebaseUser);
@@ -125,7 +199,7 @@ export const AuthProvider = ({ children }) => {
       };
 
       setUser(registeredUser);
-      localStorage.setItem('userInfo', JSON.stringify(registeredUser));
+      persistUser(registeredUser);
 
       const firebaseUser = getAuth(firebaseApp).currentUser;
       if (firebaseUser) connectSocketForFirebaseUser(firebaseUser);
@@ -151,7 +225,7 @@ export const AuthProvider = ({ children }) => {
       };
 
       setUser(refreshedUser);
-      localStorage.setItem('userInfo', JSON.stringify(refreshedUser));
+      persistUser(refreshedUser);
       return refreshedUser;
     } catch (error) {
       console.error('Failed to refresh user profile:', error);
@@ -168,7 +242,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Firebase sign out failed:', error);
     } finally {
       setUser(null);
-      localStorage.removeItem('userInfo');
+      persistUser(null);
       disconnectSocket();
     }
 
