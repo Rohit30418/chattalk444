@@ -87,8 +87,12 @@ const PwaManager = () => {
     let cancelled = false;
 
     const syncThisDevice = async () => {
-      const result = await syncPushSubscription().catch(() => ({ subscribed: false }));
-      if (!cancelled) setPushSubscribed(result?.subscribed === true);
+      const result = await syncPushSubscription().catch(() => null);
+      if (!cancelled) {
+        // A failed background sync can be a temporary API/network problem.
+        // Do not turn that into a permanent repair banner on every page.
+        setPushSubscribed(result?.subscribed === true ? true : null);
+      }
     };
 
     syncThisDevice();
@@ -212,10 +216,9 @@ const PwaManager = () => {
   const standalone = isStandalonePwa();
   const showInstall = installable && !standalone;
   const showNotifications = Boolean(user?.uid && permission === 'default');
-  const showRepair = Boolean(user?.uid && permission === 'granted' && pushSubscribed === false);
   const visible = useMemo(
-    () => !standalone && (showRepair || (!dismissed && (showInstall || showNotifications))),
-    [dismissed, showInstall, showNotifications, showRepair, standalone]
+    () => !standalone && !dismissed && (showInstall || showNotifications),
+    [dismissed, showInstall, showNotifications, standalone]
   );
 
   const installApp = async () => {
@@ -268,12 +271,10 @@ const PwaManager = () => {
 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-black">
-            {showRepair ? 'Finish notifications on this device' : 'Make Vaani feel like an app'}
+            Make Vaani feel like an app
           </p>
           <p className="mt-0.5 text-[11px] font-medium leading-4 text-slate-400">
-            {showRepair
-              ? 'Permission is allowed, but this phone still needs to register its push connection.'
-              : 'Install it and turn on alerts for messages, follows, connections and room chat.'}
+            Install it and turn on alerts for messages, follows, connections and room chat.
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
@@ -289,7 +290,7 @@ const PwaManager = () => {
               </button>
             )}
 
-            {(showNotifications || showRepair) && (
+            {showNotifications && (
               <button
                 type="button"
                 onClick={enableNotifications}
@@ -297,22 +298,20 @@ const PwaManager = () => {
                 className="rounded-xl bg-teal-600 px-3 py-2 text-[11px] font-black text-white disabled:opacity-60"
               >
                 <i className="fa-solid fa-bell mr-1.5" aria-hidden="true" />
-                {showRepair ? 'Register this device' : 'Enable notifications'}
+                Enable notifications
               </button>
             )}
           </div>
         </div>
 
-        {!showRepair && (
-          <button
-            type="button"
-            onClick={dismiss}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-white/10 hover:text-white"
-            aria-label="Dismiss app prompt"
-          >
-            <i className="fa-solid fa-xmark" aria-hidden="true" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={dismiss}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-white/10 hover:text-white"
+          aria-label="Dismiss app prompt"
+        >
+          <i className="fa-solid fa-xmark" aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
