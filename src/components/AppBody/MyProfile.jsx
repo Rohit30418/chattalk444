@@ -143,7 +143,7 @@ const MyProfile = ({ socialActions = null }) => {
         }
       } catch (err) {
         console.error("[MyProfile] Failed to fetch user:", err);
-        if (mounted) setUserInfo(null);
+        if (mounted && !hasCachedOwnProfile) setUserInfo(null);
       } finally {
         if (mounted) setProfileLoading(false);
       }
@@ -154,6 +154,15 @@ const MyProfile = ({ socialActions = null }) => {
       mounted = false;
     };
   }, [hasCachedOwnProfile, userId]);
+
+  useEffect(() => {
+    if (!hasCachedOwnProfile || !authUser) return;
+
+    setUserInfo((current) => ({
+      ...(current || {}),
+      ...authUser,
+    }));
+  }, [authUser, hasCachedOwnProfile]);
 
   const handleBack = useCallback(() => {
     if (window.history.length > 1) navigate(-1);
