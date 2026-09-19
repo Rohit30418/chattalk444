@@ -112,7 +112,8 @@ const ConnectPage = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [discoverTotal, setDiscoverTotal] = useState(0);
-  const [busyUid, setBusyUid] = useState('');
+  const [followBusyUid, setFollowBusyUid] = useState('');
+  const [messageBusyUid, setMessageBusyUid] = useState('');
   const [tabCounts, setTabCounts] = useState({
     friends: 0,
     following: 0,
@@ -304,10 +305,10 @@ const ConnectPage = () => {
   }, [activeTab, loadCollection, loadCounts]);
 
   const toggleFollow = useCallback(async (person) => {
-    if (!user?.uid || busyUid) return;
+    if (!user?.uid || followBusyUid === person.uid) return;
 
     try {
-      setBusyUid(person.uid);
+      setFollowBusyUid(person.uid);
       const isFollowing = person.relationship?.isFollowing === true;
 
       if (isFollowing) {
@@ -334,15 +335,15 @@ const ConnectPage = () => {
     } catch (err) {
       setError(err.userMessage || 'Could not update follow.');
     } finally {
-      setBusyUid('');
+      setFollowBusyUid('');
     }
-  }, [busyUid, refreshAfterAction, updatePerson, user?.uid]);
+  }, [followBusyUid, refreshAfterAction, updatePerson, user?.uid]);
 
   const openMessage = useCallback(async (uid) => {
-    if (!user?.uid || busyUid) return;
+    if (!user?.uid || messageBusyUid === uid) return;
 
     try {
-      setBusyUid(uid);
+      setMessageBusyUid(uid);
       const { data } = await api.post(`/api/social/conversations/${encodeURIComponent(uid)}`);
       const conversationId = data?.conversation?.id;
       navigate(
@@ -353,9 +354,9 @@ const ConnectPage = () => {
     } catch (err) {
       setError(err.userMessage || 'Could not open conversation.');
     } finally {
-      setBusyUid('');
+      setMessageBusyUid('');
     }
-  }, [busyUid, navigate, user?.uid]);
+  }, [messageBusyUid, navigate, user?.uid]);
 
   const visiblePeople = useMemo(() => {
     if (activeTab === 'discover') return people;
@@ -406,7 +407,8 @@ const ConnectPage = () => {
   }, [activeTab]);
 
   const renderActions = useCallback((person) => {
-    const busy = busyUid === person.uid;
+    const followBusy = followBusyUid === person.uid;
+    const messageBusy = messageBusyUid === person.uid;
     const state = person.relationship || {};
     const isFriend = state.isFriend === true
       || (state.isFollowing === true && state.isFollowedBy === true)
@@ -427,7 +429,7 @@ const ConnectPage = () => {
         <button
           type="button"
           onClick={() => toggleFollow(person)}
-          disabled={busy}
+          disabled={followBusy}
           title={state.isFollowing ? 'Unfollow' : followLabel}
           className={`rounded-xl px-3 py-2.5 text-xs font-black transition-colors disabled:opacity-60 ${
             isFriend
@@ -437,16 +439,16 @@ const ConnectPage = () => {
                 : 'border border-slate-200 bg-white/80 text-slate-700 hover:border-teal-300 dark:border-white/10 dark:bg-black/10 dark:text-slate-200'
           }`}
         >
-          {busy ? <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" /> : followLabel}
+          {followBusy ? <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" /> : followLabel}
         </button>
 
         <button
           type="button"
           onClick={() => openMessage(person.uid)}
-          disabled={busy}
+          disabled={messageBusy}
           className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2.5 text-xs font-black text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
         >
-          {busy ? (
+          {messageBusy ? (
             <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />
           ) : (
             <i className="fa-regular fa-message text-[10px]" aria-hidden="true" />
@@ -455,7 +457,7 @@ const ConnectPage = () => {
         </button>
       </div>
     );
-  }, [busyUid, openMessage, toggleFollow]);
+  }, [followBusyUid, messageBusyUid, openMessage, toggleFollow]);
 
   if (!user?.uid) {
     return (
