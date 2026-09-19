@@ -386,12 +386,12 @@ export const RichMessageBubble = memo(({
             <div className="relative">
               <div className={`group relative max-w-full overflow-hidden rounded-[1.35rem] border shadow-xl ${isOwn ? 'rounded-br-md border-blue-400/20 bg-blue-600/20' : 'rounded-bl-md border-white/10 bg-white/[0.06]'}`}>
                 {reply && (
-                  <div className={`mx-2 mt-2 flex flex-col gap-0.5 rounded-2xl border-l-4 p-2.5 text-[12px] ${isOwn ? 'border-l-white/70 bg-black/20 text-white/90' : 'border-l-blue-400 bg-black/20 text-slate-300'}`}>
-                    <span className={`flex items-center gap-1.5 font-black ${isOwn ? 'text-blue-100' : 'text-blue-300'}`}>
-                      <i className="fas fa-reply text-[9px]" />
+                  <div className={`mx-2 mt-2 flex max-w-[230px] flex-col gap-0.5 overflow-hidden rounded-xl border-l-[3px] px-2.5 py-1.5 ${isOwn ? 'border-l-white/70 bg-black/20 text-white/90' : 'border-l-blue-400 bg-black/20 text-slate-300'}`}>
+                    <span className={`flex items-center gap-1 truncate text-[10px] font-black leading-4 ${isOwn ? 'text-blue-100' : 'text-blue-300'}`}>
+                      <i className="fas fa-reply text-[8px]" />
                       {reply.senderName || 'User'}
                     </span>
-                    <span className="max-w-[240px] truncate opacity-80">{reply.text || (reply.type === 'gif' ? 'GIF' : reply.type === 'image' ? 'Image' : '')}</span>
+                    <span className="truncate text-[11px] font-medium leading-4 opacity-75">{reply.text || (reply.type === 'gif' ? 'GIF' : reply.type === 'image' ? 'Image' : '')}</span>
                   </div>
                 )}
 
@@ -432,12 +432,12 @@ export const RichMessageBubble = memo(({
               )}
 
               {!isEmoji && reply && (
-                <div className={`relative mb-2.5 flex flex-col gap-0.5 rounded-2xl border-l-4 p-2.5 text-[12px] ${isOwn ? 'border-l-white/70 bg-black/15 text-white/90' : 'border-l-blue-400 bg-black/20 text-slate-300'}`}>
-                  <span className={`flex items-center gap-1.5 font-black ${isOwn ? 'text-blue-100' : 'text-blue-300'}`}>
-                    <i className="fas fa-reply text-[9px]" />
+                <div className={`relative mb-2 max-w-[230px] overflow-hidden rounded-xl border-l-[3px] px-2.5 py-1.5 ${isOwn ? 'border-l-white/70 bg-black/15 text-white/90' : 'border-l-blue-400 bg-black/20 text-slate-300'}`}>
+                  <span className={`flex items-center gap-1 truncate text-[10px] font-black leading-4 ${isOwn ? 'text-blue-100' : 'text-blue-300'}`}>
+                    <i className="fas fa-reply text-[8px]" />
                     {reply.senderName || 'User'}
                   </span>
-                  <span className="max-w-[240px] truncate opacity-80">{reply.text || (reply.type === 'gif' ? 'GIF' : reply.type === 'image' ? 'Image' : '')}</span>
+                  <span className="block truncate text-[11px] font-medium leading-4 opacity-75">{reply.text || (reply.type === 'gif' ? 'GIF' : reply.type === 'image' ? 'Image' : '')}</span>
                 </div>
               )}
 
