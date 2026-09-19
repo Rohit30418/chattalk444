@@ -644,16 +644,18 @@ const MessagesPage = () => {
                                     : 'rounded-bl-md border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101626]'
                                 }`}>
                                   {message.replyTo?.messageId && (
-                                    <div className={`mb-2 rounded-xl border-l-4 px-2.5 py-2 text-[11px] ${
+                                    <div className={`mb-2 max-w-[230px] overflow-hidden rounded-xl border-l-[3px] px-2.5 py-1.5 ${
                                       mine
                                         ? 'border-l-white/70 bg-black/10 text-teal-50'
                                         : 'border-l-teal-500 bg-slate-50 text-slate-600 dark:bg-black/20 dark:text-slate-300'
                                     }`}>
-                                      <p className={`font-black ${mine ? 'text-white' : 'text-teal-700 dark:text-teal-300'}`}>
-                                        <i className="fa-solid fa-reply mr-1 text-[9px]" />
+                                      <p className={`truncate text-[10px] font-black leading-4 ${
+                                        mine ? 'text-white' : 'text-teal-700 dark:text-teal-300'
+                                      }`}>
+                                        <i className="fa-solid fa-reply mr-1 text-[8px]" />
                                         {message.replyTo.senderName || 'User'}
                                       </p>
-                                      <p className="mt-0.5 max-w-[240px] truncate opacity-80">
+                                      <p className="mt-0.5 truncate text-[11px] font-medium leading-4 opacity-75">
                                         {message.replyTo.text || 'Message'}
                                       </p>
                                     </div>
