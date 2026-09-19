@@ -42,7 +42,6 @@ const PwaManager = () => {
   const [permission, setPermission] = useState(
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   );
-  const [pushSubscribed, setPushSubscribed] = useState(null);
   const [busy, setBusy] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     const until = Number(localStorage.getItem('vaani-pwa-prompt-dismissed-until') || 0);
@@ -79,20 +78,12 @@ const PwaManager = () => {
   }, []);
 
   useEffect(() => {
-    if (!user?.uid || permission !== 'granted') {
-      setPushSubscribed(null);
-      return;
-    }
-
-    let cancelled = false;
+    if (!user?.uid || permission !== 'granted') return undefined;
 
     const syncThisDevice = async () => {
-      const result = await syncPushSubscription().catch(() => null);
-      if (!cancelled) {
-        // A failed background sync can be a temporary API/network problem.
-        // Do not turn that into a permanent repair banner on every page.
-        setPushSubscribed(result?.subscribed === true ? true : null);
-      }
+      // Keep registration repair in the background. A temporary API/network
+      // failure must not become a permanent global popup on every page.
+      await syncPushSubscription().catch(() => null);
     };
 
     syncThisDevice();
@@ -103,7 +94,6 @@ const PwaManager = () => {
     window.addEventListener('focus', onFocus);
 
     return () => {
-      cancelled = true;
       window.removeEventListener('online', onOnline);
       window.removeEventListener('focus', onFocus);
     };
@@ -238,7 +228,6 @@ const PwaManager = () => {
     try {
       const result = await requestVaaniNotifications();
       setPermission(result.permission);
-      setPushSubscribed(result?.subscribed === true);
 
       if (result.permission === 'granted') {
         if (result.subscribed) {
