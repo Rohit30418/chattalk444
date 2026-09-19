@@ -233,7 +233,12 @@ const PwaManager = () => {
         if (result.subscribed) {
           toast.success('This device is registered for Vaani notifications');
         } else {
-          toast.error('Could not register this device. Please try again.');
+          toast.error(
+            result?.message ||
+            (result?.reason === 'server-not-configured'
+              ? 'Push notifications are not configured on the Vaani server yet.'
+              : 'Could not sync this device for push notifications.')
+          );
         }
       } else if (result.permission === 'denied') {
         toast.info('Notifications are blocked in your browser settings');
