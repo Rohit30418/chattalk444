@@ -257,7 +257,7 @@ const HomeBody = () => {
 
   if (error) {
     return (
-      <div className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 text-center dark:bg-[#050713] ${isMobilePwa ? 'pt-8' : 'pt-28'}`}>
+      <div className={`flex items-center justify-center bg-slate-50 px-4 text-center dark:bg-[#050713] ${isMobilePwa ? 'min-h-full pt-0' : 'min-h-screen pt-28'}`}>
         <div className="max-w-md rounded-[1.5rem] border border-red-200 bg-white p-8 shadow-sm dark:border-red-400/20 dark:bg-[#101626]">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500 dark:bg-red-500/10">
             <i className="fa-solid fa-wifi text-xl" />
@@ -272,7 +272,7 @@ const HomeBody = () => {
   }
 
   return (
-    <div className={`min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#050713] ${isMobilePwa ? 'pb-5 pt-4' : 'pb-28 pt-[86px] lg:pb-16 lg:pt-[104px]'}`}>
+    <div className={`overflow-x-hidden bg-slate-50 dark:bg-[#050713] ${isMobilePwa ? 'min-h-full pb-0 pt-0' : 'min-h-screen pb-28 pt-[86px] lg:pb-16 lg:pt-[104px]'}`}>
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <section id="rooms-grid">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">

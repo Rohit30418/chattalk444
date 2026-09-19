@@ -4,6 +4,7 @@ import api from '../../services/api';
 import socket from '../../services/socket';
 import { useAuth } from '../auth/AppWrapper';
 import '../../styles/memberEffects.css';
+import useMobilePwaMode from '../../hooks/useMobilePwaMode';
 
 const TAB_META = [
   { id: 'discover', label: 'Discover', icon: 'fa-compass' },
@@ -102,6 +103,7 @@ const ProfileButton = ({ uid }) => (
 const ConnectPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobilePwa = useMobilePwaMode();
 
   const [activeTab, setActiveTab] = useState('discover');
   const [people, setPeople] = useState([]);
@@ -484,8 +486,8 @@ const ConnectPage = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50  text-slate-950 dark:bg-[#050713] dark:text-white pt-[20px]">
-      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 lg:py-7">
+    <main className={`min-h-full bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white ${isMobilePwa ? 'pt-0' : 'pt-[20px]'}`}>
+      <div className={`mx-auto grid w-full max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:px-8 lg:py-7 ${isMobilePwa ? 'py-0' : 'py-5'}`}>
         <aside className="hidden lg:block">
           <div className="sticky top-[104px] rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#0b1220]">
             <Link

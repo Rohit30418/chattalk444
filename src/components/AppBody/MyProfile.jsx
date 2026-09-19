@@ -127,7 +127,7 @@ const MyProfile = ({ socialActions = null }) => {
   const [popupSearch, setPopupSearch] = useState("");
   const [showAppearance, setShowAppearance] = useState(false);
 
-  const pageTopPadding = isMobilePwa ? "pt-4 sm:pt-6" : "pt-[86px] lg:pt-[104px]";
+  const pageTopPadding = isMobilePwa ? "pt-0" : "pt-[86px] lg:pt-[104px]";
 
   useEffect(() => {
     let mounted = true;
@@ -301,7 +301,7 @@ const MyProfile = ({ socialActions = null }) => {
 
   if (profileLoading || loading) {
     return (
-      <main className="min-h-screen bg-slate-50 dark:bg-[#050713]">
+      <main className={`${isMobilePwa ? 'min-h-full' : 'min-h-screen'} bg-slate-50 dark:bg-[#050713]`}>
         <div className={`mx-auto max-w-7xl px-4 pb-6 sm:px-6 ${pageTopPadding}`}>
           <div className="h-64 animate-pulse rounded-[2rem] bg-slate-200 dark:bg-white/[0.05]" />
           <div className="mx-6 mt-6 h-24 w-24 animate-pulse rounded-full border-4 border-white bg-slate-300 dark:border-[#050713] dark:bg-white/10" />
@@ -312,7 +312,7 @@ const MyProfile = ({ socialActions = null }) => {
 
   if (error || !userInfo) {
     return (
-      <main className={`flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-[#050713] ${pageTopPadding}`}>
+      <main className={`flex items-center justify-center bg-slate-50 px-4 dark:bg-[#050713] ${isMobilePwa ? 'min-h-full' : 'min-h-screen'} ${pageTopPadding}`}>
         <div className="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-white/10 dark:bg-[#101626]">
           <i className="fa-solid fa-triangle-exclamation text-2xl text-red-500" aria-hidden="true" />
           <h2 className="mt-4 text-xl font-black text-slate-950 dark:text-white">Profile not found</h2>
@@ -326,7 +326,7 @@ const MyProfile = ({ socialActions = null }) => {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-slate-50 pb-10 text-slate-950 dark:bg-[#050713] dark:text-white">
+    <main className={`${isMobilePwa ? 'min-h-full pb-0' : 'min-h-screen pb-10'} overflow-x-hidden bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white`}>
       <div className={`mx-auto w-full max-w-7xl px-3 sm:px-6 ${pageTopPadding}`}>
         <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-[#0b1220] sm:rounded-[2rem]">
           <div className="relative h-48 overflow-hidden bg-[#082f36] sm:h-64 lg:h-72">

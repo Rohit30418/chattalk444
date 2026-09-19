@@ -441,7 +441,7 @@ const MessagesPage = () => {
     <main
       className={`bg-slate-50 text-slate-950 dark:bg-[#050713] dark:text-white ${
         isMobilePwa
-          ? 'h-[100dvh] min-h-0 overflow-hidden pt-[68px] pb-[64px]'
+          ? 'h-full min-h-0 overflow-hidden'
           : 'min-h-screen'
       }`}
     >
