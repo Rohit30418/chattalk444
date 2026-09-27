@@ -33,20 +33,21 @@ export const connectSocketForFirebaseUser = (firebaseUser) => {
   firebaseUserForSocket = firebaseUser || null;
 
   if (!firebaseUserForSocket) {
-    if (socket.connected) socket.disconnect();
+    socket.disconnect();
     return;
   }
 
   // Reconnect through a fresh authenticated handshake if the Firebase account
   // changes. Future Socket.IO reconnects reuse the auth callback above, which
   // asks Firebase for a current ID token each time.
-  if (socket.connected) socket.disconnect();
+  socket.disconnect();
   socket.connect();
 };
 
 export const disconnectSocket = () => {
   firebaseUserForSocket = null;
-  if (socket.connected) socket.disconnect();
+  socket.disconnect();
 };
 
 export default socket;
+

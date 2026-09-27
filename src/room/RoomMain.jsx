@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 
 import { resetRoomUiState, toggleChatSidebar } from '../redux/action';
 import getUserData from '../hooks/getUserData';
-import { getRoomData, isExpiredEmptyRoom } from '../hooks/getRoom';
+import { useRoomData, isExpiredEmptyRoom } from '../hooks/getRoom';
 import api from '../services/api';
 import socket from '../services/socket';
 
@@ -37,7 +37,7 @@ const RoomMain = ({ uId, user }) => {
   const mediaPrefs = useSelector((state) => state.mediaPrefs);
   const isChatOpen = useSelector((state) => state.toggleChatSidebar);
 
-  const { rooms } = getRoomData() || {};
+  const { rooms } = useRoomData() || {};
 
   const [currUserData, setCurrUserData] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
@@ -487,3 +487,4 @@ const RoomMain = ({ uId, user }) => {
 };
 
 export default RoomMain;
+

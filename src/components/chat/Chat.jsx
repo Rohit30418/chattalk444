@@ -1,3 +1,4 @@
+import { mergeMessages } from '../../services/messageHistory';
 import React, {
   useState,
   useEffect,
@@ -840,6 +841,11 @@ const EmptyState = memo(() => (
 const Chat = ({ uId }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [historyCursor, setHistoryCursor] = useState(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const historyScope = useRef('');
+  const olderRequest = useRef(null);
   const [message, setMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [isOpenEmoji, setIsOpenEmoji] = useState(false);
@@ -865,9 +871,31 @@ const Chat = ({ uId }) => {
   const inputRef = useRef(null);
 
   const { id } = useParams();
+  historyScope.current = id;
   const dispatch = useDispatch();
   const addMessage = useAddMessage();
   const isChatOpen = useSelector((state) => state.toggleChatSidebar);
+
+  const loadOlderMessages = async () => {
+    if (!historyCursor || olderRequest.current) return;
+    const request = { roomId: id };
+    olderRequest.current = request;
+    setLoadingOlder(true);
+    setHistoryError('');
+    try {
+      const { data } = await api.get(`/api/chat/${id}`, { params: { paginate: 1, before: historyCursor } });
+      if (!isMounted.current || historyScope.current !== id || olderRequest.current !== request) return;
+      setMessages((current) => mergeMessages(data.messages || [], current));
+      setHistoryCursor(data.nextCursor || null);
+    } catch (error) {
+      if (isMounted.current && olderRequest.current === request) setHistoryError(error.userMessage || 'Could not load older messages.');
+    } finally {
+      if (isMounted.current && olderRequest.current === request) {
+        olderRequest.current = null;
+        setLoadingOlder(false);
+      }
+    }
+  };
 
   const inputCallbackRef = useCallback((element) => {
     inputRef.current = element;
@@ -928,16 +956,24 @@ const Chat = ({ uId }) => {
   useEffect(() => {
     let cancelled = false;
 
+    setMessages([]);
+    setHistoryCursor(null);
+    setLoading(true);
+    setLoadingOlder(false);
+    setHistoryError('');
+    olderRequest.current = null;
     const fetchMessages = async () => {
       try {
-        const response = await api.get(`/api/chat/${id}`);
+        const response = await api.get(`/api/chat/${id}`, { params: { paginate: 1 } });
 
         if (!cancelled && isMounted.current) {
-          const list = Array.isArray(response.data) ? response.data : [];
-          setMessages(list);
+          const list = Array.isArray(response.data) ? response.data : response.data?.messages || [];
+          setMessages((current) => mergeMessages(list, current));
+          setHistoryCursor(response.data?.nextCursor || null);
         }
       } catch (error) {
         console.warn('[Chat] history fetch failed:', error?.message);
+        if (!cancelled) setHistoryError('Could not load chat history. Reopen the chat to retry.');
       } finally {
         if (!cancelled && isMounted.current) setLoading(false);
       }
@@ -1577,6 +1613,10 @@ const Chat = ({ uId }) => {
           </div>
         </header>
 
+        {historyError && <p role="alert" className="px-4 py-2 text-sm text-red-300">{historyError}</p>}
+        {historyCursor && <button type="button" disabled={loadingOlder} onClick={loadOlderMessages} className="relative z-10 px-4 py-2 text-sm text-blue-200 disabled:opacity-50">
+          {loadingOlder ? 'Loading earlier messages…' : 'Load earlier messages'}
+        </button>}
         <div className="relative z-10 min-h-0 flex-1  overflow-hidden">
           {loading ? (
             <div className="flex h-full items-center justify-center">
@@ -1589,7 +1629,7 @@ const Chat = ({ uId }) => {
               style={{ height: '100%', overflowX: 'hidden' }}
               className="premium-chat-scrollbar overflow-x-hidden px-3 py-4"
               data={groupedMessages}
-              followOutput="smooth"
+              followOutput={loadingOlder ? false : "smooth"}
               initialTopMostItemIndex={Math.max(0, groupedMessages.length - 1)}
               increaseViewportBy={{ top: 700, bottom: 700 }}
               itemContent={(index, item) => (

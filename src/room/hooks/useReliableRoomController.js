@@ -52,14 +52,6 @@ const useReliableRoomController = (options) => {
       const audioDeviceId = audioSelectionStillExists ? room.selectedAudioDeviceId : '';
       const videoDeviceId = videoSelectionStillExists ? room.selectedVideoDeviceId : '';
 
-      // The existing room controller acquires audio + video together. If a
-      // machine genuinely has no input of one kind, keep the surviving track
-      // alive and surface the normal media error instead of tearing it down.
-      if (!audioDevices.length || !videoDevices.length) {
-        await room.enumerateDevices();
-        return;
-      }
-
       const stream = await room.initLocalMedia({
         audioDeviceId,
         videoDeviceId,
@@ -248,3 +240,4 @@ const useReliableRoomController = (options) => {
 };
 
 export default useReliableRoomController;
+

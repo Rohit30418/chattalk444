@@ -3,7 +3,8 @@ import Peer from 'peerjs';
 import Swal from 'sweetalert2';
 
 import socket from '../../services/socket';
-import { getVideoSenders, safelyPlayVideo, stopStreamTracks, buildMediaConstraints } from '../utils/media';
+import { createScreenShareSession } from '../utils/screenShare';
+import { getVideoSenders, safelyPlayVideo, stopStreamTracks, acquireUserMedia } from '../utils/media';
 import {
   CONNECTION_QUALITY,
   SPEAKING_HOLD_MS,
@@ -55,11 +56,15 @@ const useRoomController = ({
   const [, setLocalScreenVersion] = useState(0);
   const [remoteScreenStreams, setRemoteScreenStreams] = useState(new Map());
 
+  const mediaGenerationRef = useRef(0);
+  const screenShareSessionRef = useRef(null);
+  const screenShareCallbacksRef = useRef({});
   const localVideoRef = useRef(null);
   const screenVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const screenStreamRef = useRef(null);
   const peerRef = useRef(null);
+  const joinedSessionRef = useRef('');
   const dataConnectionsRef = useRef({});
   const chatConnectionsRef = useRef({});
   const peerMetadataRef = useRef(new Map());
@@ -82,6 +87,8 @@ const useRoomController = ({
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      ++mediaGenerationRef.current;
+      screenShareSessionRef.current?.cancel();
     };
   }, []);
 
@@ -113,14 +120,13 @@ const useRoomController = ({
     preserveAudio = isAudioEnabled,
     preserveVideo = isVideoEnabled,
   } = {}) => {
+    const generation = ++mediaGenerationRef.current;
     try {
       setMediaError('');
 
-      const stream = await navigator.mediaDevices.getUserMedia(
-        buildMediaConstraints({ audioDeviceId, videoDeviceId })
-      );
+      const stream = await acquireUserMedia(navigator.mediaDevices, { audioDeviceId, videoDeviceId });
 
-      if (!isMounted.current) {
+      if (!isMounted.current || isHangingUp.current || generation !== mediaGenerationRef.current) {
         stopStreamTracks(stream);
         return null;
       }
@@ -149,7 +155,7 @@ const useRoomController = ({
     } catch (error) {
       console.error('[Room media]', error);
 
-      if (isMounted.current) {
+      if (isMounted.current && generation === mediaGenerationRef.current) {
         setMediaError(
           error?.name === 'NotAllowedError'
             ? 'Camera/microphone permission denied. Please allow access in browser settings.'
@@ -232,57 +238,37 @@ const useRoomController = ({
   }, [uId]);
 
   const removeRemoteScreenStream = useCallback((uidOrPeerId) => {
-    let removedUid = null;
-
     setRemoteScreenStreams((prev) => {
       const next = new Map(prev);
-
-      for (const [uid, entry] of next) {
-        if (uid === uidOrPeerId || entry.peerId === uidOrPeerId) {
-          removedUid = uid;
-          next.delete(uid);
-        }
-      }
-
+      for (const [uid, entry] of next) if (uid === uidOrPeerId || entry.peerId === uidOrPeerId) next.delete(uid);
       return next;
     });
-
-    if (removedUid) {
-      setActiveScreenShare((active) => (active?.uid === removedUid ? null : active));
-    }
+    setActiveScreenShare((active) => active?.uid === uidOrPeerId || active?.peerId === uidOrPeerId ? null : active);
   }, []);
 
-  const removeParticipant = useCallback((remotePeerIdOrUid) => {
+  const removeParticipant = useCallback((uidOrPeerId) => {
+    const metadata = Array.from(peerMetadataRef.current.entries()).find(([pid, meta]) => (
+      pid === uidOrPeerId || meta.uid === uidOrPeerId || meta.userId === uidOrPeerId
+    ));
+    const pid = metadata?.[0] || uidOrPeerId;
+    const uid = metadata?.[1]?.uid || metadata?.[1]?.userId || uidOrPeerId;
+    // Delete before close: PeerJS close handlers may re-enter cleanup.
+    [dataConnectionsRef, screenConnectionsRef, chatConnectionsRef].forEach((ref) => {
+      const connection = ref.current[pid];
+      delete ref.current[pid];
+      try { connection?.close?.(); } catch (error) { console.warn('[Peer cleanup]', error); }
+    });
+    speakingCleanups.current[uid]?.();
+    qualityCleanups.current[uid]?.();
+    delete speakingCleanups.current[uid];
+    delete qualityCleanups.current[uid];
     setParticipants((prev) => {
       const next = new Map(prev);
-
-      for (const [uid, entry] of next) {
-        if (entry.peerId === remotePeerIdOrUid || uid === remotePeerIdOrUid) {
-          speakingCleanups.current[uid]?.();
-          qualityCleanups.current[uid]?.();
-
-          delete speakingCleanups.current[uid];
-          delete qualityCleanups.current[uid];
-
-          next.delete(uid);
-          removeRemoteScreenStream(uid);
-          setActiveScreenShare((active) => (active?.uid === uid ? null : active));
-          break;
-        }
-      }
-
+      for (const [key, entry] of next) if (key === uid || entry.peerId === pid) next.delete(key);
       return next;
     });
-
-    try {
-      screenConnectionsRef.current[remotePeerIdOrUid]?.close?.();
-    } catch {}
-
-    delete dataConnectionsRef.current[remotePeerIdOrUid];
-    delete screenConnectionsRef.current[remotePeerIdOrUid];
-    delete chatConnectionsRef.current[remotePeerIdOrUid];
-
-    removeRemoteScreenStream(remotePeerIdOrUid);
+    removeRemoteScreenStream(uid);
+    setActiveScreenShare((active) => active?.uid === uid ? null : active);
   }, [removeRemoteScreenStream]);
 
   const detectSpeaking = useCallback((targetUid, stream) => {
@@ -449,8 +435,11 @@ const useRoomController = ({
       qualityCleanups.current[uid] = watchConnectionQuality(uid, call);
     });
 
-    call.on('close', () => removeParticipant(call.peer));
-    call.on('error', () => removeParticipant(call.peer));
+    const cleanup = () => {
+      if (dataConnectionsRef.current[call.peer] === call) removeParticipant(call.peer);
+    };
+    call.on('close', cleanup);
+    call.on('error', cleanup);
   }, [addParticipant, detectSpeaking, removeParticipant, watchConnectionQuality]);
 
   const attachScreenCallHandlers = useCallback((call, remoteMeta = {}) => {
@@ -488,17 +477,18 @@ const useRoomController = ({
     if (!peer || !remotePeerId || chatConnectionsRef.current[remotePeerId]) return;
 
     const connection = peer.connect(remotePeerId);
+    chatConnectionsRef.current[remotePeerId] = connection;
 
     connection.on('open', () => {
       chatConnectionsRef.current[remotePeerId] = connection;
       connection.on('data', processIncomingData);
       connection.on('close', () => {
-        delete chatConnectionsRef.current[remotePeerId];
+        if (chatConnectionsRef.current[remotePeerId] === connection) delete chatConnectionsRef.current[remotePeerId];
       });
     });
 
     connection.on('error', () => {
-      delete chatConnectionsRef.current[remotePeerId];
+      if (chatConnectionsRef.current[remotePeerId] === connection) delete chatConnectionsRef.current[remotePeerId];
     });
   }, [processIncomingData]);
 
@@ -529,8 +519,11 @@ const useRoomController = ({
   }, [uId, currUserData, peerId]);
 
   const joinRoom = useCallback(() => {
-    if (!peerId || !currUserData || !id || !uId || !socket.connected) return;
+    if (!peerId || !localStreamVersion || !localStreamRef.current || !currUserData || !id || !uId || !socket.connected) return;
 
+    const sessionKey = `${socket.id}:${id}:${uId}:${peerId}`;
+    if (joinedSessionRef.current === sessionKey) return;
+    joinedSessionRef.current = sessionKey;
     socket.emit('join-room', {
       roomId: id,
       userId: uId,
@@ -540,7 +533,7 @@ const useRoomController = ({
       isAudioEnabled,
       isVideoEnabled,
     });
-  }, [peerId, currUserData, id, uId, isAudioEnabled, isVideoEnabled]);
+  }, [peerId, currUserData, id, uId, isAudioEnabled, isVideoEnabled, localStreamVersion]);
 
   useEffect(() => {
     if (!id || !uId) return;
@@ -593,7 +586,15 @@ const useRoomController = ({
     });
 
     return () => {
+      if (joinedSessionRef.current && socket.connected) socket.emit('leave-room', { roomId: id, userId: uId });
+      joinedSessionRef.current = '';
       peer.destroy();
+      Object.values(speakingCleanups.current).forEach((cleanup) => cleanup?.());
+      Object.values(qualityCleanups.current).forEach((cleanup) => cleanup?.());
+      Object.values(subtitleTimers.current).forEach(clearTimeout);
+      dataConnectionsRef.current = {};
+      screenConnectionsRef.current = {};
+      chatConnectionsRef.current = {};
     };
   }, [id, uId, attachCallHandlers, attachScreenCallHandlers, processIncomingData]);
 
@@ -606,11 +607,12 @@ const useRoomController = ({
     const handleSocketConnect = () => {
       setConnectionState('connected');
       joinRoom();
-      socket.emit('request-room-sync', { roomId: id, userId: uId });
     };
 
     const handleSocketDisconnect = () => {
+      joinedSessionRef.current = '';
       setConnectionState('offline');
+      screenShareSessionRef.current?.cancel();
     };
 
     socket.on('connect', handleSocketConnect);
@@ -693,7 +695,8 @@ const useRoomController = ({
     };
 
     const handleUserLeft = ({ peerId: leavingPeerId, uid, userId }) => {
-      removeParticipant(uid || userId || leavingPeerId);
+      removeParticipant(leavingPeerId || uid || userId);
+      if (leavingPeerId) peerMetadataRef.current.delete(leavingPeerId);
     };
 
     const handleKick = () => {
@@ -723,6 +726,7 @@ const useRoomController = ({
     };
 
     const handleRoomError = ({ message } = {}) => {
+      joinedSessionRef.current = '';
       Swal.fire({
         toast: true,
         icon: 'error',
@@ -780,14 +784,13 @@ const useRoomController = ({
       }
     };
 
-    const handleScreenApproved = async () => {
-      await startScreenShare();
+    const handleScreenApproved = ({ requestId } = {}) => {
+      screenShareSessionRef.current?.approve(requestId);
     };
 
-    const handleScreenDenied = ({ reason, active } = {}) => {
-      if (isScreenSharingRef.current) {
-        stopScreenShare(false);
-      }
+    const handleScreenDenied = ({ reason, active, requestId } = {}) => {
+      if (!screenShareSessionRef.current?.deny(requestId)) return;
+      stopScreenShare(false);
 
       Swal.fire({
         icon: 'info',
@@ -878,6 +881,7 @@ const useRoomController = ({
   }, []);
 
   const stopScreenShare = useCallback((notifyServer = true) => {
+    screenShareSessionRef.current?.cancel(notifyServer);
     stopStreamTracks(screenStreamRef.current);
     screenStreamRef.current = null;
     setLocalScreenVersion((value) => value + 1);
@@ -895,123 +899,54 @@ const useRoomController = ({
     setIsScreenSharing(false);
     isScreenSharingRef.current = false;
     setActiveScreenShare((active) => (active?.uid === uId ? null : active));
+  }, [uId]);
 
-    if (notifyServer) {
-      socket.emit('stop-screen-share', { roomId: id, userId: uId });
-    }
-  }, [id, uId]);
-
-  const startScreenShare = useCallback(async () => {
-    if (isScreenSharingRef.current) return;
-
-    if (!navigator.mediaDevices?.getDisplayMedia) {
-      Swal.fire({
-        icon: 'info',
-        title: 'Screen sharing is not supported here',
-        text: 'Please use a desktop browser such as Chrome or Edge over HTTPS to share your screen.',
-        background: '#0f172a',
-        color: '#fff',
-        confirmButtonColor: '#6366f1',
-      });
-      return;
-    }
-
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always', displaySurface: 'monitor' },
-        audio: false,
-      });
-
-      screenStreamRef.current = screenStream;
+  screenShareCallbacksRef.current = {
+    publish: (stream) => {
+      if (!isMounted.current || isHangingUp.current) { stopStreamTracks(stream); return; }
+      screenStreamRef.current = stream;
       setLocalScreenVersion((value) => value + 1);
-
-      const [screenTrack] = screenStream.getVideoTracks();
-      if (!screenTrack) {
-        stopStreamTracks(screenStream);
-        screenStreamRef.current = null;
-        setLocalScreenVersion((value) => value + 1);
-        Swal.fire({
-          icon: 'info',
-          title: 'Screen share not started',
-          text: 'No screen video track was selected.',
-          background: '#0f172a',
-          color: '#fff',
-          confirmButtonColor: '#6366f1',
-        });
-        return;
-      }
-
       setIsScreenSharing(true);
       isScreenSharingRef.current = true;
-
-      setActiveScreenShare({
-        uid: uId,
-        userId: uId,
-        peerId,
-        name: currUserData?.displayName || 'You',
-        isLocal: true,
-      });
-
-      socket.emit('screen-share-started', {
-        roomId: id,
-        uid: uId,
-        userId: uId,
-        peerId,
-        name: currUserData?.displayName || 'User',
-      });
-
-      Array.from(participants.values()).forEach((participant) => callPeerWithScreen(participant));
-
-      screenTrack.addEventListener('ended', () => {
-        if (!isScreenSharingRef.current) return;
-        stopScreenShare(true);
-      }, { once: true });
-    } catch (error) {
-      socket.emit('stop-screen-share', { roomId: id, userId: uId });
-      if (error?.name !== 'NotAllowedError') {
-        console.error('[startScreenShare]', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Screen share failed',
-          text: error?.message || 'Could not start screen sharing.',
-          background: '#0f172a',
-          color: '#fff',
-          confirmButtonColor: '#6366f1',
-        });
-      }
-    }
-  }, [id, uId, peerId, currUserData, participants, callPeerWithScreen, stopScreenShare]);
+      setActiveScreenShare({ uid: uId, userId: uId, peerId, name: currUserData?.displayName || 'You', isLocal: true });
+      Array.from(peerMetadataRef.current.values()).forEach(callPeerWithScreen);
+    },
+    release: (requestId) => {
+      socket.emit('stop-screen-share', { roomId: id, userId: uId, requestId });
+      if (isMounted.current) stopScreenShare(false);
+    },
+    onError: (error) => {
+      if (!isMounted.current || error?.name === 'NotAllowedError') return;
+      Swal.fire({ icon: 'error', title: 'Screen share failed', text: error?.message || 'Please try again.' });
+    },
+  };
+  if (!screenShareSessionRef.current) {
+    screenShareSessionRef.current = createScreenShareSession({
+      capture: () => navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false }),
+      publish: (stream) => screenShareCallbacksRef.current.publish(stream),
+      release: (requestId) => screenShareCallbacksRef.current.release(requestId),
+      onError: (error) => screenShareCallbacksRef.current.onError(error),
+      stopTracks: stopStreamTracks,
+    });
+  }
 
   const toggleScreenShare = useCallback(() => {
-    if (isScreenSharingRef.current) {
-      stopScreenShare(true);
+    if (isScreenSharingRef.current) { stopScreenShare(true); return; }
+    if (!navigator.mediaDevices?.getDisplayMedia || !socket.connected) {
+      Swal.fire({ icon: 'info', title: 'Screen sharing unavailable', text: 'Connect to the room using a supported desktop browser.' });
       return;
     }
-
     const active = activeScreenShareRef.current;
     if (active && active.uid !== uId) {
-      Swal.fire({
-        icon: 'info',
-        title: 'Someone is already presenting',
-        text: `${active.name || 'Someone'} is already presenting. Once they stop, you can share.`,
-        background: '#0f172a',
-        color: '#fff',
-        confirmButtonColor: '#6366f1',
-      });
+      Swal.fire({ icon: 'info', title: 'Someone is already presenting' });
       return;
     }
-
-    // Do not wait forever for backend approval. Start capture from the click gesture
-    // so the browser allows getDisplayMedia, and still notify the socket backend.
-    startScreenShare();
-
+    const requestId = screenShareSessionRef.current.start();
+    if (!requestId) return;
     socket.emit('request-screen-share', {
-      roomId: id,
-      userId: uId,
-      name: currUserData?.displayName || 'User',
-      peerId,
+      roomId: id, userId: uId, peerId, name: currUserData?.displayName || 'User', requestId,
     });
-  }, [id, uId, currUserData, peerId, startScreenShare, stopScreenShare]);
+  }, [id, uId, peerId, currUserData, stopScreenShare]);
 
   const toggleAudio = useCallback(() => {
     const [audioTrack] = localStreamRef.current?.getAudioTracks?.() || [];
@@ -1170,6 +1105,7 @@ const useRoomController = ({
   const handleHangup = useCallback((silent = false) => {
     if (isHangingUp.current) return;
     isHangingUp.current = true;
+    ++mediaGenerationRef.current;
 
     stopSubtitles();
     stopScreenShare(true);

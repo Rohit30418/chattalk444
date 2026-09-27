@@ -5,13 +5,11 @@ import { toast } from 'react-toastify';
 import RoomCard from '../../room/components/RoomCard';
 import AddRoomForm from '../AddRoomForm';
 import { addRoomModalToggle, togglePopup } from '../../redux/action';
-import { getRoomData } from '../../hooks/getRoom';
+import { useRoomData } from '../../hooks/getRoom';
 import { Popup } from '../common/Popup';
 import SkeletonLoader from './SkeletonLoader';
 import { useAuth } from '../auth/AppWrapper';
 import useMobilePwaMode from '../../hooks/useMobilePwaMode';
-
-const face = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=120&h=120&q=82`;
 
 const LANGUAGE_FLAG_CODES = {
   arabic: 'SA',
@@ -29,83 +27,6 @@ const LANGUAGE_FLAG_CODES = {
   spanish: 'ES',
   urdu: 'PK',
 };
-
-const DUMMY_PEOPLE = {
-  fatima: { uid: 'demo_fatima', displayName: 'Fatima', photoURL: face('photo-1494790108377-be9c29b29330') },
-  ahmed: { uid: 'demo_ahmed', displayName: 'Ahmed', photoURL: face('photo-1500648767791-00dcc994a43e') },
-  maria: { uid: 'demo_maria', displayName: 'Maria', photoURL: face('photo-1534528741775-53994a69daeb') },
-  kenji: { uid: 'demo_kenji', displayName: 'Kenji', photoURL: face('photo-1507003211169-0a1dd7228f2d') },
-  sophie: { uid: 'demo_sophie', displayName: 'Sophie', photoURL: face('photo-1544005313-94ddf0286df2') },
-  hans: { uid: 'demo_hans', displayName: 'Hans', photoURL: face('photo-1506794778202-cad84cf45f1d') },
-  minji: { uid: 'demo_minji', displayName: 'Min-ji', photoURL: face('photo-1524504388940-b1c1722653e1') },
-  sarah: { uid: 'demo_sarah', displayName: 'Sarah', photoURL: face('photo-1531123897727-8f129e1688ce') },
-  raj: { uid: 'demo_raj', displayName: 'Raj', photoURL: face('photo-1507591064344-4c6ce005b128') },
-  amit: { uid: 'demo_amit', displayName: 'Amit', photoURL: face('photo-1560250097-0b93528c311a') },
-};
-
-const roomPeople = (...keys) => keys.map((key) => DUMMY_PEOPLE[key]).filter(Boolean);
-
-const DUMMY_ROOMS = [
-  {
-    id: 'room_001', participantsCount: 5, MaximumPeople: '5', Level: '#intermediate',
-    ownerName: 'Fatima', ownerUid: 'uid_001', ownerPhoto: DUMMY_PEOPLE.fatima.photoURL,
-    Language: 'Portuguese', Title: '🦥 Procrastinators Assemble #6', Topic: 'Live practice',
-    description: 'Relaxed Portuguese practice for everyday conversations.',
-    participants: roomPeople('fatima', 'maria', 'sophie', 'raj'),
-  },
-  {
-    id: 'room_002', participantsCount: 5, MaximumPeople: '5', Level: '#advanced',
-    ownerName: 'Ahmed', ownerUid: 'uid_002', ownerPhoto: DUMMY_PEOPLE.ahmed.photoURL,
-    Language: 'Urdu', Title: '🫠 Socially Awkward Club #5', Topic: 'Casual chat',
-    description: 'Friendly Urdu conversation without pressure or formal topics.',
-    participants: roomPeople('ahmed', 'amit', 'raj', 'sarah'),
-  },
-  {
-    id: 'room_003', participantsCount: 6, MaximumPeople: '6', Level: '#beginner',
-    ownerName: 'Maria', ownerUid: 'uid_003', ownerPhoto: DUMMY_PEOPLE.maria.photoURL,
-    Language: 'Spanish', Title: '🌮 Taco Tuesday Debate', Topic: 'Debate',
-    description: 'Fun debates on random topics while practicing natural Spanish.',
-    participants: roomPeople('maria', 'sophie', 'fatima', 'kenji'),
-  },
-  {
-    id: 'room_004', participantsCount: 8, MaximumPeople: '8', Level: '#advanced',
-    ownerName: 'Kenji', ownerUid: 'uid_004', ownerPhoto: DUMMY_PEOPLE.kenji.photoURL,
-    Language: 'Japanese', Title: '⛩️ Anime Spoilers Only', Topic: 'Anime talk',
-    description: 'Talk about your favorite anime, manga and characters in Japanese.',
-    participants: roomPeople('kenji', 'minji', 'raj', 'sarah'),
-  },
-  {
-    id: 'room_005', participantsCount: 4, MaximumPeople: '4', Level: '#intermediate',
-    ownerName: 'Sophie', ownerUid: 'uid_005', ownerPhoto: DUMMY_PEOPLE.sophie.photoURL,
-    Language: 'French', Title: '🥐 Croissant Chronicles', Topic: 'Culture',
-    description: 'French culture, travel stories and practical daily conversation.',
-    participants: roomPeople('sophie', 'fatima', 'maria', 'hans'),
-  },
-  {
-    id: 'room_006', participantsCount: 4, MaximumPeople: '4', Level: '#beginner',
-    ownerName: 'Hans', ownerUid: 'uid_006', ownerPhoto: DUMMY_PEOPLE.hans.photoURL,
-    Language: 'German', Title: '🍺 Grammar without boring rules', Topic: 'Grammar',
-    description: 'Learn practical German through examples instead of textbook drills.',
-    participants: roomPeople('hans', 'sarah'),
-  },
-  {
-    id: 'room_007', participantsCount: 10, MaximumPeople: '10', Level: '#intermediate',
-    ownerName: 'Min-ji', ownerUid: 'uid_007', ownerPhoto: DUMMY_PEOPLE.minji.photoURL,
-    Language: 'Korean', Title: '🎵 K-Pop pronunciation practice', Topic: 'Pronunciation',
-    description: 'Improve Korean pronunciation with music, dramas and real phrases.',
-    participants: roomPeople('minji', 'kenji', 'maria', 'raj'),
-  },
-  {
-    id: 'room_008', participantsCount: 5, MaximumPeople: '5', Level: '#advanced',
-    ownerName: 'Sarah', ownerUid: 'uid_008', ownerPhoto: DUMMY_PEOPLE.sarah.photoURL,
-    Language: 'English', Title: '💼 Business English mock interview', Topic: 'Career practice',
-    description: 'Practice interview questions, workplace English and clear answers.',
-    participants: roomPeople('sarah', 'ahmed', 'amit'),
-    hostIsMember: true,
-    isPremiumRoom: true,
-    roomAnimationId: 'cosmic',
-  },
-];
 
 const PAGE_SIZE = 12;
 
@@ -158,7 +79,7 @@ const HomeBody = () => {
   const dispatch = useDispatch();
   const togglePopUp = useSelector((state) => state.togglePopup);
   const { user } = useAuth();
-  const { rooms, loading, error } = getRoomData();
+  const { rooms, loading, error } = useRoomData();
   const isMobilePwa = useMobilePwaMode();
 
   const [searchText, setSearchText] = useState('');
@@ -190,7 +111,7 @@ const HomeBody = () => {
 
   const allRooms = useMemo(() => {
     const realData = Array.isArray(rooms) ? rooms.filter(Boolean) : [];
-    return [...realData, ...DUMMY_ROOMS];
+    return realData;
   }, [rooms]);
 
   const languageList = useMemo(() => {
@@ -478,3 +399,4 @@ const HomeBody = () => {
 };
 
 export default HomeBody;
+
