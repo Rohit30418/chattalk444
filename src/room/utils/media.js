@@ -49,3 +49,24 @@ export const buildMediaConstraints = ({ audioDeviceId, videoDeviceId } = {}) => 
     frameRate: { ideal: 24, max: 30 },
   },
 });
+
+
+export const acquireUserMedia = async (mediaDevices, options = {}) => {
+  if (!mediaDevices?.getUserMedia) throw new Error('Camera/microphone access is unavailable in this browser.');
+  const constraints = buildMediaConstraints(options);
+  const missingDevice = (error) => ['NotFoundError', 'DevicesNotFoundError', 'OverconstrainedError'].includes(error?.name);
+  try {
+    return await mediaDevices.getUserMedia(constraints);
+  } catch (error) {
+    // Never retry a permission denial. Only recover absent/unplugged devices.
+    if (!missingDevice(error)) throw error;
+    const defaults = buildMediaConstraints();
+    if (options.audioDeviceId || options.videoDeviceId) {
+      try { return await mediaDevices.getUserMedia(defaults); }
+      catch (retryError) { if (!missingDevice(retryError)) throw retryError; }
+    }
+    try { return await mediaDevices.getUserMedia({ audio: defaults.audio, video: false }); }
+    catch (audioError) { if (!missingDevice(audioError)) throw audioError; }
+    return mediaDevices.getUserMedia({ audio: false, video: defaults.video });
+  }
+};

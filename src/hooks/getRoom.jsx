@@ -36,7 +36,7 @@ const sortRooms = (roomList) => (
     : []
 );
 
-export const getRoomData = () => {
+export const useRoomData = () => {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,12 +79,10 @@ export const getRoomData = () => {
 
     safeFetchRooms();
 
-    if (!socket.connected) {
-      socket.connect();
+    if (socket.connected) {
+      socket.emit('join-dashboard');
+      socket.emit('request-dashboard-sync');
     }
-
-    socket.emit('join-dashboard');
-    socket.emit('request-dashboard-sync');
 
     const handleDashboardUpdate = (activeRoomsList) => {
       if (disposed) return;
@@ -119,7 +117,7 @@ export const getRoomData = () => {
       window.removeEventListener('online', handleOnline);
       socket.off('dashboard-update', handleDashboardUpdate);
       socket.off('connect', handleSocketConnect);
-      socket.emit('leave-dashboard');
+      if (socket.connected) socket.emit('leave-dashboard');
     };
   }, [fetchRooms]);
 
@@ -127,3 +125,4 @@ export const getRoomData = () => {
 
   return { rooms, loading, error: visibleError, refetch: fetchRooms };
 };
+

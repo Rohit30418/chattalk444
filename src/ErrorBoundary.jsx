@@ -73,7 +73,7 @@ class ErrorBoundary extends React.Component {
 
             </div>
 
-            {process.env.NODE_ENV === "development" && (
+            {import.meta.env.DEV && (
               <pre className="mt-8 text-left text-xs overflow-auto p-4 rounded-xl bg-black/5 dark:bg-white/5">
                 {this.state.error?.toString()}
               </pre>

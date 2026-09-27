@@ -1,3 +1,4 @@
+import { mergeMessages } from '../../services/messageHistory';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
@@ -51,6 +52,10 @@ const MessagesPage = () => {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [historyCursor, setHistoryCursor] = useState(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const historyScope = useRef('');
+  const olderRequest = useRef(null);
   const [draft, setDraft] = useState('');
   const [loadingList, setLoadingList] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -63,6 +68,28 @@ const MessagesPage = () => {
   const typingTimerRef = useRef(null);
 
   const activeId = searchParams.get('conversation') || '';
+  const scope = `${user?.uid || ''}:${activeId}`;
+  historyScope.current = scope;
+  const lastMessageId = messages.at(-1)?.id;
+
+  const loadOlderMessages = async () => {
+    if (!historyCursor || olderRequest.current) return;
+    const request = { scope };
+    olderRequest.current = request;
+    setLoadingOlder(true);
+    try {
+      const { data } = await api.get(`/api/social/conversations/${encodeURIComponent(activeId)}/messages`, { params: { before: historyCursor } });
+      if (historyScope.current !== scope || olderRequest.current !== request) return;
+      setMessages((current) => mergeMessages(data.messages || [], current));
+      setHistoryCursor(data.nextCursor || null);
+    } catch (err) {
+      if (historyScope.current === scope && olderRequest.current === request) setError(err.userMessage || 'Could not load earlier messages.');
+    } finally {
+      if (olderRequest.current === request) { olderRequest.current = null; setLoadingOlder(false); }
+    }
+  };
+
+  useEffect(() => () => { olderRequest.current = null; }, []);
 
   const loadConversations = useCallback(async () => {
     if (!user?.uid) {
@@ -88,6 +115,10 @@ const MessagesPage = () => {
   }, [loadConversations]);
 
   useEffect(() => {
+    setMessages([]);
+    setHistoryCursor(null);
+    setLoadingOlder(false);
+    olderRequest.current = null;
     if (!activeId || !user?.uid) {
       setActiveConversation(null);
       setMessages([]);
@@ -108,8 +139,10 @@ const MessagesPage = () => {
         const { data } = await api.get(`/api/social/conversations/${encodeURIComponent(activeId)}/messages`);
         if (cancelled) return;
 
-        setMessages(Array.isArray(data?.messages) ? data.messages : []);
+        setMessages((current) => mergeMessages(data?.messages || [], current));
+        setHistoryCursor(data?.nextCursor || null);
         await api.post(`/api/social/conversations/${encodeURIComponent(activeId)}/read`).catch(() => {});
+        if (cancelled) return;
         setConversations((current) => current.map((item) => (
           item.id === activeId ? { ...item, unread: 0 } : item
         )));
@@ -274,7 +307,7 @@ const MessagesPage = () => {
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
-  }, [messages.length, activeId, loadingMessages]);
+  }, [lastMessageId, activeId, loadingMessages]);
 
   useEffect(() => () => {
     window.clearTimeout(typingTimerRef.current);
@@ -617,6 +650,9 @@ const MessagesPage = () => {
                     </div>
                   ) : (
                     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+                      {historyCursor && <button type="button" onClick={loadOlderMessages} disabled={loadingOlder} className="px-4 py-2 text-sm font-bold text-teal-700 dark:text-teal-300 disabled:opacity-50">
+                        {loadingOlder ? 'Loading earlier messages…' : 'Load earlier messages'}
+                      </button>}
                       {messages.map((message) => {
                         const mine = message.senderUid === user.uid;
                         const senderUser = mine ? user : activeConversation.otherUser;
@@ -780,3 +816,4 @@ const MessagesPage = () => {
 };
 
 export default MessagesPage;
+

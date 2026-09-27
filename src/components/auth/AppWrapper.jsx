@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
   useContext,
+  useRef,
 } from 'react';
 import axios from 'axios';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
@@ -34,10 +35,11 @@ const readCachedUser = () => {
 const persistUser = (value) => {
   if (typeof window === 'undefined') return;
 
-  if (value?.uid) {
-    localStorage.setItem('userInfo', JSON.stringify(value));
-  } else {
-    localStorage.removeItem('userInfo');
+  try {
+    if (value?.uid) localStorage.setItem('userInfo', JSON.stringify(value));
+    else localStorage.removeItem('userInfo');
+  } catch (error) {
+    console.warn('Could not update cached profile:', error?.name || 'Storage unavailable');
   }
 };
 
@@ -48,10 +50,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readCachedUser);
   const [loading, setLoading] = useState(() => !readCachedUser());
 
+  const authGeneration = useRef(0);
+
   useEffect(() => {
     const auth = getAuth(firebaseApp);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      const generation = ++authGeneration.current;
       if (firebaseUser) {
         const cached = readCachedUser();
         const cachedForUser = cached?.uid === firebaseUser.uid ? cached : null;
@@ -78,6 +83,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
           const { data } = await api.post('/api/users', baseUser);
+          if (generation !== authGeneration.current || auth.currentUser?.uid !== firebaseUser.uid) return;
           const backendUser = data?.user || {};
           const syncedUser = {
             ...immediateUser,
@@ -105,7 +111,10 @@ export const AuthProvider = ({ children }) => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      ++authGeneration.current;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -214,9 +223,11 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = useCallback(async () => {
     if (!user?.uid) return null;
+    const generation = authGeneration.current;
 
     try {
       const { data } = await api.get(`/api/users/${encodeURIComponent(user.uid)}`);
+      if (generation !== authGeneration.current || getAuth(firebaseApp).currentUser?.uid !== user.uid) return null;
       const refreshedUser = {
         ...user,
         ...data,
@@ -235,6 +246,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     const auth = getAuth(firebaseApp);
+    ++authGeneration.current;
+    disconnectSocket();
 
     try {
       await auth.signOut();
@@ -275,3 +288,4 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
