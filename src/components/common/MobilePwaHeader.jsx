@@ -7,8 +7,7 @@ import MemberAvatar from './MemberAvatar';
 import useMobilePwaMode from '../../hooks/useMobilePwaMode';
 import {
   requestVaaniNotifications,
-  showVaaniNotification,
-  syncPushSubscription,
+  testVaaniPushNotification,
 } from '../../services/pwa';
 
 const getPageMeta = (pathname = '') => {
@@ -85,8 +84,10 @@ const MobilePwaHeader = () => {
 
       setNotificationPermission(nextPermission);
 
-      if (nextPermission === 'granted') {
+      if (nextPermission === 'granted' && result?.subscribed) {
         toast.success('Notifications are enabled on this device');
+      } else if (nextPermission === 'granted') {
+        toast.error(result?.message || 'Permission allowed, but push registration failed. Please retry shortly.');
       } else if (nextPermission === 'denied') {
         toast.info('Notifications are blocked in your device settings');
       } else {
@@ -120,18 +121,12 @@ const MobilePwaHeader = () => {
         return;
       }
 
-      await syncPushSubscription().catch(() => null);
-      await showVaaniNotification({
-        title: 'Vaani notifications are working',
-        body: 'You will see messages, connections and room updates here.',
-        tag: 'vaani-test-notification',
-        url: '/rooms',
-      });
+      await testVaaniPushNotification();
 
       toast.success('Test notification sent');
     } catch (error) {
       console.error('[PWA Header] Test notification failed:', error);
-      toast.error('Could not send a test notification');
+      toast.error(error?.message || 'Could not send a test notification');
     } finally {
       setNotificationBusy(false);
     }
@@ -265,3 +260,4 @@ const MobilePwaHeader = () => {
 };
 
 export default MobilePwaHeader;
+

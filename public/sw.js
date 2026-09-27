@@ -107,19 +107,9 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data?.text?.() || 'You have a new Vaani notification.' };
   }
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clients) => {
-        const appIsVisible = clients.some((client) => (
-          client.visibilityState === 'visible' || client.focused === true
-        ));
-
-        // The React app already handles live foreground events. System push is
-        // for the background/closed-app case so users do not get duplicates.
-        if (appIsVisible) return undefined;
-        return showVaaniNotification(payload);
-      })
-  );
+  // A visible window does not guarantee that the user saw a socket event.
+  // Always display accepted Web Push messages, including explicit tests.
+  event.waitUntil(showVaaniNotification(payload));
 });
 
 self.addEventListener('message', (event) => {
@@ -153,3 +143,4 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+

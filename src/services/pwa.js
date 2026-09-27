@@ -4,6 +4,16 @@ let deferredInstallPrompt = null;
 let registrationPromise = null;
 let pushRecoveryBound = false;
 let pushSyncInFlight = null;
+const pushRetryAfter = new Map();
+const PUSH_SYNC_CACHE = 'vaani-push-sync-v1';
+const readPushCache = () => {
+  try { return JSON.parse(localStorage.getItem(PUSH_SYNC_CACHE) || 'null'); }
+  catch { return null; }
+};
+const signedInUid = () => {
+  try { return JSON.parse(localStorage.getItem('userInfo') || 'null')?.uid || ''; }
+  catch { return ''; }
+};
 let serviceWorkerReloadBound = false;
 let shouldReloadForServiceWorkerUpdate = false;
 
@@ -167,6 +177,14 @@ export const showVaaniNotification = async (payload) => {
 };
 
 export const syncPushSubscription = async () => {
+  const uid = signedInUid();
+  if (!uid) return { subscribed: false, reason: 'signed-out' };
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+    return { subscribed: false, reason: 'permission' };
+  }
+  if (Date.now() < (pushRetryAfter.get(uid) || 0)) {
+    return { subscribed: false, reason: 'retry-later', message: 'Device registration is temporarily limited. Please retry in a few minutes.' };
+  }
   if (pushSyncInFlight) return pushSyncInFlight;
 
   pushSyncInFlight = (async () => {
@@ -216,15 +234,28 @@ export const syncPushSubscription = async () => {
         });
       }
 
+      const cached = readPushCache();
+      if (cached?.uid === uid && cached.endpoint === subscription.endpoint
+        && cached.publicKey === publicKey && Date.now() - cached.syncedAt < 60 * 60_000) {
+        return { subscribed: true, endpoint: subscription.endpoint };
+      }
+      if (signedInUid() !== uid) return { subscribed: false, reason: 'account-changed' };
       await api.post('/api/social/push/subscribe', {
         subscription: subscription.toJSON(),
       });
 
-      return {
-        subscribed: true,
-        endpoint: subscription.endpoint || '',
-      };
+      if (signedInUid() !== uid) return { subscribed: false, reason: 'account-changed' };
+      try {
+        localStorage.setItem(PUSH_SYNC_CACHE, JSON.stringify({ uid, endpoint: subscription.endpoint, publicKey, syncedAt: Date.now() }));
+      } catch { /* Storage can be unavailable in private browsing. */ }
+      pushRetryAfter.delete(uid);
+      return { subscribed: true, endpoint: subscription.endpoint || '' };
     } catch (error) {
+      const retrySeconds = Number(error?.response?.headers?.['retry-after']);
+      const waitMs = error?.response?.status === 429
+        ? (Number.isFinite(retrySeconds) && retrySeconds > 0 ? retrySeconds * 1000 : 10 * 60_000)
+        : 30_000;
+      pushRetryAfter.set(uid, Date.now() + waitMs);
       const message = error?.userMessage || error?.message || 'Push registration failed';
       console.warn('[PWA] Push subscription unavailable:', message);
       return {
@@ -269,4 +300,17 @@ export const bumpAppBadge = (count = 1) => {
   if (typeof navigator.setAppBadge === 'function') {
     navigator.setAppBadge(Math.max(1, Number(count) || 1)).catch(() => {});
   }
+};
+
+
+// A test must exercise backend delivery to this device, not only local display.
+export const testVaaniPushNotification = async () => {
+  const result = await requestVaaniNotifications();
+  if (!result.subscribed) throw new Error(result.message || 'Enable notifications and register this device first.');
+  const { data } = await api.get('/api/social/push/devices', { params: { currentEndpoint: result.endpoint } });
+  const device = data?.devices?.find((item) => item.isCurrent);
+  if (!device?.id) throw new Error('This device is not registered. Please enable notifications again.');
+  const response = await api.post(`/api/social/push/devices/${encodeURIComponent(device.id)}/test`);
+  if (!Number(response.data?.sent)) throw new Error('The push service did not accept the test. Please register this device again.');
+  return true;
 };
