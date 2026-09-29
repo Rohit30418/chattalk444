@@ -1,4 +1,6 @@
 import api from './api';
+import { getMessaging, getToken, isSupported } from 'firebase/messaging';
+import { firebaseApp } from './firebase';
 
 let deferredInstallPrompt = null;
 let registrationPromise = null;
@@ -176,6 +178,43 @@ export const showVaaniNotification = async (payload) => {
   return true;
 };
 
+const syncFcmToken = async (registration) => {
+  const uid = signedInUid();
+  if (!uid || !registration || Notification.permission !== 'granted') {
+    return { registered: false, reason: 'unavailable' };
+  }
+
+  const vapidKey = String(import.meta.env.VITE_FIREBASE_VAPID_KEY || '').trim();
+  if (!vapidKey) return { registered: false, reason: 'missing-vapid-key' };
+
+  try {
+    const supported = await isSupported();
+    if (!supported) return { registered: false, reason: 'unsupported' };
+
+    const messaging = getMessaging(firebaseApp);
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    });
+
+    if (!token) return { registered: false, reason: 'no-token' };
+
+    await api.post('/api/social/fcm/subscribe', {
+      token,
+      platform: 'web',
+    });
+
+    return { registered: true, token };
+  } catch (error) {
+    console.warn('[FCM] Token registration failed:', error?.message || error);
+    return {
+      registered: false,
+      reason: 'request-failed',
+      message: error?.userMessage || error?.message || 'FCM registration failed',
+    };
+  }
+};
+
 export const syncPushSubscription = async () => {
   const uid = signedInUid();
   if (!uid) return { subscribed: false, reason: 'signed-out' };
@@ -287,7 +326,16 @@ export const requestVaaniNotifications = async () => {
   }
 
   const pushResult = await syncPushSubscription();
-  return { permission, ...pushResult };
+  let fcmResult = { registered: false, reason: 'web-push-unavailable' };
+
+  try {
+    const registration = await registerVaaniPwa();
+    fcmResult = await syncFcmToken(registration);
+  } catch {
+    // Existing Web Push remains the primary browser notification channel.
+  }
+
+  return { permission, ...pushResult, fcm: fcmResult };
 };
 
 export const clearAppBadge = () => {
