@@ -52,8 +52,15 @@ const canAttemptPushRecovery = () => (
 const attemptPushRecovery = () => {
   if (!canAttemptPushRecovery()) return;
 
-  window.setTimeout(() => {
+  window.setTimeout(async () => {
     syncPushSubscription().catch(() => {});
+
+    try {
+      const registration = await registerVaaniPwa();
+      await syncFcmToken(registration);
+    } catch {
+      // Web Push remains available even if FCM registration fails.
+    }
   }, 0);
 };
 
