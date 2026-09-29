@@ -107,9 +107,23 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data?.text?.() || 'You have a new Vaani notification.' };
   }
 
-  // A visible window does not guarantee that the user saw a socket event.
-  // Always display accepted Web Push messages, including explicit tests.
-  event.waitUntil(showVaaniNotification(payload));
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+  const normalizedPayload = {
+    ...payload,
+    title: notification.title || payload.title || 'Vaani',
+    body: notification.body || payload.body || 'You have a new update on Vaani.',
+    url: data.url || payload.url || '/',
+    tag: data.tag || notification.tag || payload.tag || 'vaani-notification',
+    data: {
+      ...data,
+      ...(payload.data || {}),
+    },
+  };
+
+  // This handles both Vaani's direct Web Push payloads and FCM payloads delivered
+  // to the same registered service worker.
+  event.waitUntil(showVaaniNotification(normalizedPayload));
 });
 
 self.addEventListener('message', (event) => {
