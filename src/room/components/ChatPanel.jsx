@@ -60,7 +60,7 @@ const ChatPanel = memo(({ isOpen, uId }) => {
   return (
     <aside
       ref={panelRef}
-      className={`vaani-chat-shell fixed bottom-0 left-0 right-0 z-[58] overflow-hidden border-t border-[var(--color-border)] bg-[var(--color-surface)] transition-[height,width,transform] duration-200 ease-out md:static md:z-auto md:h-full md:border-l md:border-t-0 ${
+      className={`vaani-chat-shell fixed bottom-0 left-0 right-0 z-[58] overflow-hidden border-t border-[var(--color-border)] bg-[var(--color-surface)] transition-[height,width,transform] duration-200 ease-out md:static md:z-auto md:h-full md:shrink-0 md:border-l md:border-t-0 ${
         isOpen
           ? 'h-[min(76dvh,720px)] max-h-[calc(100dvh-4rem)] translate-y-0 rounded-t-2xl md:h-full md:max-h-none md:w-[min(400px,34vw)] md:min-w-[330px] md:rounded-none'
           : 'h-0 translate-y-full md:h-full md:w-0 md:min-w-0 md:translate-y-0'
