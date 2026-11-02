@@ -389,12 +389,7 @@ const RoomMain = ({ uId, user }) => {
           />
 
           <div className="relative flex min-h-0 flex-1 overflow-hidden">
-            <main
-              className={`
-                relative min-w-0 flex-1 overflow-hidden transition-all duration-300
-                ${isChatOpen ? 'md:flex-none md:w-[calc(100%-min(380px,32vw))]' : ''}
-              `}
-            >
+            <main className="relative min-w-0 flex-1 overflow-hidden transition-all duration-300">
               <VideoStage
                 localTile={room.localTile}
                 participants={room.participantsArray}
