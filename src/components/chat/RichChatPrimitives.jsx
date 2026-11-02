@@ -99,7 +99,7 @@ export const getRichDisplayTime = (message) => {
 };
 
 const markdownOwn = {
-  p: ({ children }) => <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-white/95">{children}</p>,
+  p: ({ children }) => <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[14px] leading-relaxed text-white/95">{children}</p>,
   strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   del: ({ children }) => <del className="line-through opacity-60">{children}</del>,
@@ -110,7 +110,7 @@ const markdownOwn = {
 };
 
 const markdownOther = {
-  p: ({ children }) => <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-slate-100">{children}</p>,
+  p: ({ children }) => <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[14px] leading-relaxed text-slate-100">{children}</p>,
   strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
   em: ({ children }) => <em className="italic">{children}</em>,
   del: ({ children }) => <del className="line-through opacity-60">{children}</del>,
@@ -357,7 +357,7 @@ export const RichMessageBubble = memo(({
   useEffect(() => () => cancelLongPress(), [cancelLongPress]);
 
   return (
-    <div className={`flex w-full min-w-0 ${isOwn ? 'justify-end' : 'justify-start'} ${compact ? 'pb-2' : 'pb-4'}`}>
+    <div className={`flex w-full min-w-0 overflow-x-clip px-1 ${isOwn ? 'justify-end' : 'justify-start'} ${compact ? 'pb-2' : 'pb-4'}`}>
       <div className={`relative flex min-w-0 items-end gap-2.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${compact ? 'max-w-[86%]' : 'max-w-[88%] md:max-w-[80%]'}`}>
         {!isOwn && (
           <div className="mb-1 shrink-0">
@@ -372,14 +372,14 @@ export const RichMessageBubble = memo(({
         )}
 
         <div
-          className={`relative flex min-w-0 flex-col ${isOwn ? 'items-end' : 'items-start'} select-none sm:select-auto`}
+          className={`relative flex min-w-0 max-w-full flex-col ${isOwn ? 'items-end' : 'items-start'} select-none sm:select-auto`}
           onContextMenu={openActions}
           onTouchStart={startLongPress}
           onTouchEnd={cancelLongPress}
           onTouchMove={cancelLongPress}
         >
           {!isOwn && !isEmoji && (
-            <span className="mb-1 ml-1 text-[11px] font-black text-slate-400">{displayName}</span>
+            <span className="mb-1 ml-1 max-w-full break-words [overflow-wrap:anywhere] text-[11px] font-black text-slate-400">{displayName}</span>
           )}
 
           {(type === 'image' || type === 'gif') && mediaUrl ? (
