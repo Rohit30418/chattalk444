@@ -1,11 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useRoomData } from '../hooks/getRoom';
-import { useAuth } from '../components/auth/AppWrapper';
 import RoomCard from '../room/components/RoomCard';
 
 export default function ActiveRoomsSection() {
   const { rooms, loading, error, refetch } = useRoomData();
-  const { user } = useAuth();
   return (
     <section className="bg-[var(--color-bg-soft)] px-4 py-16 text-[var(--color-text)] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -19,7 +17,7 @@ export default function ActiveRoomsSection() {
           <p className="text-center text-[var(--color-muted)]">No active rooms yet. Create a room to start a conversation.</p>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rooms.slice(0, 6).map((room) => <RoomCard key={room.id || room._id} room={room} loginStatus={Boolean(user?.uid)} />)}
+            {rooms.slice(0, 6).map((room) => <RoomCard key={room.id || room._id} roomdata={room} />)}
           </div>
         )}
         <div className="mt-10 text-center"><Link to="/rooms" className="inline-flex rounded-2xl border border-[var(--color-border)] px-5 py-3 font-bold">Browse all rooms</Link></div>
