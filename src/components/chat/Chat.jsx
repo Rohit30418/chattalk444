@@ -1626,30 +1626,35 @@ const Chat = ({ uId }) => {
             <EmptyState />
           ) : (
             <Virtuoso
-              style={{ height: '100%', overflowX: 'hidden' }}
-              className="premium-chat-scrollbar overflow-x-hidden px-3 py-4"
+              style={{ height: '100%', width: '100%', maxWidth: '100%', overflowX: 'hidden' }}
+              className="premium-chat-scrollbar box-border min-w-0 overflow-x-hidden py-4"
               data={groupedMessages}
               followOutput={loadingOlder ? false : "smooth"}
               initialTopMostItemIndex={Math.max(0, groupedMessages.length - 1)}
               increaseViewportBy={{ top: 700, bottom: 700 }}
               itemContent={(index, item) => (
-                item.type === 'date' ? (
-                  <DateSeparator date={item.label} />
-                ) : (
-                  <RichMessageBubble
-                    currentUserId={uId}
-                    message={item.data}
-                    onOpenActions={setActionMessage}
-                    reactions={msgReactions[getMessageId(item.data)]}
-                    onImageClick={setLightboxSrc}
-                    botPhoto={botimg}
-                  />
-                )
+                // Keep horizontal gutters inside each virtualized row. Padding on
+                // the scroll container can widen Virtuoso's item measurements
+                // and push right-aligned bubbles under the clipped panel edge.
+                <div className="box-border w-full min-w-0 px-3">
+                  {item.type === 'date' ? (
+                    <DateSeparator date={item.label} />
+                  ) : (
+                    <RichMessageBubble
+                      currentUserId={uId}
+                      message={item.data}
+                      onOpenActions={setActionMessage}
+                      reactions={msgReactions[getMessageId(item.data)]}
+                      onImageClick={setLightboxSrc}
+                      botPhoto={botimg}
+                    />
+                  )}
+                </div>
               )}
               components={{
                 Footer: () => (
                   isAiTyping ? (
-                    <div className="mb-5 flex w-full items-end justify-start gap-2.5 px-2 py-2">
+                    <div className="mb-5 box-border flex w-full min-w-0 items-end justify-start gap-2.5 px-5 py-2">
                       <img
                         src={botimg}
                         className="h-8 w-8 rounded-full border-2 border-white/10 object-cover shadow-lg"
