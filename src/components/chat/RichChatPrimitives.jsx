@@ -357,8 +357,8 @@ export const RichMessageBubble = memo(({
   useEffect(() => () => cancelLongPress(), [cancelLongPress]);
 
   return (
-    <div className={`flex w-full min-w-0 overflow-x-clip px-1 ${isOwn ? 'justify-end' : 'justify-start'} ${compact ? 'pb-2' : 'pb-4'}`}>
-      <div className={`relative flex min-w-0 items-end gap-2.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${compact ? 'max-w-[86%]' : 'max-w-[88%] md:max-w-[80%]'}`}>
+    <div className={`box-border flex w-full min-w-0 max-w-full overflow-x-clip px-1 ${isOwn ? 'justify-end' : 'justify-start'} ${compact ? 'pb-2' : 'pb-4'}`}>
+      <div className={`relative flex min-w-0 max-w-full items-end gap-2.5 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${compact ? 'max-w-[86%]' : 'max-w-[88%] md:max-w-[80%]'}`}>
         {!isOwn && (
           <div className="mb-1 shrink-0">
             {photo ? (
@@ -418,7 +418,7 @@ export const RichMessageBubble = memo(({
               )}
             </div>
           ) : (
-            <div className={`group relative min-w-0 max-w-full ${
+            <div className={`group relative min-w-0 max-w-full break-words [overflow-wrap:anywhere] ${
               isEmoji
                 ? 'bg-transparent'
                 : isOwn
