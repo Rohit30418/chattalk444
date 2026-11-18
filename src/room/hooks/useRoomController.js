@@ -647,6 +647,13 @@ const useRoomController = ({
         if (!remotePeerId || dataConnectionsRef.current[remotePeerId]) return;
         if (!localStreamRef.current) return;
 
+        // Honor the server's caller assignment. Use the same peer-ID rule
+        // as a fallback while an older backend version is deployed.
+        const shouldInitiateCall = typeof remotePeer.shouldInitiateCall === 'boolean'
+          ? remotePeer.shouldInitiateCall
+          : peerRef.current.id < remotePeerId;
+        if (!shouldInitiateCall) return;
+
         const call = peerRef.current.call(remotePeerId, localStreamRef.current);
         attachCallHandlers(call, remotePeer);
         connectDataChannel(peerRef.current, remotePeerId);
